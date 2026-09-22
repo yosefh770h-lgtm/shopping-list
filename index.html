@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>רשימת קניות</title>
+<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--hdr:#075E54;--hdr2:#128C7E;--chat:#efe7db;--recv:#fffcf5;--sent:#d3f1c9;--text:#2b2b26;--muted:#8a8a7c;--line:#e2ddcf;--panel:#fdf9f0;--chipbg:#f4efe3;--chipbr:#d8d2c0;--inputbg:#fffdf7}
+body.dark{--chat:#171d1a;--recv:#233029;--sent:#1f4a38;--text:#e6e6da;--muted:#8fa096;--line:#2f3a34;--panel:#1c2420;--chipbg:#233029;--chipbr:#38453e;--inputbg:#233029}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Heebo',Arial,sans-serif;background:#cfd6cf;color:var(--text);height:100vh;display:flex;justify-content:center}
+body.dark{background:#0f1411}
+.app{width:100%;max-width:560px;display:flex;flex-direction:column;height:100vh;background:var(--chat);position:relative;box-shadow:0 0 30px rgba(0,0,0,.18)}
+header{background:linear-gradient(180deg,var(--hdr),var(--hdr2));color:#fff;padding:8px 14px;flex-shrink:0}
+.hrow{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:9px}
+.brand .logo{height:44px;display:block;transform:rotate(-2deg)}
+.brand b{font-size:20px;font-weight:700;text-shadow:1px 1px 0 rgba(0,0,0,.15)}
+.hbtns{display:flex;gap:1px}
+.hbtn{background:none;border:none;color:#fff;font-size:17px;cursor:pointer;padding:5px 8px;border-radius:50%}
+.hbtn:hover{background:rgba(255,255,255,.15)}
+.tabs{display:flex;gap:14px;margin-top:3px}
+.tab{background:none;border:none;color:rgba(255,255,255,.8);font-family:inherit;font-size:14px;padding:6px 2px;cursor:pointer;border-bottom:3px solid transparent}
+.tab.on{color:#fff;font-weight:700;border-bottom-color:#ffd97a}
+.share{display:none;gap:8px;padding:10px 0 2px;flex-wrap:wrap}
+.share.open{display:flex}
+.share a,.share button{text-decoration:none;background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:18px;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.chips{display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0}
+.chip{white-space:nowrap;border:1px solid var(--chipbr);background:var(--chipbg);color:var(--text);border-radius:16px;padding:6px 14px;font-family:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:var(--sent);border-color:var(--hdr2);font-weight:700}
+.chip .x{margin-inline-start:6px;opacity:.55}
+.favs{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--line);background:var(--panel)}
+.fav{white-space:nowrap;border:none;background:var(--chat);color:var(--text);border-radius:14px;padding:5px 12px;font-family:inherit;font-size:13px;cursor:pointer;border:1px dashed var(--chipbr)}
+.banner{display:none;align-items:center;justify-content:space-between;gap:10px;margin:10px 12px;padding:10px 14px;background:#fff6d8;border:1px solid #ecd9a0;border-radius:12px;font-size:14px}
+body.dark .banner{background:#3a3323;border-color:#5c5136}
+.banner.open{display:flex}
+.banner button{background:var(--hdr2);color:#fff;border:none;border-radius:10px;padding:6px 12px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.pane{flex:1;overflow-y:auto;display:none;padding:14px 14px 8px;position:relative}
+.pane.on{display:block}
+.day{text-align:center;margin:4px 0 12px}
+.day span{background:#f3ecd7;color:#6b6b58;font-size:12px;border-radius:10px;padding:4px 10px}
+body.dark .day span{background:#26302a;color:#8fa096}
+.row{display:flex;margin-bottom:10px}
+.row.bot{justify-content:flex-start}
+.row.me{justify-content:flex-end}
+.bub{max-width:82%;background:var(--recv);border-radius:12px 12px 12px 3px;padding:8px 12px;font-size:15px;box-shadow:0 1px 1px rgba(0,0,0,.07)}
+.row.me .bub{background:var(--sent);border-radius:12px 12px 3px 12px}
+.bub .t{font-size:11px;color:var(--muted);text-align:left;margin-top:3px}
+.bub .em{font-size:23px;margin-inline-end:8px;vertical-align:middle}
+.bub .q{font-size:12px;color:var(--muted)}
+.bub .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 6px}
+.grp{background:var(--recv);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.grp h3{font-size:15px;margin-bottom:6px}
+.grp .it{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
+.grp .it:last-child{border-bottom:none}
+.grp .it input{width:19px;height:19px;accent-color:var(--hdr2);cursor:pointer}
+.grp .it .q{font-size:12px;color:var(--muted)}
+.grp .it .del{margin-inline-start:auto;background:none;border:none;color:var(--muted);cursor:pointer}
+.hcard{background:var(--recv);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.hcard .d{font-size:13px;color:var(--muted);margin-bottom:6px}
+.hcard .its{font-size:14px;line-height:1.7}
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:36px 20px}
+.homebtns{display:flex;gap:8px;margin-bottom:10px}
+.hbtn2{flex:1;background:var(--recv);border:1px solid var(--chipbr);border-radius:12px;padding:9px;font-family:inherit;font-size:13px;cursor:pointer;color:var(--text)}
+#homeSearch{width:100%;padding:10px 14px;border:1px solid var(--chipbr);border-radius:12px;background:var(--inputbg);color:var(--text);font-family:inherit;font-size:15px;margin-bottom:10px}
+.pitem{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer;border-radius:8px}
+.pitem:hover{background:var(--chipbg)}
+.pitem .have{margin-inline-start:auto;font-size:12px;color:#2e7d32;font-weight:700}
+body.dark .pitem .have{color:#7ddba7}
+.pitem.off{opacity:.45}
+.mrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.mrow button{margin-inline-start:auto;background:var(--hdr2);color:#fff;border:none;border-radius:10px;padding:4px 10px;font-family:inherit;font-size:12px;cursor:pointer}
+.inputrow{display:none;gap:8px;padding:10px 12px;background:var(--panel);border-top:1px solid var(--line);flex-shrink:0;align-items:center}
+.inputrow.on{display:flex}
+.inputrow input[type=text]{flex:1;padding:11px 14px;border:1px solid var(--chipbr);border-radius:22px;background:var(--inputbg);color:var(--text);font-family:inherit;font-size:15px}
+.inputrow input[type=number]{width:64px;padding:11px 6px;border:1px solid var(--chipbr);border-radius:16px;background:var(--inputbg);color:var(--text);font-family:inherit;font-size:12px;text-align:center}
+.ibtn{width:42px;height:42px;border-radius:50%;border:none;background:var(--chipbg);color:var(--text);font-size:19px;cursor:pointer;flex-shrink:0}
+.ibtn.send{background:var(--hdr2);color:#fff}
+.ibtn.rec{background:#c0392b;color:#fff;animation:pul 1s infinite}
+@keyframes pul{50%{opacity:.55}}
+#botFab{position:fixed;bottom:96px;left:14px;z-index:15;width:58px;height:58px;border-radius:50%;border:3px solid var(--recv);background:var(--hdr);color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);transition:.2s}
+#botFab:hover{transform:scale(1.08) rotate(-3deg)}
+#botFab small{position:absolute;top:-6px;right:-8px;background:#ffd97a;color:#5c4a00;font-size:10px;font-weight:700;border-radius:10px;padding:2px 7px}
+.overlay{display:none;position:absolute;inset:0;background:rgba(20,25,20,.55);z-index:20;padding:20px}
+.overlay.open{display:flex;align-items:flex-end}
+.panel{background:var(--panel);border-radius:18px 18px 0 0;width:100%;max-height:88%;display:flex;flex-direction:column}
+.phead{padding:12px 16px 8px;display:flex;justify-content:space-between;align-items:center;color:var(--text)}
+.phead b{font-size:16px}
+.phead button{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.plist{overflow-y:auto;padding:0 16px 20px}
+.plist h4{font-size:14px;color:var(--hdr2);margin:12px 0 6px}
+.pgrid{display:flex;flex-wrap:wrap;gap:6px}
+.pgrid button{border:1px solid var(--chipbr);background:var(--chipbg);color:var(--text);border-radius:14px;padding:6px 12px;font-family:inherit;font-size:14px;cursor:pointer}
+.pgrid button:hover{border-color:var(--hdr2);background:var(--sent)}
+#botSheet .panel{height:94%;background:var(--chat)}
+#botMsgs{flex:1;overflow-y:auto;padding:12px 14px}
+#botChips{display:flex;gap:6px;padding:6px 12px;overflow-x:auto;flex-shrink:0}
+#botChips button{white-space:nowrap;border:1px solid var(--hdr2);background:var(--panel);color:var(--hdr2);border-radius:16px;padding:6px 12px;font-family:inherit;font-size:13px;cursor:pointer}
+#botInput{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);flex-shrink:0}
+#botInput input{flex:1;padding:11px 14px;border:1px solid var(--chipbr);border-radius:22px;background:var(--inputbg);color:var(--text);font-family:inherit;font-size:15px}
+.ruthy-head{display:flex;align-items:center;gap:10px}
+.ruthy-av{width:38px;height:38px;border-radius:50%;background:var(--sent);display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--hdr2)}
+.ruthy-head small{display:block;color:#2e8b57;font-size:11px}
+body.dark .ruthy-head small{color:#7ddba7}
+#login{position:fixed;inset:0;background:linear-gradient(160deg,#0a5c4e,#128C7E);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+#login.open{display:flex}
+.lcard{background:var(--recv);border-radius:22px;padding:30px 26px;max-width:370px;width:100%;text-align:center;color:var(--text)}
+.lcard .logo{height:76px;margin-bottom:4px}
+.lcard h2{font-family:'Amatic SC',cursive;font-size:38px;margin-bottom:2px}
+.lcard p{font-size:13px;color:var(--muted);margin-bottom:14px}
+.lcard input{width:100%;padding:12px 14px;border:1px solid var(--chipbr);border-radius:12px;font-family:inherit;font-size:15px;margin-bottom:10px;background:var(--inputbg);color:var(--text)}
+.lcard button{width:100%;padding:12px;border:none;border-radius:12px;background:var(--hdr2);color:#fff;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.lcard .goog{background:#fff;color:#444;border:1.5px solid #dadce0;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:500}
+.lcard .tiny{font-size:11px;color:var(--muted);margin-top:4px}
+.flash{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#2b2b26;color:#fff;padding:9px 18px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;z-index:60;pointer-events:none;max-width:88%}
+.flash.show{opacity:.94}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="lcard">
+    <div id="loginLogo"></div>
+    <h2>רשימת קניות</h2>
+    <p>מה שקונים — לא שוכחים 💚</p>
+    <button id="btnGoogle" class="goog"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.7-2.4 3.6l3.9 3c2.2-2.1 3.5-5.1 3.5-8.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.5 1.2-4 1.2-3.1 0-5.7-2.1-6.7-4.9l-4 3.1C3.3 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.4c-.2-.7-.4-1.5-.4-2.4s.2-1.7.4-2.4l-4-3.1C.5 8.2 0 10 0 12s.5 3.8 1.3 5.5l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C18 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.5l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg> התחברות עם גוגל</button>
+    <input id="inName" placeholder="או בלי גוגל — השם שלך">
+    <input id="inMail" type="email" placeholder="האימייל שלך (ממנו נוצר הקוד האישי)">
+    <button id="btnLogin">כניסה 👋</button>
+    <div class="tiny">הנתונים נשארים שלך. נבנה בבית, באהבה 💚</div>
+  </div>
+</div>
+
+<div class="app">
+  <header>
+    <div class="hrow">
+      <div class="brand" id="brand"><b>רשימת קניות</b></div>
+      <div class="hbtns">
+        <button class="hbtn" id="btnUser" title="משתמש">👤</button>
+        <button class="hbtn" id="btnDark" title="מצב כהה">🌙</button>
+        <button class="hbtn" id="btnGroup" title="תצוגת קטגוריות">🗂️</button>
+        <button class="hbtn" id="btnPrint" title="הדפסה / PDF">🖨️</button>
+        <button class="hbtn" id="btnShare" title="שיתוף">🔗</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-t="list">📝 רשימה</button>
+      <button class="tab" data-t="hist">🕘 היסטוריה</button>
+      <button class="tab" data-t="home">🏠 הבית שלי</button>
+    </div>
+    <div class="share" id="shareRow">
+      <a id="shWa" target="_blank">💬 וואטסאפ</a>
+      <a id="shSms" href="#">✉️ SMS</a>
+      <a id="shGmail" target="_blank">📧 ג׳ימייל</a>
+      <button id="shCopy">📋 העתקה</button>
+      <button id="shBackup">💾 גיבוי</button>
+      <button id="shRestore">📥 שחזור</button>
+      <input type="file" id="fileRestore" accept=".json" style="display:none">
+    </div>
+  </header>
+
+  <div class="chips" id="chips"></div>
+  <div class="favs" id="favs" style="display:none"></div>
+  <div class="banner" id="banner"></div>
+
+  <div class="pane on" id="paneList"></div>
+  <div class="pane" id="paneHist"></div>
+  <div class="pane" id="paneHome"></div>
+
+  <div class="inputrow on" id="inputRow">
+    <button class="ibtn" id="btnPlus" title="כל הקטגוריות">➕</button>
+    <input type="text" id="inText" placeholder="מה להוסיף?">
+    <input type="number" id="inQty" placeholder="כמות" min="0">
+    <button class="ibtn" id="btnMic" title="הקלטה קולית">🎤</button>
+    <button class="ibtn send" id="btnSend" title="שיחה">➤</button>
+  </div>
+
+  <div class="overlay" id="catOverlay">
+    <div class="panel">
+      <div class="phead"><b>כל המוצרים לפי קטגוריות</b><button id="btnCloseCat">✕</button></div>
+      <input class="srch" id="inCatSearch" placeholder="🔍 חיפוש מוצר..." style="margin:0 16px 10px;padding:10px 14px;border:1px solid var(--chipbr);border-radius:12px;background:var(--inputbg);color:var(--text);font-family:inherit;font-size:15px">
+      <div class="plist" id="catList"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="botSheet">
+    <div class="panel">
+      <div class="phead"><div class="ruthy-head"><div class="ruthy-av">👩‍🍳</div><div><b>יאמי</b><small>● זמינה עכשיו — שואלים אותי הכל</small></div></div><button id="botClose">✕</button></div>
+      <div id="botMsgs"></div>
+      <div id="botChips"></div>
+      <div id="botInput"><input id="botText" placeholder="כתוב ליאמי..."><button class="ibtn send" id="botSend">➤</button></div>
+    </div>
+  </div>
+</div>
+
+<button id="botFab" title="לשיחה עם יאמי">👩‍🍳<small>יאמי</small></button>
+<div class="flash" id="flash"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ================= עזרים ================= */
+const $=s=>document.querySelector(s);
+const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const hebDate=d=>new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'}).format(d);
+const fmtDate=d=>new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(d);
+const fmtTime=d=>new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit'}).format(d);
+const dayKey=d=>new Date(d).toISOString().slice(0,10);
+function norm(s){return (s||'').replace(/['’`׳"]/g,'').replace(/\s+/g,' ').trim();}
+function flash(m){const f=document.querySelector('#flash');f.textContent=m;f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(()=>f.classList.remove('show'),2400);}
+
+/* לוגו — כתב יד, שתי שורות, גל לא מושלם */
+function logoSvg(){return '<svg class="logo" viewBox="0 0 72 72"><circle cx="36" cy="36" r="33" fill="#fffcf5" stroke="#128C7E" stroke-width="3"/><path d="M14 52 q6 -6 12 0 t12 0 t12 0 t8 -1" stroke="#128C7E" stroke-width="2.5" fill="none" stroke-linecap="round"/><text x="36" y="31" text-anchor="middle" font-family="Amatic SC,cursive" font-size="19" font-weight="700" fill="#0a5c4e">רשימת</text><text x="36" y="47" text-anchor="middle" font-family="Amatic SC,cursive" font-size="19" font-weight="700" fill="#0a5c4e">קניות</text><path d="M52 14 q4 -4 8 -1 q-3 1 -4 4" stroke="#5fae7d" stroke-width="2" fill="#bfe3cd" stroke-linecap="round"/></svg>';}
+
+/* ================= מאגר מוצרים ================= */
+const CATS=['מוצרי חלב','ירקות','פירות','לחמים','בשר ועוף','דגים','שתייה','רטבים וממרחים','מאפים וחטיפים','מוצרי ניקיון','היגיינה','אחר'];
+const CATE={'מוצרי חלב':'🧀','ירקות':'🥕','פירות':'🍎','לחמים':'🍞','בשר ועוף':'🍗','דגים':'🐟','שתייה':'🥤','רטבים וממרחים':'🥫','מאפים וחטיפים':'🍪','מוצרי ניקיון':'🧼','היגיינה':'🧴','אחר':'🛒'};
+const P={};
+[['חלב','🥛'],['חלב סויה','🥛'],['שוקו','🥛'],['יוגורט','🥛'],['מעדן','🍮'],['קוטג׳','🥣'],['גבינה','🧀'],['גבינה לבנה','🧀'],['גבינה צהובה','🧀'],['שמנת','🥛'],['חמאה','🧈'],['ביצים','🥚'],
+['לחם','🍞'],['פיתה','🫓'],['לחמניות','🥖'],
+['עגבניות','🍅'],['עגבניות שרי','🍅'],['מלפפונים','🥒'],['גזר','🥕'],['בצל','🧅'],['תפוחי אדמה','🥔'],['פלפלים','🫑'],['חסה','🥬'],['שום','🧄'],['ברוקולי','🥦'],['תירס','🌽'],['זיתים','🫒'],
+['תפוחים','🍎'],['בננות','🍌'],['תותים','🍓'],['ענבים','🍇'],['תפוזים','🍊'],['לימונים','🍋'],['אבוקדו','🥑'],['אבטיח','🍉'],['מנגו','🥭'],
+['עוף','🍗'],['עוף טחון','🍗'],['הודו טחון','🦃'],['חזה עוף','🍗'],['חזה עוף פרוס לשניצלים','🍗'],['בשר טחון','🥩'],['קציצות','🥩'],['קבב','🥩'],['נקניקים','🌭'],
+['טונה','🐟'],['סלמון','🐟'],
+['מים','💧'],['שישיית מים','💧'],['מים בטעמים','🍹'],['קולה','🥤'],['פפסי','🥤'],['מיץ','🧃'],['מיץ תפוזים','🧃'],['קפה','☕'],['תה','🍵'],['בירה','🍺'],['יין','🍷'],
+['רוטב סויה','🍶'],['רוטב ברביקיו','🥫'],['רוטב צ׳ילי מתוק','🌶️'],['קטשופ','🥫'],['מיונז','🥫'],['חרדה','🥫'],['שמן זית','🫒'],['חומוס','🥣'],['טחינה','🥣'],['ממרח שוקולד','🍫'],['ממרח חלווה','🍯'],['דבש','🍯'],['סוכר','🫙'],['קמח','🫙'],['אורז','🍚'],['פסטה','🍝'],['מלח','🧂'],
+['חטיף במבה','🥜'],['ביסלי','🥜'],['עוגיות','🍪'],['קרקרים','🥨'],['פופקורן','🍿'],['שוקולד','🍫'],['גלידה','🍦'],
+['סבון כלים','🧼'],['סבון ידיים','🧼'],['נייר טואלט','🧻'],['נייר סופג','🧻'],['מגבונים','🧻'],['אבקת כביסה','🧺'],['מרכך','🧺'],['שקיות זבל','🗑️'],
+['שמפו','🧴'],['משחת שיניים','🪥'],['מברשת שיניים','🪥'],['טישו לאף','🤧'],['קיסמי אוזניים','👂'],
+['פרחים','💐'],['מתנה לחג','🎁'],['נרות','🕯️']
+].forEach(r=>{P[r[0]]={e:r[1]};});
+const CATR=[['בשר ועוף',/(עוף|הודו|בשר|קבב|נקניק|שניצל|כבד|קציצ)/],['מוצרי חלב',/(חלב|גבינ|קוטג|שמנת|חמאה|יוגורט|מעדן|ביצ|שוקו)/],['לחמים',/(לחם|פיתה|לחמנ|בייגל)/],['שתייה',/(מים|קולה|פפסי|מיץ|קפה|תה |בירה|יין|שתייה|סודה)/],['רטבים וממרחים',/(רוטב|קטשופ|מיונז|חרדה|סויה|שמן|חומוס|טחינ|ממרח|דבש|סוכר|קמח|אורז|פסטה|מלח|תבלין|זית|תירס)/],['ירקות',/(ירק|עגבני|מלפפון|גזר|בצל|חסה|כרוב|שום|פלפל|ברוקולי|תרד|שרי)/],['פירות',/(תפוח|בננ|תות|ענב|תפוז|לימון|אבוקדו|אבטיח|מנגו|אננס|פירות)/],['דגים',/(טונה|סלמון|בורי|סרדינ)/],['מאפים וחטיפים',/(חטיף|במבה|ביסלי|עוגי|קרקר|פופקורן|שוקולד|גלידה|ופל)/],['מוצרי ניקיון',/(נייר טואלט|נייר סופג|מגבונ|אבקת כביסה|מרכך|ניקיון|שקיות זבל|סבון כלים)/],['היגיינה',/(שמפו|משחת|מברשת שיניים|טישו|קיסמי|אוזניים|סבון ידיים)/],['אחר',/(פרח|מתנה|נרות|בלון)/]];
+CATS.forEach(c=>Object.keys(P).forEach(n=>{if(!P[n].c){for(const[cc,rx]of CATR){if(rx.test(n)){P[n].c=cc;break;}}if(!P[n].c)P[n].c='אחר';}}));
+const ALIAS={'קוקה':'קולה','קוקה קולה':'קולה','שניצל':'חזה עוף פרוס לשניצלים','שניצלים':'חזה עוף פרוס לשניצלים','טישו':'טישו לאף','קייסמי':'קיסמי אוזניים','קיסמי':'קיסמי אוזניים','בקבוק מים':'מים','קרטון מים':'שישיית מים','ארגז מים':'שישיית מים','שישייה':'שישיית מים','במבה':'חטיף במבה','עגבניה':'עגבניות','מלפפון':'מלפפונים','תפוח':'תפוחים','תפוח אדמה':'תפוחי אדמה','בננה':'בננות','תפוז':'תפוזים','לימון':'לימונים','תות':'תותים','ביצה':'ביצים','צ׳ילי מתוק':'רוטב צ׳ילי מתוק','ברביקיו':'רוטב ברביקיו','חלווה':'ממרח חלווה','נוטלה':'ממרח שוקולד','בצלים':'בצל','גזרים':'גזר'};
+const NORMP={};Object.keys(P).forEach(n=>NORMP[norm(n)]=n);Object.keys(ALIAS).forEach(a=>NORMP[norm(a)]=ALIAS[a]);
+function resolveCat(n){if(P[n]&&P[n].c)return P[n].c;for(const[cc,rx]of CATR)if(rx.test(n))return cc;return 'אחר';}
+function emojiOf(n){return (P[n]&&P[n].e)||CATE[resolveCat(n)]||'🛒';}
+const BASE=['חלב','לחם','ביצים','גבינה','חמאה','עגבניות','מלפפונים','בצל','תפוחי אדמה','אורז','פסטה','שמן זית','סוכר','קמח','קפה','תה','מלח','קטשופ','מיונז','טונה','חומוס','נייר טואלט','סבון כלים','שמפו','מים'];
+
+/* ================= נתונים ================= */
+const KEY='yamh_app_v1';
+let state=null;
+function defState(){return {user:null,ownerCode:null,follow:null,lists:[{id:uid(),name:'סופר',items:[],created:Date.now()}],active:null,history:[],plans:{},bot:[],stats:{},pantry:{},dark:false,group:false,lastGreet:'',lastTab:'list',homeQ:'',showMissing:false,pending:null,pendingRecipe:null};}
+function load(){
+  try{state=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+  if(!state)state=defState();
+  const d=defState();Object.keys(d).forEach(k=>{if(state[k]===undefined)state[k]=d[k];});
+  if(!state.lists.length)state.lists=d.lists;
+  if(!state.lists.find(l=>l.id===state.active))state.active=state.lists[0].id;
+  state.plans=state.plans||{};state.bot=state.bot||[];state.stats=state.stats||{};state.history=state.history||[];state.pantry=state.pantry||{};
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+const curList=()=>state.lists.find(l=>l.id===state.active);
+function pantryHas(name){const c=NORMP[norm(name)]||norm(name);return !!state.pantry[c];}
+function pantrySet(name,val){const c=NORMP[norm(name)]||norm(name);if(val)state.pantry[c]=true;else delete state.pantry[c];}
+function pantryCount(){return Object.keys(state.pantry).length;}
+
+/* ================= פירוק טקסט למוצרים ================= */
+const NUMW={'אחד':1,'אחת':1,'שני':2,'שניים':2,'שתי':2,'שתיים':2,'שלוש':3,'שלושה':3,'ארבע':4,'ארבעה':4,'חמש':5,'חמישה':5,'שש':6,'שבע':7,'שבעה':7,'שמונה':8,'תשע':9,'תשעה':9,'עשר':10,'עשרה':10,'עשרים':20};
+const UNITS='קג|קילו|ליטר|גרם|חבילות|חבילה|שקיות|שקית|ארגז|קופסאות|קופסה|בקבוקים|בקבוק|יחידות|מארזים|מארז';
+function parseItems(text){
+  let s=' '+norm(text)+' ';
+  s=s.replace(/\s(בבקשה|גם|עוד|רק)\s/g,' ').replace(/^(אני צריך|אני רוצה|צריך|תוסיף לי|תוסיף|הוסף לי|הוסף|תרשמו|תרשום|רשום|לקנות|תקני|תקנה|תביאי|תביא)\s+/,'').trim();
+  let qty='';const numRe=new RegExp('(\\d+)\\s*('+UNITS+')?\\s*$');
+  let m=s.match(numRe);
+  if(m&&m[1]){qty=m[1]+(m[2]?' '+m[2]:'');s=s.slice(0,m.index);}
+  else{const tk=s.trim().split(' ');const last=tk[tk.length-1];
+    if(NUMW[last]){qty=''+NUMW[last];tk.pop();const u=tk[tk.length-1];if(u&&new RegExp('^('+UNITS+')$').test(u)){qty+=' '+u;tk.pop();}s=tk.join(' ');}
+  }
+  const parts=s.split(/\s*,\s*|\s+ו(?=[א-ת])/).map(x=>x.replace(/^(את|את ה|של|ל)\s+/,'').trim()).filter(Boolean);
+  const out=[];
+  parts.forEach(p=>{
+    let q2='';const m2=p.match(new RegExp('^(\\d+)\\s*('+UNITS+')?\\s+'));
+    if(m2){q2=m2[1]+(m2[2]?' '+m2[2]:'');p=p.slice(m2[0].length);}
+    const w=p.split(' ');
+    if(w.length&&NUMW[w[0]]){q2=q2||(''+NUMW[w[0]]);w.shift();p=w.join(' ').trim();}
+    if(!p)return;
+    out.push({name:NORMP[norm(p)]||p,qty:(q2||(parts.length===1?qty:'')||'')});
+  });
+  return out;
+}
+const ADDVERBS=/(הוסף|הוסיפי|תוסיף|תוסיפי|רשום|רשמי|תרשום|תרשמי|צריך|צריכה|קנה|קני|תקנ|לקנות|תביא|תביאי|עוד)/;
+
+/* ================= פעולות רשימה ================= */
+function addItem(name,qty){
+  const l=curList();const ex=l.items.find(i=>i.n===name&&!i.done);
+  if(ex){if(qty)ex.q=qty;flash('⚠️ כבר ברשימה — עדכנתי את הכמות');}
+  else{l.items.push({id:uid(),n:name,q:qty||'',c:resolveCat(name),e:emojiOf(name),done:false,ts:Date.now()});
+    state.stats[name]=(state.stats[name]||0)+1;flash('✅ '+name+' נוסף');}
+  save();render();
+}
+function removeItem(id){const l=curList();l.items=l.items.filter(i=>i.id!==id);save();render();}
+function clearDone(){const l=curList();const done=l.items.filter(i=>i.done);
+  if(!done.length){flash('אין פריטים מסומנים לסיום 🙂');return null;}
+  state.history.unshift({ts:Date.now(),listName:l.name,items:done.map(i=>({n:i.n,q:i.q,e:i.e}))});
+  l.items=l.items.filter(i=>!i.done);save();render();
+  return done.length;}
+
+/* ================= תאריך ושיתוף ================= */
+function shareText(){
+  const l=curList();const now=new Date();
+  const open=l.items.filter(i=>!i.done),done=l.items.filter(i=>i.done);
+  let s='🛒 '+l.name+'\n'+fmtDate(now)+' · '+hebDate(now)+' · '+fmtTime(now)+'\n\n';
+  if(!open.length&&!done.length)s+='(הרשימה ריקה)\n';
+  open.forEach(i=>s+='☐ '+i.n+(i.q?' ×'+i.q:'')+'\n');
+  if(done.length){s+='\n';done.forEach(i=>s+='☑ '+i.n+'\n');}
+  s+='\n— רשימת קניות 💚';return s;
+}
+function bindShare(){
+  const t=encodeURIComponent(shareText());
+  document.querySelector('#shWa').href='https://wa.me/?text='+t;
+  document.querySelector('#shSms').href='sms:?body='+t;
+  document.querySelector('#shGmail').href='https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent('רשימת קניות — '+curList().name)+'&body='+t;
+}
+function printList(){
+  const l=curList();const now=new Date();
+  const row=i=>'<tr><td class="cb"></td><td class="em">'+i.e+'</td><td>'+esc(i.n)+'</td><td class="q">'+(i.q?'×'+esc(i.q):'')+'</td></tr>';
+  let body='';
+  if(state.group){
+    CATS.forEach(c=>{const its=l.items.filter(i=>i.c===c);if(!its.length)return;
+      body+='<h2>'+c+'</h2><table>'+its.map(row).join('')+'</table>';});
+    if(!l.items.length)body='<p class="e">הרשימה ריקה</p>';
+  }else{
+    body='<table>'+(l.items.length?l.items.map(row).join(''):'<p class="e">הרשימה ריקה</p>')+'</table>';
+  }
+  const w=window.open('','_blank');
+  w.document.write('<html dir="rtl" lang="he"><head><meta charset="utf-8"><title>הדפסה — '+esc(l.name)+'</title><style>body{font-family:Heebo,Arial,sans-serif;color:#222;max-width:700px;margin:24px auto}.hdr{display:flex;align-items:center;gap:14px;border-bottom:3px solid #128C7E;padding-bottom:12px;margin-bottom:16px}.hdr svg{height:56px}.hdr h1{margin:0;font-size:22px}.hdr .d{font-size:13px;color:#667}h2{font-size:15px;color:#128C7E;margin:18px 0 4px}table{width:100%;border-collapse:collapse}td{padding:8px 6px;border-bottom:1px solid #e5e5e5;font-size:15px}.cb{width:26px}.cb::before{content:"";display:block;width:18px;height:18px;border:2px solid #128C7E;border-radius:4px}.em{width:34px;font-size:20px}.q{width:90px;color:#667;font-size:13px}.foot{margin-top:26px;padding-top:10px;border-top:1px solid #ddd;font-size:12px;color:#888;text-align:center}.e{color:#999}</style></head><body><div class="hdr">'+logoSvg()+'<div><h1>'+esc(l.name)+'</h1><div class="d">'+fmtDate(now)+' · '+hebDate(now)+' · '+fmtTime(now)+'</div></div></div>'+body+'<div class="foot">רשימת קניות · נעשה באהבה 💚</div></body></html>');
+  w.document.close();w.focus();setTimeout(()=>w.print(),350);
+}
+
+/* ================= רינדור ================= */
+function doodleBg(el){
+  const em=['🍅','🥕','🍞','🥛','🍎','🧀','🍇','🥑','🍋','🥒','🍉','🥨'];
+  el.querySelectorAll('.dd span').forEach(s=>s.remove());
+  let d=el.querySelector('.dd');
+  if(!d){d=document.createElement('div');d.className='dd';d.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none';el.prepend(d);}
+  for(let i=0;i<22;i++){const s=document.createElement('span');s.textContent=em[i%em.length];
+    s.style.cssText='position:absolute;opacity:.10;right:'+(Math.random()*90)+'%;top:'+(Math.random()*95)+'%;font-size:'+(16+Math.random()*20)+'px';d.appendChild(s);}
+}
+function render(){
+  document.querySelector('#chips').innerHTML=state.lists.map(l=>'<button class="chip'+(l.id===state.active?' on':'')+'" data-id="'+l.id+'">'+esc(l.name)+(l.id===state.active&&state.lists.length>1?'<span class="x" data-del="'+l.id+'">✕</span>':'')+'</button>').join('')+'<button class="chip" data-new="1">+ רשימה חדשה</button>';
+  const favs=Object.entries(state.stats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const fr=document.querySelector('#favs');
+  if(favs.length){fr.style.display='flex';fr.innerHTML='⭐ '+favs.map(f=>'<button class="fav" data-fav="'+esc(f[0])+'">'+esc(f[0])+'</button>').join('');}
+  else fr.style.display='none';
+  const dow=new Date().getDay();const plan=state.plans[dow]||[];
+  const b=document.querySelector('#banner');
+  if(plan.length){const l=curList();const missing=plan.filter(n=>!l.items.find(i=>i.n===n));
+    b.classList.add('open');
+    b.innerHTML='<span>📋 תוכנית להיום: <b>'+plan.map(esc).join(', ')+'</b></span>'+(missing.length?'<button data-planadd="1">הוסף לרשימה ('+missing.length+')</button>':'<span style="color:var(--muted)">הכל כבר ברשימה ✔</span>');
+  }else b.classList.remove('open');
+  renderList();renderHist();renderHome();renderBot();bindShare();
+}
+function renderList(){
+  const l=curList();const p=document.querySelector('#paneList');
+  if(!l.items.length){p.innerHTML='<div class="empty">הרשימה ריקה 🛒<br>כתבו למטה מה צריך — או שאלו את יאמי 👩‍🍳</div>';doodleBg(p);return;}
+  if(state.group){
+    p.innerHTML=CATS.map(c=>{const its=l.items.filter(i=>i.c===c);if(!its.length)return '';
+      return '<div class="grp"><h3>'+CATE[c]+' '+c+' ('+its.length+')</h3>'+its.map(itemRow).join('')+'</div>';}).join('')||'<div class="empty">ריק</div>';
+  }else{
+    const open=l.items.filter(i=>!i.done),done=l.items.filter(i=>i.done);
+    p.innerHTML='<div class="day"><span>'+fmtDate(new Date())+' · '+hebDate(new Date())+'</span></div>'+
+      open.map(bubble).join('')+
+      (done.length?'<div class="day"><span>נקנו ✓</span></div>'+done.map(bubble).join(''):'');
+  }
+  doodleBg(p);
+}
+function itemRow(i){return '<div class="it"><input type="checkbox" '+(i.done?'checked':'')+' data-tgl="'+i.id+'"><span>'+i.e+'</span><span style="'+(i.done?'text-decoration:line-through;color:var(--muted)':'')+'">'+esc(i.n)+'</span>'+(i.q?'<span class="q">×'+esc(i.q)+'</span>':'')+'<button class="del" data-delitem="'+i.id+'">✕</button></div>';}
+function bubble(i){
+  const t=new Date(i.ts||Date.now());
+  return '<div class="row '+(i.done?'me':'bot')+'"><div class="bub"><span class="em">'+i.e+'</span>'+esc(i.n)+(i.q?' <span class="q">×'+esc(i.q)+'</span>':'')+
+    ' <button class="del" data-delitem="'+i.id+'" title="מחיקה">✕</button>'+
+    (i.done?' <span style="color:#2e8b57">✓✓</span>':'')+
+    '<div class="t">'+fmtTime(t)+'</div></div></div>';
+}
+function renderHist(){
+  const p=document.querySelector('#paneHist');
+  if(!state.history.length){p.innerHTML='<div class="empty">עוד אין היסטוריית קניות 🕘<br>סמנו פריטים כנקנו וסיימו קנייה</div>';doodleBg(p);return;}
+  p.innerHTML=state.history.map(h=>{
+    const d=new Date(h.ts);
+    return '<div class="hcard"><div class="d">🛍️ '+esc(h.listName)+' · '+fmtDate(d)+' · '+hebDate(d)+' · '+fmtTime(d)+'</div><div class="its">'+h.items.map(i=>i.e+' '+esc(i.n)+(i.q?' ×'+esc(i.q):'')).join(' · ')+'</div></div>';
+  }).join('')+'<div style="text-align:center;margin:14px"><button class="chip" data-clearhist="1">🗑️ נקה היסטוריה</button></div>';
+  doodleBg(p);
+}
+function renderHome(){
+  const p=document.querySelector('#paneHome');
+  const q=norm(state.homeQ||'');
+  const missing=BASE.filter(n=>!pantryHas(n));
+  let html='<div class="homebtns"><button class="hbtn2" id="btnMissing">🧺 מה חסר לי בבית? ('+missing.length+')</button><button class="hbtn2" id="btnHomeCount">🏠 יש לי '+pantryCount()+' מוצרים</button></div>';
+  if(state.showMissing&&missing.length){
+    html+='<div class="grp"><h3>חסר לך בבית לפי מצרכי בסיס</h3>'+missing.map(n=>'<div class="mrow"><span>'+emojiOf(n)+'</span><span>'+esc(n)+'</span><button data-missing="'+esc(n)+'">➕ לרשימה</button></div>').join('')+
+      '<div style="text-align:center;margin-top:8px"><button class="chip" data-addall="1">הוסף הכל לרשימה</button></div></div>';
+  }
+  html+='<input id="homeSearch" placeholder="🔍 חיפוש במקרר..." value="'+esc(state.homeQ||'')+'">';
+  html+=CATS.map(c=>{
+    const its=Object.keys(P).filter(n=>P[n].c===c&&(!q||n.includes(q)));
+    if(!its.length)return '';
+    return '<div class="grp"><h3>'+CATE[c]+' '+c+'</h3>'+its.map(n=>{
+      const have=pantryHas(n);
+      return '<div class="pitem'+(have?'':' off')+'" data-pan="'+esc(n)+'"><span>'+P[n].e+'</span><span>'+esc(n)+'</span>'+(have?'<span class="have">✓ יש לי</span>':'<span style="margin-inline-start:auto;font-size:12px;color:var(--muted)">אין</span>')+'</div>';
+    }).join('')+'</div>';
+  }).join('');
+  p.innerHTML=html;
+  doodleBg(p);
+}
+function renderBot(){
+  const p=document.querySelector('#botMsgs');
+  p.innerHTML=state.bot.map(m=>'<div class="row '+(m.who==='me'?'me':'bot')+'"><div class="bub">'+esc(m.txt).replace(/\n/g,'<br>')+'<div class="t">'+fmtTime(new Date(m.ts))+'</div></div></div>').join('')||'<div class="empty">רגע, אני מתארגנת... 👩‍🍳</div>';
+  p.scrollTop=p.scrollHeight;
+}
+</script>
+<script>
+/* ================= יאמי — הבוט שמבינה באמת ================= */
+const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const DAYG=['יום ראשון שמח 🌟','יום שני מעולה 💪','יום שלישי פורה 🚀','יום רביעי נפלא ☀️','יום חמישי מוצלח 🎯','שישי — יום של הכנות לשבת 🌸','שבת שלום ומנוחה 🕯️'];
+const HELLO=['היי! 😊','שלום! 👋','אהלן! 🌿','היי, נחמד לראות אותך 😊'];
+const HOWRU=['הכל טוב אצלי — הרשימות מסודרות והמקרר מחכה לשאלה 😄 ואצלך?','מעולה! תמיד כיף כששואלים 🙂 מה נשמע אצלך?','רגוע ונעים. בינתיים אף אחד לא שכח את החלב בסופר 😄'];
+const THANKS=['בכיף! 😊','אין על מה 🙌','תמיד בשבילך 👍','זה בשביל זה אני כאן 💚'];
+const JOKES=[
+'שאלו את הבצל למה הוא בוכה. אמר: פשוט קצת קשור לי לקלף 🧅😢',
+'הלחם נפל מהשולחן ואמר: "זהו, נגמרתי" 🍞😄',
+'למה העגבנייה הלכה לרופא? כי היא הרגישה קצת רקובה 🍅',
+'מה אומר הקפה לחלב? — בלעדייך אני מריר מדי ☕',
+'יש לי חבר קרח. כל פעם שאני פוגש אותו הוא נמס לי בידיים 🧊',
+'הביצה שאלה את המחבת: "חם לך?" היא ענתה: "תמיד" 🍳',
+'איזה ירק הכי טוב במחשבים? כרוב-נטיקה 💻🥬',
+'הגבינה סיפרה בדיחה — כולם אמרו שהיא צהובה מדי 🧀',
+'האורז תמיד בקו, הפסטה תמיד מסודרת, ואני — תמיד ברשימה 🍚',
+'שאלו את הלימון למה הוא חמוץ. ענה: "תנאי חיים" 🍋'];
+const RECIPES=[
+{n:'חביתה קלאסית',e:'🍳',req:['ביצים','שמן זית'],opt:['גבינה צהובה','עגבניות'],steps:'טורפים 2–3 ביצים עם קורט מלח. מחממים מעט שמן במחבת, מוזגים, מחכים דקה־שתיים, מקפלים. מוכן תוך 5 דקות!'},
+{n:'פסטה עגבניות ושום',e:'🍝',req:['פסטה','עגבניות','שום','שמן זית'],opt:['גבינה צהובה','בזיליקום'],steps:'מרתיחים פסטה לפי האריזה. במחבת: שמן זית + שום קצוץ דקה, מוסיפים עגבניות חתוכות, מבשלים 7 דקות, מלח ופלפל. מערבבים עם הפסטה ומעל גבינה מגוררת.'},
+{n:'שניצלים ביתיים',e:'🍗',req:['חזה עוף פרוס לשניצלים','ביצים','קמח'],opt:['פירורי לחם'],steps:'טובלים כל פרוסה: קמח → ביצה טרופה → פירורים. מטגנים 2–3 דקות מכל צד על אש בינונית. מניחים על נייר סופג.'},
+{n:'סלט יווני',e:'🥗',req:['מלפפונים','עגבניות','גבינה צהובה'],opt:['זיתים','בצל'],steps:'חותכים הכל לקוביות, מוסיפים זיתים, שמן זית, מלח ואורגנו. מערבבים וזהו — 5 דקות ומוכן.'},
+{n:'אורז עם ירקות',e:'🍚',req:['אורז','גזר','בצל'],opt:['תירס','אפונה'],steps:'מטגנים בצל וגזר קצוצים, מוסיפים אורז ומים (פי 2 מהאורז), מכסים ומבשלים 15 דקות על אש קטנה.'},
+{n:'טוסט גבינות',e:'🧀',req:['לחם','גבינה צהובה'],opt:['עגבניות','זיתים'],steps:'לחם + גבינה (+ עגבניות) בטוסטר או מחבת מכוסה 3–4 דקות עד שהגבינה נמסה.'},
+{n:'מרק ירקות מחמם',e:'🍲',req:['תפוחי אדמה','גזר','בצל'],opt:['ברוקולי','תירס'],steps:'חותכים הכל לקוביות, מכסים במים, מוסיפים אבקת מרק/מלח, מבשלים 30 דקות. אפשר לטחון לקרם.'},
+{n:'חומוס ביתי',e:'🥣',req:['חומוס','שום','שמן זית'],opt:['לימונים','טחינה'],steps:'חומוס מושרה ומבושל (או מקופסה) → בלנדר עם שום, שמן זית, מיץ לימון ומעט מים. מערבבים עד קרמי.'}
+];
+function botSay(t){state.bot.push({who:'bot',txt:t,ts:Date.now()});if(state.bot.length>120)state.bot=state.bot.slice(-120);save();renderBot();}
+function meSay(t){state.bot.push({who:'me',txt:t,ts:Date.now()});save();}
+function findDay(t){for(let i=0;i<7;i++){if(t.includes('יום '+DAYS[i])||t.includes('ביום '+DAYS[i])||t.includes('ליום '+DAYS[i]))return i;}if(/(^|\s)שבת(\s|$)/.test(t))return 6;return -1;}
+function pantryAll(){return Object.keys(state.pantry);}
+function canMake(r){const have=n=>pantryHas(n)||curList().items.some(i=>i.n===n&&!i.done);
+  const miss=r.req.filter(x=>!have(x));return {ok:miss.length===0,miss};}
+function fmtMissing(m){return m.map(x=>emojiOf(x)+' '+x).join(', ');}
+
+function botReply(raw){
+  const t=norm(raw);const now=new Date();const dow=now.getDay();
+  /* אישור פעולה מוצעת */
+  if(state.pending){
+    if(/^(כן|בסדר|סבבה|תוסיף|הוסיפי|תוסיפי|אישור|רוצה|בצע|טוב|מצוין|אוקיי|אוקי)/.test(t)){
+      const p=state.pending;state.pending=null;
+      p.items.forEach(n=>addItem(n,''));
+      return botSay('הוספתי הכל לרשימה ✅\n'+p.items.map(n=>'• '+n).join('\n'));
+    }
+    if(/^(לא|בטל|אין|לא עכשיו|לא צריך)/.test(t)){state.pending=null;save();return botSay('בסדר, לא נוגעים 🙂 תגיד לי אם תרצה משהו אחר.');}
+  }
+  if(state.pendingRecipe){
+    if(/^(כן|בסדר|תוסיף|הוסיפי|תוסיפי|אישור|רוצה|טוב|סבבה)/.test(t)){
+      const pr=state.pendingRecipe;state.pendingRecipe=null;
+      pr.forEach(n=>addItem(n,''));
+      return botSay('הוספתי את המצרכים החסרים לרשימה ✅ בתאבון! 🍽️');
+    }
+    if(/^(לא|בטל)/.test(t)){state.pendingRecipe=null;save();return botSay('בסדר גמור 🙂');}
+  }
+  /* עזרה */
+  if(/(עזרה|מה את יודעת|מה אפשר|איך משתמשים|הדרכה|מה את מבינה)/.test(t)){
+    return botSay('הנה מה שאני יודעת לעשות 🤍\n• "חלב 2 ולחם" — הוספה לרשימה\n• "הסר חלב" — מחיקה\n• "יש לי חלב" / "אין לי חלב" — עדכון מה שיש בבית\n• "מה חסר לי בבית?" — רשימת חסרונות לפי מצרכי בסיס\n• "מה אפשר להכין?" — מתכונים ממה שיש לך\n• "מתכון לשניצל" — מתכון מלא + הוספת החסר לרשימה\n• "מה יש לי בבית?" — סיכום המקרר\n• תוכניות: "יום שני אני צריך רק חלב סויה וגבינה"\n• "מה השעה?" / "מה התאריך?" / "בדיחה" 😄');
+  }
+  /* שעה, תאריך */
+  if(/שעה/.test(t)&&t.length<20)return botSay('עכשיו '+fmtTime(now)+' ⏰');
+  if(/(תאריך|מה היום|איזה יום היום)/.test(t))return botSay('היום '+fmtDate(now)+', ובתאריך העברי: '+hebDate(now)+' 📅');
+  /* בדיחה */
+  if(/(בדיחה|צחוק|תצחיקי|תצחיק|ספרי משהו מצחיק)/.test(t))return botSay(pick(JOKES));
+  /* תודה */
+  if(/(תודה|תודות|אלופה|כל הכבוד לך)/.test(t)&&t.length<28)return botSay(pick(THANKS));
+  /* ברכות ושיחה */
+  if(/(שלום|היי|אהלן|בוקר טוב|ערב טוב|לילה טוב)/.test(t)&&t.length<26){
+    const g=pick(HELLO)+' '+(state.user?state.user.name:'')+'!';
+    const seen=state.bot.some(m=>m.who==='bot'&&m.txt.includes(DAYG[dow]));
+    return botSay(g+(seen?'':'\n'+DAYG[dow])+'\nמה אפשר לעזור? אפשר לשאול אותי "מה חסר לי בבית?" או "מה אפשר להכין?" 😊');
+  }
+  if(/(מה נשמע|מה קורה|מה חדש|איך את מרגישה)/.test(t))return botSay(pick(HOWRU));
+  if(/(מי את|מי בנה אותך|שמך)/.test(t))return botSay('אני יאמי 👩‍🍳 — העוזרת של "רשימת קניות". אני זוכרת מה יש לך בבית, מציעה מתכונים ומנהלת את הרשימות איתך.');
+  /* מתכונים */
+  if(/(מה אפשר להכין|מה לבשל|מתכונים|רעיונות לארוחה|מה מבשלים)/.test(t)){
+    const results=RECIPES.map(r=>({r,...canMake(r)}));
+    const ready=results.filter(x=>x.ok),almost=results.filter(x=>!x.ok&&x.miss.length===1);
+    let s='';
+    if(ready.length)s+='את זה אפשר להכין עכשיו, יש לך הכל:\n'+ready.map(x=>x.r.e+' '+x.r.n).join('\n');
+    if(almost.length)s+=(s?'\n\n':'')+'וזה כמעט מוכן — חסר רק דבר אחד:\n'+almost.map(x=>x.r.e+' '+x.r.n+' (חסר: '+x.miss[0]+')').join('\n');
+    if(!s)s='עוד לא מספיק מצרכים בבית למתכונים שאני מכירה 🤔\nתעדכני אותי מה יש ("יש לי ביצים, קמח...") ואציע רעיונות!';
+    else s+='\n\nשאלי אותי "מתכון ל..." ואתן הסבר מלא 🍳';
+    return botSay(s);
+  }
+  if(/(מתכון|איך מכינים|איך מבשלים|איך עושים)/.test(t)){
+    const found=RECIPES.find(r=>t.includes(norm(r.n))||r.n.split(' ').some(w=>w.length>3&&t.includes(w)));
+    if(!found)return botSay('אני מכירה את אלה: '+RECIPES.map(r=>r.e+' '+r.n).join(', ')+'\nעל איזה מהם להרחיב? 😊');
+    const {miss}=canMake(found);
+    let s=found.e+' '+found.n+'\n\nמצרכים: '+found.req.join(', ')+(found.opt.length?'\nרצוי: '+found.opt.join(', '):'')+'\n\n'+found.steps;
+    if(miss.length){state.pendingRecipe=miss;save();
+      s+='\n\n⚠️ חסר לך: '+fmtMissing(miss)+'\nלהוסיף את החסר לרשימה? (כן/לא)';}
+    else s+='\n\n✅ יש לך הכל — בתאבון!';
+    return botSay(s);
+  }
+  /* מה יש לי בבית / עדכון מקרר */
+  if(/מה יש לי בבית/.test(t)||/(מה יש במקרר|מה יש לי)/.test(t)){
+    const have=pantryAll();
+    return botSay(have.length?('בבית שלך יש ('+have.length+'): '+have.map(n=>emojiOf(n)+' '+n).join(', ')+'\n\nרוצה שאראה לך מה חסר? שאלי "מה חסר לי בבית?"'):'עדיין לא עדכנת אותי מה יש בבית 🙂\nתכתבי למשל "יש לי חלב, ביצים ואורז" — ואז אדע לומר לך מה חסר ומה אפשר להכין.');
+  }
+  if(/^(יש לי|יש בבית|קניתי)/.test(t)){
+    const its=parseItems(t.replace(/^(יש לי|יש בבית|קניתי)/,''));
+    if(its.length){its.forEach(i=>pantrySet(i.name,true));save();
+      return botSay('רשמתי: יש לך '+its.map(i=>emojiOf(i.name)+' '+i.name).join(', ')+' 🏠\nעכשיו אני יודעת להגיד לך מה חסר ומה אפשר להכין!');}
+  }
+  if(/^(אין לי|נגמר|אזל)/.test(t)){
+    const its=parseItems(t.replace(/^(אין לי|נגמר לי|נגמר|אזל לי|אזל)/,''));
+    if(its.length){its.forEach(i=>pantrySet(i.name,false));save();
+      return botSay('עדכנתי שאין: '+its.map(i=>i.name).join(', ')+' 📝\nלהוסיף לרשימת הקניות?');}
+  }
+  /* מה חסר בבית */
+  if(/(מה חסר|מה לא יש|מה צריך לקנות|מה לקנות)/.test(t)){
+    const missing=BASE.filter(n=>!pantryHas(n));
+    if(!missing.length)return botSay('וואו, הבית מלא! יש לך את כל מצרכי הבסיס 🎉');
+    state.pending={type:'missing',items:missing};save();
+    return botSay('לפי מה שעדכנת אותי, חסר לך בבית:\n'+missing.map(n=>emojiOf(n)+' '+n).join(', ')+'\n\nלהוסיף את כל זה לרשימה? (כן/לא)\n💡 ככל שתעדכני אותי יותר ("יש לי...", "אין לי...") אני מדויקת יותר');
+  }
+  /* סיכום רשימה */
+  if(/(מה יש ברשימה|כמה פריטים|סיכום הרשימה|מה ברשימה)/.test(t)){
+    const l=curList();const open=l.items.filter(i=>!i.done);
+    if(!open.length)return botSay('הרשימה "'+l.name+'" ריקה 🎉 הכל נקנה!');
+    const byC={};open.forEach(i=>{(byC[i.c]=byC[i.c]||[]).push(i.n+(i.q?' ×'+i.q:''));});
+    return botSay('ברשימה "'+l.name+'" יש '+open.length+' פריטים:\n\n'+Object.entries(byC).map(([c,ns])=>CATE[c]+' '+c+': '+ns.join(', ')).join('\n'));
+  }
+  if(/(נקה|תנקי|סיימתי קנייה|סגור קנייה)/.test(t)&&/(נקנה|קנייה|רשימה)/.test(t)){
+    const n=clearDone();return botSay(n?('סיימנו! שמרתי '+n+' פריטים בהיסטוריה 🕘 קנייה מוצלחת!'):'אין פריטים מסומנים כנקנו 🙂');
+  }
+  /* מחיקה */
+  if(/(הסר|מחק|בטל|אין צורך|תורידי|תוריד)/.test(t)){
+    const l=curList();const m2=t.match(/(?:הסר|מחק|בטל|אין צורך ב|תורידי|תוריד)\s+(?:את\s+|את\s+)?(.+)/);
+    const its=parseItems(m2?m2[1]:t);let removed=0;
+    its.forEach(i=>{const idx=l.items.findIndex(x=>x.n===i.n&&!x.done);if(idx>=0){l.items.splice(idx,1);removed++;}});
+    save();render();
+    return botSay(removed?('מחקתי ('+removed+') ✔️'):'לא מצאתי את זה ברשימה 🤷');
+  }
+  /* תוכניות לפי יום */
+  const d=findDay(t);
+  if(d>=0){
+    const plan=state.plans[d]||[];
+    if(/(מחק|הסר|בטל).*(תוכנית|יום)/.test(t)){delete state.plans[d];save();return botSay('מחקתי את התוכנית של יום '+DAYS[d]+' 🗑️');}
+    if(/מה (יש|צריך)/.test(t))return botSay(plan.length?('התוכנית של יום '+DAYS[d]+':\n• '+plan.join('\n• ')):('אין עדיין תוכנית ליום '+DAYS[d]+' — תגידי מה לרשום 😊'));
+    if(/(הוסף|העבר|קנה).*(תוכנית)/.test(t)){
+      if(!plan.length)return botSay('אין תוכנית ליום '+DAYS[d]+' להוסיף 🤷');
+      plan.forEach(n=>addItem(n,''));return botSay('העברתי את התוכנית של יום '+DAYS[d]+' לרשימה ('+plan.length+' פריטים) ✅');}
+    if(/(צריך|רק|תוסיף|הוסף|תרשום|תזכיר|רשום)/.test(t)){
+      const m2=t.match(/(?:רק|צריך|תוסיף|הוסף|תרשום|רשום|תזכיר)\s+(.+)/);
+      const its=parseItems(m2?m2[1]:t);
+      if(!its.length)return botSay('מה לרשום ליום '+DAYS[d]+'? 😊');
+      state.plans[d]=its.map(i=>i.n);save();
+      return botSay('שמרתי את התוכנית ליום '+DAYS[d]+' 📅\n• '+its.map(i=>i.n).join('\n• '));}
+  }
+  /* הוספה — רק כשיש כוונה אמיתית */
+  const hasIntent=ADDVERBS.test(t);
+  const its=parseItems(t);
+  const knownWords=its.filter(i=>NORMP[norm(i.name)]);
+  if(its.length&&(hasIntent||knownWords.length===its.length)&&t.length<120){
+    its.forEach(i=>addItem(i.name,i.qty));
+    return botSay(pick(['רשמתי לרשימה ✅','נוסף 🛒','בוצע 💪','יש! ✔️'])+'\n'+its.map(i=>'• '+i.n+(i.qty?' ×'+i.qty:'')).join('\n'));
+  }
+  /* נפילה חכמה — לא מוסיפה כל מילה! */
+  botSay('לא בטוחה שהבנתי 🤔 אני לא מוסיפה לרשימה בלי כוונה ברורה.\nאפשר לנסות:\n• "תוסיף חלב 2 ולחם"\n• "מה חסר לי בבית?"\n• "מה אפשר להכין?"\n• "עזרה" לכל היכולות שלי');
+}
+
+/* ================= חיבור ממשק יאמי ================= */
+const CHIPS=['מה חסר לי בבית?','מה אפשר להכין?','מה יש לי בבית?','בדיחה 😄','עזרה'];
+function openBot(){document.querySelector('#botSheet').classList.add('open');
+  if(!state.bot.length)botSay('היי '+(state.user?state.user.name:'')+'! 👩‍🍳 אני יאמי.\nאני עוזרת לך עם הקניות והבישולים — תשאלי אותי מה חסר בבית, מה אפשר להכין, או פשוט תכתבי מה לקנות 😊');
+  renderBot();}
+document.querySelector('#botFab').onclick=openBot;
+document.querySelector('#botClose').onclick=()=>document.querySelector('#botSheet').classList.remove('open');
+document.querySelector('#botSheet').addEventListener('click',e=>{if(e.target.id==='botSheet')e.target.classList.remove('open');});
+function botSendCurrent(){const v=document.querySelector('#botText').value.trim();if(!v)return;
+  document.querySelector('#botText').value='';meSay(v);renderBot();setTimeout(()=>botReply(v),300);}
+document.querySelector('#botSend').onclick=botSendCurrent;
+document.querySelector('#botText').addEventListener('keydown',e=>{if(e.key==='Enter')botSendCurrent();});
+document.querySelector('#botChips').innerHTML=CHIPS.map(c=>'<button data-chip="'+c+'">'+c+'</button>').join('');
+document.querySelector('#botChips').addEventListener('click',e=>{const c=e.target.dataset.chip;if(!c)return;meSay(c);renderBot();setTimeout(()=>botReply(c),300);});
+
+/* ================= התחברות (גוגל + רגילה) ================= */
+function ensureUser(){const lg=document.querySelector('#login');
+  if(state.user){lg.classList.remove('open');dailyGreet();}else lg.classList.add('open');}
+function dailyGreet(){const k=dayKey(new Date());if(state.lastGreet===k)return;state.lastGreet=k;
+  const d=new Date(),h=d.getHours(),dow=d.getDay();
+  const tod=h<6?'לילה טוב':h<12?'בוקר טוב':h<17?'צהריים טובים':h<21?'ערב טוב':'לילה טוב';
+  botSay(tod+' '+(state.user?state.user.name:'')+'! '+DAYG[dow]+(state.plans[dow]&&state.plans[dow].length?'\n📋 יש תוכנית להיום — ראי בבאנר':''));save();}
+function afterLogin(name,email){state.user={name:name,email:email||''};save();
+  document.querySelector('#login').classList.remove('open');
+  if(!state.bot.length)botSay('נעים להכיר, '+name+'! 👩‍🍳 אני יאמי — תכתבי לי בעברית חופשית, או תלחצי על "עזרה".');
+  dailyGreet();render();}
+document.querySelector('#btnLogin').onclick=()=>{
+  const n=document.querySelector('#inName').value.trim();
+  if(!n){flash('רק שם קטן 🙂');return;}
+  afterLogin(n,document.querySelector('#inMail').value.trim());};
+document.querySelector('#btnGoogle').onclick=()=>{
+  if(location.protocol==='file:'){
+    flash('התחברות גוגל פעילה כשהאפליקציה באינטרנט — בינתיים אפשר להיכנס בשם ואימייל 🙂');return;}
+  try{const p=new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(p).then(r=>{
+      afterLogin(r.user.displayName||r.user.email.split('@')[0],r.user.email);
+      flash('מחוברת עם גוגל ✔');}).catch(()=>flash('ההתחברות בוטלה'));}catch(e){flash('גוגל לא זמין כרגע — היכנסי בשם ואימייל');}};
+document.querySelector('#btnUser').onclick=()=>{if(confirm('להתנתק? (הנתונים נשמרים בדפדפן הזה)')){state.user=null;save();ensureUser();}};
+
+/* ================= סנכרון ענן — קוד אישי לכל אימייל ================= */
+function codeFromEmail(mail){let h=5381;const s=(mail||'').toLowerCase().trim();
+  for(let i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))>>>0;}
+  return ('YAM'+h.toString(36).toUpperCase()).slice(0,9);}
+function myCode(){if(state.ownerCode)return state.ownerCode;
+  const mail=(state.user&&state.user.email)||'';
+  state.ownerCode=mail?codeFromEmail(mail):codeFromEmail('guest@local');save();return state.ownerCode;}
+let cloudReady=false,cloudRef=null;
+function startSync(code,isGuest){
+  if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length){flash('⚠️ אין חיבור לענן — בדוק אינטרנט/סינון');return;}
+  cloudReady=true;state.room=code;if(isGuest)state.follow=code;save();
+  cloudRef=firebase.database().ref('users/'+code);
+  cloudRef.on('value',s=>{
+    const v=s.val();if(!v||!v.state||v.by===localStorage.getItem('yamh_mid'))return;
+    const myUser=state.user;state=v.state;state.user=myUser;state.room=code;if(isGuest)state.follow=code;
+    save();render();flash('🔄 עודכן ממקום אחר');},()=>flash('⚠️ תקלת סנכרון — ייתכן סינון רשת'));
+  const b=document.querySelector('#cloudBtn');if(b)b.textContent=isGuest?('🔗 מחובר לחבר: '+code):('☁️ שלי: '+code);
+  flash(isGuest?'🔗 מחוברת לרשימה של '+code:'☁️ החשבון שלך מסונכרן');}
+(function(){
+  if(!localStorage.getItem('yamh_mid'))localStorage.setItem('yamh_mid',Math.random().toString(36).slice(2,10));
+  const _save=save;
+  save=function(){_save();
+    if(cloudReady&&state.room){cloudRef=cloudRef||firebase.database().ref('users/'+state.room);
+      cloudRef.set({at:firebase.database.ServerValue.TIMESTAMP,by:localStorage.getItem('yamh_mid'),state:state})
+      .catch(e=>flash((e&&e.code==='PERMISSION_DENIED')?'⚠️ ההרשאות נעולות — Rules בקונסולה':'⚠️ בעיית חיבור — ייתכן סינון רשת'));}};
+  try{firebase.initializeApp({apiKey:'AIzaSyBYH4opHc51o0ZG_Srb8yjj9WD2cG9tBc8',authDomain:'shopping-list-addfa.firebaseapp.com',databaseURL:'https://shopping-list-addfa-default-rtdb.firebaseio.com',projectId:'shopping-list-addfa',storageBucket:'shopping-list-addfa.firebasestorage.app',appId:'1:686808875838:web:a4647e794fc3a21dc2626f'});}catch(e){}
+  const row=document.querySelector('#shareRow');
+  if(row){const b=document.createElement('button');b.id='cloudBtn';b.textContent='☁️ סנכרון ענן';
+    b.onclick=()=>{if(state.follow){if(confirm('להתנתק מהרשימה המשותפת?')){if(cloudRef)cloudRef.off();cloudReady=false;delete state.room;delete state.follow;save();render();b.textContent='☁️ סנכרון ענן';flash('חזרת לרשימות שלך 👤');}return;}
+      if(state.room){navigator.clipboard.writeText(state.room).then(()=>flash('הקוד שלך הועתק: '+state.room)).catch(()=>prompt('הקוד האישי שלך:',state.room));return;}
+      const c=prompt('הקוד שלך נוצר מהאימייל שלך.\nאישור עם שדה ריק = חשבון ענן משלך.\nקוד של חבר = התחברות לרשימה שלו:','');
+      if(c===null)return;const entered=(c||'').trim().toUpperCase();
+      if(entered&&entered!==myCode())startSync(entered,true);else startSync(myCode(),false);};
+    row.appendChild(b);}
+  firebase.database().ref('.info/connected').once('value',()=>{
+    if(state.follow)startSync(state.follow,true);else startSync(myCode(),false);});
+})();
+
+/* ================= טאבים וכפתורים ================= */
+let tab='list';
+function setTab(t){tab=t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.querySelector('#paneList').classList.toggle('on',t==='list');
+  document.querySelector('#paneHist').classList.toggle('on',t==='hist');
+  document.querySelector('#paneHome').classList.toggle('on',t==='home');
+  document.querySelector('#inputRow').classList.toggle('on',t!=='hist');
+  state.lastTab=t;save();}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+function sendCurrent(){const v=document.querySelector('#inText').value.trim();if(!v)return;
+  document.querySelector('#inText').value='';
+  const q=document.querySelector('#inQty').value.trim();document.querySelector('#inQty').value='';
+  const its=parseItems(v);if(its.length)its.forEach(i=>addItem(i.name,i.qty||q));else addItem(v,q);}
+document.querySelector('#btnSend').onclick=sendCurrent;
+document.querySelector('#inText').addEventListener('keydown',e=>{if(e.key==='Enter')sendCurrent();});
+document.querySelector('#chips').addEventListener('click',e=>{
+  const del=e.target.dataset.del;
+  if(del){if(confirm('למחוק את הרשימה?')){state.lists=state.lists.filter(l=>l.id!==del);
+    if(state.active===del)state.active=state.lists[0].id;save();render();}return;}
+  if(e.target.dataset.new){const n=prompt('שם הרשימה החדשה:');if(n&&n.trim()){const l={id:uid(),name:n.trim(),items:[],created:Date.now()};state.lists.push(l);state.active=l.id;save();render();}return;}
+  const c=e.target.closest('.chip');if(c&&c.dataset.id){state.active=c.dataset.id;save();render();}});
+document.querySelector('#favs').addEventListener('click',e=>{if(e.target.dataset.fav)addItem(e.target.dataset.fav,'');});
+document.querySelector('#banner').addEventListener('click',e=>{
+  if(e.target.dataset.planadd){(state.plans[new Date().getDay()]||[]).forEach(n=>{if(!curList().items.find(i=>i.n===n&&!i.done))addItem(n,'');});}});
+document.querySelector('#paneList').addEventListener('click',e=>{
+  const tg=e.target.dataset.tgl,dl=e.target.dataset.delitem;
+  if(tg){const i=curList().items.find(x=>x.id===tg);if(i){i.done=!i.done;i.ts=Date.now();save();render();}}
+  if(dl)removeItem(dl);});
+document.querySelector('#paneHist').addEventListener('click',e=>{
+  if(e.target.dataset.clearhist){if(confirm('לנקות את כל ההיסטוריה?')){state.history=[];save();renderHist();}}});
+/* הבית שלי */
+document.querySelector('#paneHome').addEventListener('click',e=>{
+  if(e.target.id==='btnMissing'){state.showMissing=!state.showMissing;save();renderHome();}
+  if(e.target.dataset.pan){const n=e.target.dataset.pan;pantrySet(n,!pantryHas(n));save();renderHome();
+    flash(pantryHas(n)?('🏠 נרשם שיש לך: '+n):('📝 נרשם שאין: '+n));}
+  if(e.target.dataset.missing)addItem(e.target.dataset.missing,'');
+  if(e.target.dataset.addall){const missing=BASE.filter(n=>!pantryHas(n));missing.forEach(n=>addItem(n,''));
+    flash('הוספתי '+missing.length+' מצרכים לרשימה 🧺');}});
+document.querySelector('#paneHome').addEventListener('input',e=>{
+  if(e.target.id==='homeSearch'){state.homeQ=e.target.value;save();renderHome();}});
+/* כפתורים עליונים */
+document.querySelector('#btnShare').onclick=()=>{document.querySelector('#shareRow').classList.toggle('open');bindShare();};
+document.querySelector('#btnPrint').onclick=printList;
+document.querySelector('#btnDark').onclick=()=>{state.dark=!state.dark;document.body.classList.toggle('dark',state.dark);save();};
+document.querySelector('#btnGroup').onclick=()=>{state.group=!state.group;flash(state.group?'🗂️ תצוגת קטגוריות':'💬 תצוגת צ׳אט');save();renderList();};
+document.querySelector('#shCopy').onclick=async()=>{try{await navigator.clipboard.writeText(shareText());flash('הרשימה הועתקה ✓');}catch(e){prompt('העתק מכאן:',shareText());}};
+document.querySelector('#shBackup').onclick=()=>{const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='yamh-backup-'+dayKey(new Date())+'.json';a.click();flash('גיבוי הורד 💾');};
+document.querySelector('#shRestore').onclick=()=>document.querySelector('#fileRestore').click();
+document.querySelector('#fileRestore').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.lists)throw 0;state=d;save();location.reload();}catch(err){flash('קובץ לא תקין 😕');}};
+  r.readAsText(f);};
+/* כרטיס קטגוריות */
+function renderCats(q){q=(q||'').trim();
+  document.querySelector('#catList').innerHTML=CATS.map(c=>{
+    const its=Object.keys(P).filter(n=>P[n].c===c&&(!q||n.includes(q)));
+    if(!its.length)return '';
+    return '<h4>'+CATE[c]+' '+c+'</h4><div class="pgrid">'+its.map(n=>'<button data-add="'+esc(n)+'">'+P[n].e+' '+esc(n)+'</button>').join('')+'</div>';
+  }).join('')||'<div class="empty">לא נמצא 😕</div>';}
+document.querySelector('#btnPlus').onclick=()=>{renderCats('');document.querySelector('#inCatSearch').value='';document.querySelector('#catOverlay').classList.add('open');};
+document.querySelector('#btnCloseCat').onclick=()=>document.querySelector('#catOverlay').classList.remove('open');
+document.querySelector('#catOverlay').addEventListener('click',e=>{if(e.target.id==='catOverlay')e.target.classList.remove('open');});
+document.querySelector('#inCatSearch').oninput=e=>renderCats(e.target.value);
+document.querySelector('#catList').addEventListener('click',e=>{const n=e.target.dataset.add;if(!n)return;addItem(n,'');});
+/* הקלטה קולית */
+(()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){document.querySelector('#btnMic').style.opacity=.4;return;}
+ let rec=null;
+ document.querySelector('#btnMic').onclick=()=>{if(rec){rec.stop();return;}
+   rec=new SR();rec.lang='he-IL';rec.interimResults=false;
+   rec.onresult=ev=>{document.querySelector('#inText').value=ev.results[0][0].transcript;sendCurrent();};
+   rec.onend=()=>{document.querySelector('#btnMic').classList.remove('rec');rec=null;};
+   rec.onerror=()=>{document.querySelector('#btnMic').classList.remove('rec');rec=null;flash('לא הצלחתי להקליט 😕');};
+   document.querySelector('#btnMic').classList.add('rec');rec.start();flash('🎤 מקליטה... דברי עכשיו');};})();
+
+/* ================= אתחול ================= */
+document.querySelector('#brand').insertAdjacentHTML('afterbegin',logoSvg());
+document.querySelector('#loginLogo').innerHTML=logoSvg();
+load();
+document.body.classList.toggle('dark',state.dark);
+setTab(state.lastTab||'list');
+ensureUser();
+render();
+</script>
+</body>
+</html>
