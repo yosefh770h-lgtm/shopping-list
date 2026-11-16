@@ -1,0 +1,131 @@
+{
+  "id": "/",
+  "name": "רשימת קניות — YAM Shopping",
+  "short_name": "רשימת קניות",
+  "description": "רשימות קניות משותפות למשפחה, השוואת מחירים בין הרשתות, מבצעים מהחנויות, תאריך עברי, חגים ופרשת השבוע — ועוזרת חכמה.",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#1E3A5F",
+  "theme_color": "#FFFFFF",
+  "categories": [
+    "shopping",
+    "food",
+    "lifestyle",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icons/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/v2-1-list.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "רשימת קניות משותפת"
+    },
+    {
+      "src": "screenshots/v2-2-prices.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "השוואת מחירים"
+    },
+    {
+      "src": "screenshots/v2-3-home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "הבית שלי — מה יש בבית"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "הוספה לרשימה",
+      "short_name": "הוספה",
+      "url": "/?a=add",
+      "icons": [
+        {
+          "src": "icons/app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "מצב קנייה בחנות",
+      "short_name": "מצב קנייה",
+      "url": "/?a=shop",
+      "icons": [
+        {
+          "src": "icons/app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "איפה הכי זול?",
+      "short_name": "הכי זול",
+      "url": "/?a=cheap",
+      "icons": [
+        {
+          "src": "icons/app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "יאמי — העוזרת",
+      "short_name": "יאמי",
+      "url": "/?a=yami",
+      "icons": [
+        {
+          "src": "icons/app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "מחירים",
+      "short_name": "מחירים",
+      "url": "/?tab=prices",
+      "icons": [
+        {
+          "src": "icons/app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "מבצעים מהחנויות",
+      "short_name": "חנויות",
+      "url": "/?tab=stores",
+      "icons": [
+        {
+          "src": "icons/app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

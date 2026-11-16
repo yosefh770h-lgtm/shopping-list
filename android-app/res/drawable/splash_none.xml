@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.1: מסך הפתיחה של המערכת (אנדרואיד 12 ומעלה) בלי לוגו — רק כחול. הלוגו מופיע באנימציה של האתר,
+     כך שלא רואים לוגו, ואז מסך ריק, ואז שוב לוגו -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#00000000" />
+</shape>

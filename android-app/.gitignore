@@ -1,0 +1,6 @@
+.tools/
+build/
+dist/
+*.p12
+*.jks
+*.keystore

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.0: אייקון לקיצור דרך — עיגול ירוק בהיר וסמל כהה, כמו בהדמיה -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#E2F0EC" android:pathData="M24,0a24,24 0 1,0 0.01,0z" />
+    <path android:fillColor="#1F2A2E" android:pathData="M24,27c1.93,0 3.5,-1.57 3.5,-3.5v-7c0,-1.93 -1.57,-3.5 -3.5,-3.5s-3.5,1.57 -3.5,3.5v7c0,1.93 1.57,3.5 3.5,3.5zM30.2,23.5c0,3.5 -2.96,5.95 -6.2,5.95s-6.2,-2.45 -6.2,-5.95h-1.98c0,3.98 3.17,7.27 7,7.84v3.66h2.36v-3.66c3.83,-0.56 7,-3.86 7,-7.84h-1.98z" />
+</vector>

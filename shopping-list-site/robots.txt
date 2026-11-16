@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+# כתובות פנימיות שאינן דפים (שרת המחירים, סרטונים, כלי צוות, וכתובות שגוגל "מנחש" מתוך הקוד)
+Disallow: /api/
+Disallow: /m/
+Disallow: /collector/
+Disallow: /ext/
+Disallow: /admin.html
+Disallow: /server-code.html
+Disallow: /auth/
+Disallow: /functions
+Disallow: /sql/
+Disallow: /editor
+Disallow: /public/
+Disallow: /compare
+Disallow: /cities
+Disallow: /details
+Disallow: /unit
+Disallow: /kg
+
+Sitemap: https://www.yamshopping.com/sitemap.xml

@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- אפליקציית אנדרואיד לאתר: חלון שפותח את האתר החי, כך שכל עדכון באתר מגיע מיד לאפליקציה -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.yamshopping.app"
+    android:versionCode="12"
+    android:versionName="2.1">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- לדעת מתי אין קליטה: האתר מראה "אין קליטה" ונפתח מיד מהעותק השמור, ובחזרה לאפליקציה נטען לבד כשהקליטה חזרה -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- סריקת ברקוד -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- רשימה קולית: אומרים את המוצרים והם נכנסים לרשימה -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- "קרוב אליי" ומבצעים לפי מיקום -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- שמירת קבצים שמורידים מהאתר (גיבוי, CSV) בטלפונים ישנים, עד אנדרואיד 9 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
+    <!-- עדכון האפליקציה מתוך האפליקציה (מורידים את הגרסה החדשה מהאתר ומתקינים במקום הישנה) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- התראות בטלפון: גרסה חדשה, מה חדש באתר, ערב שבת, והתראות הפעמון -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- הבדיקה ברקע ממשיכה גם אחרי הפעלה מחדש של הטלפון -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 🔋 2.1: בקשה (פעם אחת, רק כשהמשתמש לוחץ בכרטיס ההתראות) שהטלפון לא ידחה את הבדיקה ברקע בחיסכון סוללה —
+         כדי שהודעות מהצוות ותזכורות יגיעו גם כשהאפליקציה סגורה. המשתמש מאשר או מסרב בחלון של המערכת -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 📳 רטט קצר כשסריקת ברקוד מצליחה (2.0) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 🔴 מספר על אייקון האפליקציה במסך הבית של הואווי ואונור -->
+    <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- מאנדרואיד 11 צריך להצהיר מראש על זיהוי הדיבור של הטלפון, אחרת האפליקציה לא רואה אותו -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <!-- 🔋 2.1: בשיאומי — למצוא את המסך "הפעלה אוטומטית" כדי לפתוח אותו מכרטיס ההתראות -->
+        <package android:name="com.miui.securitycenter" />
+    </queries>
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/AppTheme"
+        android:supportsRtl="true"
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <activity
+            android:name=".AppActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection"
+            android:windowSoftInputMode="adjustResize">
+            <!-- 🔵 חזרה מכניסה עם גוגל (2.0): גוגל לא מרשה להיכנס מתוך האפליקציה, לכן הכניסה בדפדפן,
+                 והדף app-login.html באתר מחזיר לכאן קוד חד-פעמי (yamshopping://auth?code=...) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yamshopping" android:host="auth" />
+            </intent-filter>
+            <!-- 🔗 קישור ל-yamshopping.com (מוואטסאפ, מייל...) נפתח ישר באפליקציה ולא בדפדפן (2.0).
+                 האימות: shopping-list-site/assetlinks.json (מוגש ב-/.well-known/assetlinks.json) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="yamshopping.com" />
+                <data android:host="www.yamshopping.com" />
+            </intent-filter>
+            <!-- 📤 "שיתוף" אל ים שופינג: מסמנים רשימה בהודעה ← שתף ← ים שופינג, וכל שורה נכנסת לרשימה (2.0) -->
+            <intent-filter android:label="@string/share_label">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- 🎨 אייקון במסך הבית לפי ערכת הצבעים (פרו, 2.0): כל ערכה היא "כניסה" משלה, ורק אחת דולקת (Icons.java).
+             ".MainActivity" היא הכניסה המקורית — כך האייקון ששמו במסך הבית לפני 2.0 ממשיך לעבוד אחרי העדכון -->
+        <activity-alias
+            android:name=".MainActivity"
+            android:targetActivity=".AppActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 📲 קיצורי דרך בלחיצה ארוכה על האייקון (2.0) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+            android:name=".IconSky"
+            android:targetActivity=".AppActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_sky"
+            android:roundIcon="@mipmap/ic_launcher_sky">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 📲 קיצורי דרך בלחיצה ארוכה על האייקון (2.0) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+            android:name=".IconMint"
+            android:targetActivity=".AppActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_mint"
+            android:roundIcon="@mipmap/ic_launcher_mint">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 📲 קיצורי דרך בלחיצה ארוכה על האייקון (2.0) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+            android:name=".IconLilac"
+            android:targetActivity=".AppActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_lilac"
+            android:roundIcon="@mipmap/ic_launcher_lilac">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 📲 קיצורי דרך בלחיצה ארוכה על האייקון (2.0) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+            android:name=".IconNight"
+            android:targetActivity=".AppActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_night"
+            android:roundIcon="@mipmap/ic_launcher_night">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 📲 קיצורי דרך בלחיצה ארוכה על האייקון (2.0) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <!-- "לצלם את הברקוד": אפליקציית המצלמה של הטלפון שומרת כאן את התמונה -->
+        <provider
+            android:name=".CaptureProvider"
+            android:authorities="com.yamshopping.app.capture"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <!-- תשובת המערכת על התקנת העדכון -->
+        <receiver android:name=".InstallReceiver" android:exported="false" />
+
+        <!-- "השב" ו"סימון כנקרא" בהתראת ההודעות מהצוות -->
+        <receiver android:name=".ActionReceiver" android:exported="false" />
+
+        <!-- בדיקה ברקע כל כמה שעות: גרסה חדשה, מה חדש באתר, ערב שבת -->
+        <service
+            android:name=".CheckJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+    </application>
+</manifest>

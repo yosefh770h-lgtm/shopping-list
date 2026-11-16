@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- מצב כהה: כהה מהרגע הראשון — בלי הבזק לבן, ובלי פס בהיר למטה.
+         מסך הפתיחה נשאר כחול כהה גם כאן (2.1): זה הצבע של אנימציית הלוגו באתר ושל הדף בזמן הטעינה -->
+    <color name="splash_bg">#1E3A5F</color>
+    <color name="page_bg">#161A19</color>
+</resources>

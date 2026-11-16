@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>המייל השבועי | רשימת קניות</title>
+<meta name="theme-color" content="#1e3a5f">
+<link rel="icon" type="image/png" href="icons/app-192.png">
+<style>
+:root{--bg:#f6f3ec;--card:#fffdf7;--text:#23231f;--muted:#6d6d62;--accent:#1e3a5f;--line:#e3ddcf;--btn:#0f5d50;--btnt:#fff;--soft:#e7f3ef}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1118;--card:#161a22;--text:#e6e6da;--muted:#98a0ad;--accent:#9db8e0;--line:#2a303b;--btn:#2f8f7c;--btnt:#fff;--soft:#22322c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Heebo,Arial,sans-serif;line-height:1.7;padding:24px 16px 48px}
+main{max-width:520px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 20px;text-align:center}
+.logo{width:56px;height:56px;border-radius:12px}
+h1{font-size:22px;margin:10px 0 6px;color:var(--accent)}
+p{font-size:16px;margin:8px 0}
+.muted{color:var(--muted);font-size:14px}
+.btn{display:inline-block;border:0;border-radius:999px;padding:12px 24px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;text-decoration:none;margin:6px 4px;background:var(--btn);color:var(--btnt)}
+.btn.sec{background:var(--soft);color:var(--accent)}
+.btn:disabled{opacity:.6;cursor:default}
+.reasons{text-align:start;margin:14px auto;max-width:360px}
+.reasons label{display:block;padding:6px 4px;font-size:15px;cursor:pointer}
+textarea{width:100%;min-height:60px;border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit;background:var(--bg);color:var(--text)}
+</style>
+</head>
+<body>
+<main id="m" aria-live="polite">
+  <img class="logo" src="logo.png" alt="">
+  <h1>רשימת קניות</h1>
+  <p class="muted">רגע...</p>
+</main>
+<script>
+(function(){
+  var FN='https://ygyfodxfbebnkwdcbjrp.supabase.co/functions/v1/email';
+  var KEY='sb_publishable_ePRvA2OrDbBN3tbjbD3p-w_8maEwTCK';
+  var q=new URLSearchParams(location.search),t=(q.get('t')||'').trim(),a=q.get('a')||'';
+  var m=document.getElementById('m');
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+  var head='<img class="logo" src="logo.png" alt=""><h1>רשימת קניות</h1>';
+  var site='<a class="btn sec" href="/?src=mail">לכניסה לאתר</a>';
+  function say(html){m.innerHTML=head+html;}
+  function call(act,extra){
+    var body={t:t,act:act};if(extra)for(var k in extra)body[k]=extra[k];
+    return fetch(FN,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY},body:JSON.stringify(body)}).then(function(r){return r.json();});
+  }
+  function fail(){say('<p>לא הצלחנו למצוא את הקישור הזה 🤔</p><p class="muted">אפשר לכבות את המייל השבועי גם באתר: ⚙️ תפריט ← 📧 מייל שבועי, או לכתוב לנו ל-<a href="mailto:info@yamshopping.com?subject=unsubscribe">info@yamshopping.com</a></p>'+site);}
+  var testNote=function(r){return r&&r.test?'<p class="muted">(זה מייל ניסיון — שום דבר לא השתנה באמת)</p>':'';};
+  if(t==='preview'){say('<p>👀 זו רק תצוגה מקדימה של המייל.</p>'+site);return;}
+  if(!/^[0-9a-f]{20,64}$/.test(t)){fail();return;}
+  function unsubDone(r){
+    say('<p>✔️ הוסרת מהמייל השבועי'+(r.email?' (<bdi>'+esc(r.email)+'</bdi>)':'')+'.</p><p class="muted">לא נשלח לך יותר. התחרטת? אפשר לחזור בלחיצה.</p>'+testNote(r)+
+      '<button class="btn sec" id="re">📧 להחזיר את המייל השבועי</button>'+site);
+    document.getElementById('re').onclick=function(){this.disabled=true;call('resub').then(function(x){if(!x||!x.ok)return fail();
+      say('<p>💚 חזרת לרשימה! המייל הבא יגיע בעוד כמה ימים.</p>'+testNote(x)+site);},fail);};
+  }
+  if(a==='like'){
+    say('<p class="muted">רגע...</p>');
+    call('like').then(function(r){if(!r||!r.ok)return fail();say('<p style="font-size:40px;margin:6px 0">👍</p><p><b>תודה רבה!</b> שמחים שאהבת 💚</p>'+testNote(r)+site);},fail);
+    return;
+  }
+  if(a==='unsub'){
+    call('info').then(function(r){
+      if(!r||!r.ok)return fail();
+      if(!r.weekly){unsubDone(r);return;}
+      say('<p>להפסיק לקבל את המייל השבועי'+(r.email?' ל-<bdi>'+esc(r.email)+'</bdi>':'')+'?</p>'+
+        '<div class="reasons" role="radiogroup" aria-label="למה? (לא חובה)"><p class="muted" style="margin:0 0 4px">למה? (לא חובה — עוזר לנו להשתפר)</p>'+
+        '<label><input type="radio" name="r" value="too_many"> יותר מדי מיילים</label>'+
+        '<label><input type="radio" name="r" value="not_relevant"> התוכן לא רלוונטי לי</label>'+
+        '<label><input type="radio" name="r" value="not_using"> אני לא משתמש/ת באתר</label>'+
+        '<label><input type="radio" name="r" value="other"> אחר:</label><textarea id="why" maxlength="250" aria-label="סיבה אחרת"></textarea></div>'+
+        testNote(r)+'<button class="btn" id="go">להסרה מהמייל השבועי</button>'+site);
+      document.getElementById('go').onclick=function(){this.disabled=true;
+        var c=document.querySelector('input[name=r]:checked'),why=(c?c.value:'')+(document.getElementById('why').value.trim()?': '+document.getElementById('why').value.trim():'');
+        call('unsub',{reason:why.slice(0,290)}).then(function(x){if(!x||!x.ok)return fail();unsubDone(x);},fail);};
+    },fail);
+    return;
+  }
+  fail();
+})();
+</script>
+</body>
+</html>

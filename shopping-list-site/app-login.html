@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>חוזרים לאפליקציה</title>
+<!-- כניסה עם גוגל מהאפליקציה: גוגל מחזירה לכאן בדפדפן של הטלפון, והדף מעביר את הקוד החד-פעמי חזרה לאפליקציה.
+     הקוד לבד לא מכניס אף אחד: הוא עובד רק יחד עם הסוד ששמור באפליקציה (PKCE) -->
+<style>
+:root{--bg:#f5f2ec;--card:#fff;--text:#1f3a5f;--muted:#6b7280;--line:#e5e0d6;--btn:#1f3a5f}
+@media(prefers-color-scheme:dark){:root{--bg:#141922;--card:#1c2330;--text:#e8edf5;--muted:#9aa3b2;--line:#2c3545;--btn:#3a5f94}}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;padding:16px;box-sizing:border-box}
+.c{max-width:380px;width:100%;text-align:center}
+h1{font-size:21px;margin:0 0 8px}
+p{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 22px}
+a.b{display:block;background:var(--btn);color:#fff;text-decoration:none;border-radius:12px;padding:15px;font-size:17px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="c">
+  <h1 id="t">חוזרים לאפליקציה…</h1>
+  <p id="m">אם האפליקציה לא נפתחה לבד, לוחצים על הכפתור.</p>
+  <a class="b" id="go" href="#">פתיחת האפליקציה</a>
+</div>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search),code=q.get('code')||'',ok=/^[\w-]{6,200}$/.test(code);
+  var link='intent://auth?'+(ok?'code='+encodeURIComponent(code):'error=1')+'#Intent;scheme=yamshopping;package=com.yamshopping.app;end';
+  if(!/Android/i.test(navigator.userAgent)){link='/';document.getElementById('t').textContent='הכניסה מיועדת לאפליקציה';document.getElementById('m').textContent='כאן אפשר להיכנס ישר באתר.';document.getElementById('go').textContent='לאתר';}
+  else if(!ok){document.getElementById('t').textContent='הכניסה עם גוגל לא הושלמה';document.getElementById('m').textContent='חוזרים לאפליקציה ומנסים שוב.';}
+  document.getElementById('go').href=link;
+  try{history.replaceState(null,'',location.pathname);}catch(e){}
+  if(link!=='/')location.replace(link);
+})();
+</script>
+</body>
+</html>

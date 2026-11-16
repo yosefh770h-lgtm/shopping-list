@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# שומר על האתר החי: רץ במקום /usr/local/bin/sl-update (cron כל דקה), בודק את הגרסה החדשה של main
+# לפני שהיא עולה, ורק אם היא תקינה מפעיל את sl-update המקורי (שהועבר ל-/usr/local/bin/sl-update.inner).
+#
+# הבדיקה: tests/site-check.mjs עם Node אם יש (סימני מיזוג, <script> שבור, תחביר JS ו-JSON), ואחרת
+# collector/bin/site_guard.py עם Python (אותו דבר בלי תחביר JS). גרסה שנכשלה לא עולה, נרשמת ביומן
+# ונבדקת שוב רק כשמגיעה גרסה חדשה. האתר החי נשאר על הגרסה התקינה האחרונה.
+#
+# התקנה (פעם אחת, על השרת):
+#   sudo bash -c '[ -f /usr/local/bin/sl-update.inner ] || mv /usr/local/bin/sl-update /usr/local/bin/sl-update.inner;
+#                 install -m 755 /opt/yamshopping/repo/collector/bin/sl-guard /usr/local/bin/sl-update'
+# ביטול: sudo mv /usr/local/bin/sl-update.inner /usr/local/bin/sl-update
+set -u
+INNER="${SL_INNER:-/usr/local/bin/sl-update.inner}"
+STATE="${SL_GUARD_STATE:-/var/lib/sl-guard}"
+LOG="${SL_GUARD_LOG:-$STATE/guard.log}"
+mkdir -p "$STATE"
+log() { echo "$(date '+%F %T') $*" >> "$LOG"; }
+
+[ -x "$INNER" ] || { log "חסר $INNER — לא מעדכנים"; exit 1; }
+
+# מאגר git שממנו אפשר למשוך את main (האתר עצמו, ואם הוא לא git — מאגר האוסף)
+SRC=""
+for d in ${SL_GUARD_SRC:-/var/www/shopping-list /opt/yamshopping/repo}; do
+  if git -C "$d" rev-parse --git-dir >/dev/null 2>&1; then SRC="$d"; break; fi
+done
+[ -n "$SRC" ] || { log "אין מאגר git לבדיקה — מריצים בלי בדיקה"; exec "$INNER" "$@"; }
+
+if ! git -C "$SRC" fetch -q origin main 2>>"$LOG"; then
+  exec "$INNER" "$@"   # אין רשת עכשיו — sl-update המקורי ממילא לא ימשוך כלום חדש
+fi
+NEW="$(git -C "$SRC" rev-parse FETCH_HEAD)"
+[ "$(cat "$STATE/ok" 2>/dev/null)" = "$NEW" ] && exec "$INNER" "$@"   # כבר נבדק ועבר
+[ "$(cat "$STATE/bad" 2>/dev/null)" = "$NEW" ] && exit 0               # כבר נבדק ונכשל — מחכים לגרסה חדשה
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+git -C "$SRC" archive "$NEW" shopping-list-site tests collector/bin 2>/dev/null | tar -x -C "$TMP" 2>/dev/null
+if [ ! -f "$TMP/shopping-list-site/index.html" ]; then
+  log "$NEW: לא הצלחנו לחלץ את האתר לבדיקה — מריצים בלי בדיקה"; exec "$INNER" "$@"
+fi
+if command -v node >/dev/null 2>&1 && [ -f "$TMP/tests/site-check.mjs" ]; then
+  OUT="$(node "$TMP/tests/site-check.mjs" "$TMP/shopping-list-site" 2>&1)"; RC=$?
+else
+  OUT="$(python3 "$TMP/collector/bin/site_guard.py" "$TMP/shopping-list-site" 2>&1)"; RC=$?
+fi
+if [ $RC -ne 0 ]; then
+  echo "$NEW" > "$STATE/bad"
+  log "⛔ ${NEW:0:8} לא עלה לאתר החי:"; echo "$OUT" >> "$LOG"
+  exit 1
+fi
+echo "$NEW" > "$STATE/ok"
+log "✓ ${NEW:0:8} עבר בדיקה — מעדכנים"
+exec "$INNER" "$@"

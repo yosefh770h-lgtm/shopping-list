@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 📲 2.0: לחיצה ארוכה על האייקון במסך הבית — ארבעה קיצורים, כמו בהדמיה.
+     כל קיצור פותח את האתר עם ?a=... והאתר עושה את הפעולה (index.html, "קיצורי דרך באייקון 2.0") -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="new_list" android:enabled="true"
+        android:icon="@drawable/sc_new" android:shortcutShortLabel="@string/sc_new" android:shortcutLongLabel="@string/sc_new">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.yamshopping.app" android:targetClass="com.yamshopping.app.AppActivity"
+            android:data="https://www.yamshopping.com/?source=android&amp;a=new" />
+    </shortcut>
+    <shortcut android:shortcutId="scan" android:enabled="true"
+        android:icon="@drawable/sc_scan" android:shortcutShortLabel="@string/sc_scan" android:shortcutLongLabel="@string/sc_scan">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.yamshopping.app" android:targetClass="com.yamshopping.app.AppActivity"
+            android:data="https://www.yamshopping.com/?source=android&amp;a=scan" />
+    </shortcut>
+    <shortcut android:shortcutId="voice" android:enabled="true"
+        android:icon="@drawable/sc_voice" android:shortcutShortLabel="@string/sc_voice" android:shortcutLongLabel="@string/sc_voice">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.yamshopping.app" android:targetClass="com.yamshopping.app.AppActivity"
+            android:data="https://www.yamshopping.com/?source=android&amp;a=voice" />
+    </shortcut>
+    <shortcut android:shortcutId="cheap" android:enabled="true"
+        android:icon="@drawable/sc_cheap" android:shortcutShortLabel="@string/sc_cheap" android:shortcutLongLabel="@string/sc_cheap">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.yamshopping.app" android:targetClass="com.yamshopping.app.AppActivity"
+            android:data="https://www.yamshopping.com/?source=android&amp;a=cheap" />
+    </shortcut>
+</shortcuts>

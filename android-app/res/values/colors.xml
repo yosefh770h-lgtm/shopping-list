@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- עיצוב 2.0: כחול כהה, ורוד ושמנת. רקע האייקון לכל ערכת צבעים -->
+    <color name="ic_bg">#1E3A5F</color>
+    <color name="ic_bg_sky">#4FB0E5</color>
+    <color name="ic_bg_mint">#2FA98A</color>
+    <color name="ic_bg_lilac">#8774DC</color>
+    <color name="ic_bg_night">#1D2129</color>
+    <color name="navy">#1E3A5F</color>
+    <!-- מסך הפתיחה (כחול כהה), והרקע של הדף ושל הפס התחתון. במצב כהה: values-night -->
+    <color name="splash_bg">#1E3A5F</color>
+    <color name="page_bg">#FFFFFF</color>
+</resources>

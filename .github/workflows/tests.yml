@@ -1,0 +1,110 @@
+# בדיקות אוטומטיות לפני כל עדכון: נטען את האתר בדפדפן אמיתי ובודקים שהדברים החשובים עובדים
+name: Site tests
+# רצות רק בבקשת מיזוג (לא שוב אחרי המיזוג ל-main), ולא כשמשתנים רק טקסטים, תמונות או קבצי הורדה — כדי לחסוך בדקות של GitHub Actions
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.png'
+      - '**/*.jpg'
+      - '**/*.jpeg'
+      - '**/*.webp'
+      - '**/*.gif'
+      - '**/*.apk'
+      - '**/*.zip'
+      - '**/*.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          pip install python-barcode pillow
+      - name: Fake camera with a barcode
+        run: python3 make_barcode_y4m.py "$RUNNER_TEMP/barcode.y4m"
+      - name: Every js/ file has an up-to-date ?v= in index.html
+        run: node stamp-js.mjs --check
+      - name: Run tests
+        env:
+          BARCODE_Y4M: ${{ runner.temp }}/barcode.y4m
+        run: node smoke.mjs
+      - name: Yami answers the same as the saved recording
+        run: node yami-golden.mjs compare yami-golden.json
+      - name: Site security (no code injection, deleted items stay deleted)
+        run: node security.mjs
+      - name: Long receipts (no duplicate lines, totals or discounts read as products)
+        run: node receipt-clean.mjs
+      - name: The server code is not published on the public site
+        run: test ! -e ../shopping-list-site/server-code.html && cmp ../collector/setup.sh ../shopping-list-site/collector/setup.sh
+      - name: No secret keys in the code
+        run: python3 check-secrets.py
+  safari:
+    # אותו אתר בדפדפן WebKit — המנוע של ספארי באייפון ובמק
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps webkit
+      - name: Site opens in Safari's engine (WebKit)
+        run: node webkit.mjs
+  collector:
+    # אוסף המחירים בשרת (collector/): פענוח קבצי המחירים, המאגר המקומי, ה-API והשהיית השבת
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: collector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install -r requirements-dev.txt
+      - name: Collector tests
+        run: python -m pytest -q tests
+      - name: Install scripts are valid bash
+        run: bash -n setup.sh && bash -n bin/cron-run.sh
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Database security tests (every attack must be blocked)
+        env:
+          PGPASSWORD: postgres
+          PSQL: psql -h localhost -U postgres
+        run: bash tests/db/run.sh

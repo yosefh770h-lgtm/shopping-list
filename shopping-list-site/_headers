@@ -1,0 +1,51 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/npm/xlsx@0.18.5/ https://cdn.jsdelivr.net/npm/jszip@3.10.1/ https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https://ygyfodxfbebnkwdcbjrp.supabase.co; connect-src 'self' https://cdn.jsdelivr.net https://ygyfodxfbebnkwdcbjrp.supabase.co wss://ygyfodxfbebnkwdcbjrp.supabase.co https://nominatim.openstreetmap.org https://server.yamshopping.com https://world.openfoodfacts.org https://www.sefaria.org; object-src 'none'; manifest-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+/
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+/admin.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/server-code.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache
+
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
+/assetlinks.json
+  Content-Type: application/json
+  Access-Control-Allow-Origin: *
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/collector/*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex, nofollow
+
+/download/*
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="yamshopping.apk"
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex

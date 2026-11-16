@@ -1,0 +1,7 @@
+/.well-known/assetlinks.json  /assetlinks.json  200
+/m/c/*  https://ygyfodxfbebnkwdcbjrp.supabase.co/storage/v1/object/public/clips/:splat  200
+/m/a/*  https://ygyfodxfbebnkwdcbjrp.supabase.co/storage/v1/object/public/ad-videos/:splat  200
+/icons/apple-touch-icon.png  /icons/app-apple-180.png  301
+/icons/icon-192.png  /icons/app-192.png  301
+/icons/icon-512.png  /icons/app-512.png  301
+/icons/maskable-512.png  /icons/app-maskable-512.png  301

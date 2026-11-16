@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">רשימת קניות</string>
+    <!-- 2.0: השם בתפריט "שיתוף באמצעות" ובקיצורי הדרך של האייקון -->
+    <string name="share_label">ים שופינג</string>
+    <string name="sc_new">רשימה חדשה</string>
+    <string name="sc_scan">סריקת ברקוד</string>
+    <string name="sc_voice">הוספה במיקרופון</string>
+    <string name="sc_cheap">איפה הכי זול</string>
+</resources>

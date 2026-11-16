@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#1E3A5F</item>
+        <item name="android:colorPrimaryDark">#1E3A5F</item>
+        <item name="android:colorAccent">#EC8AA8</item>
+        <item name="android:statusBarColor">#1E3A5F</item>
+        <item name="android:navigationBarColor">@color/page_bg</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@color/splash_bg</item>
+        <!-- אנדרואיד 12 ומעלה: מסך הפתיחה של המערכת באותו כחול ובלי לוגו (2.1), והאתר מנגן את אנימציית הלוגו -->
+        <item name="android:windowSplashScreenBackground">@color/splash_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_none</item>
+    </style>
+</resources>

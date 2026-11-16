@@ -1,0 +1,20 @@
+
+/* ================= גרסה 16.2: נטפרי — תו "מאושר בנטפרי" + עזרה בהתקנת תעודת האבטחה של נטפרי ================= */
+const NETFREE_HELP_HTML=()=>'<p>'+T('האתר <b>פתוח לכולם — עם או בלי נטפרי</b>, וגם <b>מאושר בנטפרי</b> 🛡️ כך שמשתמשי נטפרי יכולים להשתמש בו בבטחה.','Open to everyone — with or without NetFree — and approved on NetFree 🛡️')+'</p>'+
+  '<h4>🛡️ '+T('מופיעה הודעה "האתר לא מאובטח" / "החיבור אינו פרטי"?','Seeing "Not secure"?')+'</h4>'+
+  '<p>'+T('זה קורה כשבמכשיר עוד לא מותקנת <b>תעודת האבטחה של נטפרי</b>. נטפרי בודקת גם אתרים מאובטחים, ולכן כל מכשיר שגולש דרכה צריך את התעודה שלה. מתקינים פעם אחת — וזה מסתדר בכל האתרים.','Your device needs the NetFree security certificate.')+'</p>'+
+  '<ol class="nf162"><li>'+T('נכנסים מהמכשיר הזה לאתר של נטפרי:','Open NetFree\'s site from this device:')+' <a href="https://netfree.link" target="_blank" rel="noopener" dir="ltr">netfree.link</a> '+T('ובוחרים "התקנת תעודת אבטחה".','and choose the certificate installation.')+'</li>'+
+  '<li><b>🍎 '+T('אייפון / אייפד','iPhone / iPad')+':</b> '+T('מורידים את התעודה (פרופיל) ← הגדרות ← "פרופיל הורד" ← התקנה. אחר כך: הגדרות ← כללי ← אודות ← הגדרות אמון בתעודות ← מדליקים את נטפרי.','Download the profile → Settings → Profile Downloaded → Install → Settings → General → About → Certificate Trust Settings → enable NetFree.')+'</li>'+
+  '<li><b>🤖 '+T('אנדרואיד','Android')+':</b> '+T('מורידים את התעודה ← הגדרות ← אבטחה ← הצפנה ופרטי כניסה ← התקנת תעודה ← תעודת CA.','Download → Settings → Security → Install certificate → CA certificate.')+'</li>'+
+  '<li><b>💻 '+T('מחשב','Computer')+':</b> '+T('מורידים את קובץ התעודה מאתר נטפרי, פותחים אותו ומתקינים לפי ההוראות שם.','Download the certificate file from NetFree and install it.')+'</li></ol>'+
+  '<p class="muted-note">'+T('צריכים עזרה? התמיכה של נטפרי עוזרת בהתקנה בטלפון. אחרי ההתקנה סוגרים ופותחים את הדפדפן ונכנסים שוב ל-','Need help? NetFree support can help. Then reopen ')+'<span dir="ltr">yamshopping.com</span> 🙂</p>';
+function openNetfree162(){$161('#hMenu').classList.remove('open');openSheet('🛡️ '+T('נטפרי ותעודת אבטחה','NetFree & security certificate'),NETFREE_HELP_HTML());}
+/* תו "מאושר בנטפרי" במסך הכניסה */
+(function(){const t=document.querySelector('#login .lcard .tiny');if(t&&!document.querySelector('#nfBadge162'))t.insertAdjacentHTML('afterend','<button type="button" class="nfbadge162" id="nfBadge162">🛡️ '+T('פתוח לכולם · מאושר בנטפרי','Open to everyone · Approved on NetFree')+' · <u>'+T('"לא מאובטח"? כאן','"Not secure"? Here')+'</u></button>');
+  const b=document.querySelector('#nfBadge162');if(b)b.onclick=()=>{const ov=document.createElement('div');ov.className='qp15 open';ov.style.zIndex='9999';ov.innerHTML='<div class="qpcard"><div class="qphead"><b>🛡️ '+T('נטפרי ותעודת אבטחה','NetFree')+'</b><button aria-label="'+T('סגירה','Close')+'">✕</button></div><div class="nfbody162">'+NETFREE_HELP_HTML()+'</div></div>';document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('.qphead button'))ov.remove();});};})();
+/* בתפריט — ליד "אודות" */
+(function(){const a=document.querySelector('#miAbout');if(!a||document.querySelector('#miNetfree'))return;const b=document.createElement('button');b.id='miNetfree';b.innerHTML='🛡️<span>'+T('נטפרי ותעודת אבטחה','NetFree certificate')+'</span>';a.insertAdjacentElement('afterend',b);b.onclick=openNetfree162;})();
+/* באודות */
+const _v162OpenAbout=openAbout;
+openAbout=function(){_v162OpenAbout.apply(this,arguments);const v=document.querySelector('#aboutBody .ver16');if(v&&!document.querySelector('#aboutBody .nfbadge162'))v.insertAdjacentHTML('beforebegin','<button type="button" class="nfbadge162" data-nf162>🛡️ '+T('פתוח לכולם — עם או בלי נטפרי · מאושר בנטפרי · עזרה בהתקנת תעודת האבטחה של נטפרי','Open to everyone · Approved on NetFree · certificate help')+'</button>');};
+document.addEventListener('click',e=>{if(e.target.closest('[data-nf162]')){document.querySelector('#aboutOverlay').classList.remove('open');openNetfree162();}});

@@ -1,0 +1,157 @@
+/* עיצוב 2.0 — כחול כהה, ורוד ושמנת, פינות מעוגלות. גופן מערכת (בלי קבצי גופן בתוך התוסף, כדי שהסינון לא יחסום את ה-zip) */
+
+:root{
+  --navy:#1e3a5f;--navy-2:#2b4c76;--pink:#ec8aa8;--pink-d:#b8476d;--pink-bg:#fbe3eb;
+  --bg:#f3f0ea;--card:#fff;--text:#1d2633;--muted:#667080;--line:#e3ded4;--field:#fff;
+  --accent:#1e3a5f;--accent-ink:#fff;--soft:#e8eef6;--bad:#c2413f;--bad-bg:#fbe9e8;
+  --ok:#1f7a5a;--warn:#9a6212;--warn-bg:#fdf1dc;--info:#235c8f;--info-bg:#e3eef9;
+  --r:14px;--r-sm:10px;--shadow:0 1px 2px rgba(20,32,50,.06),0 2px 8px rgba(20,32,50,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1118;--card:#161a22;--text:#e7e9ee;--muted:#98a0ad;--line:#2a303b;--field:#1b2029;
+  --accent:#9db8e0;--accent-ink:#0d1118;--soft:#1f2836;--bad:#f08a86;--bad-bg:#3a1f1f;--pink-bg:#3a2530;
+  --ok:#7fd1ad;--warn:#f0c36b;--warn-bg:#2e2716;--info:#9cc7ef;--info-bg:#18293a;
+  --shadow:none;color-scheme:dark;
+}}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 'Rubik','Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+body.popup{width:390px;min-height:240px;max-height:600px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* אייקונים */
+svg.i{width:16px;height:16px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* כותרת */
+.bar{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 8px;background:var(--navy);color:#fff;flex-shrink:0}
+.bar .logo{height:40px;width:auto;display:block}
+.bar .ttl{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;border-inline-start:1px solid rgba(255,255,255,.18);padding-inline-start:10px}
+.bar .ttl b{font-weight:600;font-size:15px}
+.bar .ttl span{font-size:12px;opacity:.78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ibtn{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:var(--r-sm);background:transparent;color:#fff}
+.ibtn:hover,.ibtn.on{background:rgba(255,255,255,.14)}
+.ibtn svg.i{width:19px;height:19px}
+
+main{flex:1;min-height:0;overflow-y:auto}
+section{padding:14px}
+h2{margin:0 0 4px;font-size:18px;font-weight:600}
+h3{margin:14px 0 8px;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.01em}
+section>h3:first-child,.block>h3:first-child{margin-top:0}
+p{margin:0 0 8px}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.note{font-size:12px;color:var(--muted);background:var(--soft);border-radius:var(--r-sm);padding:8px 10px;margin-top:10px}
+.status{font-size:12px;color:var(--muted);margin:2px 0 8px;min-height:18px}
+.err{color:var(--bad);min-height:1em;font-size:13px;margin:8px 0 0}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+
+/* טפסים */
+label{display:block;margin:10px 0 4px;font-size:13px;color:var(--muted)}
+input:not([type=checkbox]),select{width:100%;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--field)}
+input:not([type=checkbox]):focus,select:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.checks{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px;box-shadow:var(--shadow)}
+label.chk{display:flex;gap:10px;align-items:center;color:var(--text);font-size:14px;margin:0;padding:8px 0;cursor:pointer}
+label.chk+label.chk{border-top:1px solid var(--line)}
+label.chk svg.i{color:var(--muted)}
+input[type=checkbox]{width:17px;height:17px;margin:0;accent-color:var(--navy);flex-shrink:0}
+
+/* כפתורים */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 14px;border:1px solid transparent;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:14px;white-space:nowrap;transition:filter .15s,background .15s}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.sec{background:var(--card);color:var(--text);border-color:var(--line)}
+.btn.sec:hover{background:var(--soft);filter:none}
+.btn.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.btn.sm{height:30px;padding:0 10px;font-size:13px}
+.btn.sm svg.i{width:14px;height:14px}
+.btn.armed{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.wide{width:100%}
+.btn.grow{flex:1}
+.btn.icon-only{width:38px;padding:0}
+.row{display:flex;gap:8px;margin:12px 0 4px}
+#btnLogin{margin-top:14px}
+
+/* צ'יפים וסינון */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips.sm{margin:0 0 10px}
+.chip{display:inline-flex;align-items:center;gap:5px;height:28px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:0 11px;font-size:12.5px}
+.chip svg.i{width:14px;height:14px}
+.chip:hover{border-color:var(--accent)}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip.hot{background:var(--pink-bg);border-color:transparent;color:var(--pink-d);font-weight:600}
+.chip.hot b{background:var(--pink-d);color:#fff;border-radius:999px;padding:0 7px;font-size:11.5px;line-height:18px}
+.allclear{display:flex;align-items:center;gap:6px;color:var(--ok);font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;width:100%}
+
+/* לשוניות בחיפוש */
+.seg{display:flex;background:var(--soft);border-radius:var(--r-sm);padding:3px;margin-bottom:8px}
+.seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:13px;font-weight:500}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:var(--shadow)}
+
+/* כרטיסים */
+.block{margin-top:12px}
+.cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;box-shadow:var(--shadow);position:relative}
+.card[data-open]{cursor:pointer}
+.card[data-open]:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.card.new::before{content:'';position:absolute;inset-block:10px;inset-inline-start:-1px;width:3px;border-radius:3px;background:var(--pink)}
+#todo .card{border-color:color-mix(in srgb,var(--pink) 55%,var(--line))}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.kind{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.kind svg.i{width:15px;height:15px;color:var(--accent)}
+.meta time{white-space:nowrap;flex-shrink:0}
+.t{font-weight:600;margin:4px 0 2px;word-break:break-word}
+.d{font-size:13px;color:var(--muted);white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.who{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);margin-top:4px}
+.who svg.i{width:13px;height:13px}
+.pill{background:var(--pink-bg);color:var(--pink-d);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;line-height:18px}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.done{display:inline-flex;align-items:center;gap:5px;color:var(--ok);font-weight:600;font-size:13px}
+.lnk{display:inline-flex;align-items:center;gap:4px;background:none;border:0;color:var(--accent);font-size:12.5px;font-weight:500;padding:6px 0 0}
+.lnk:hover{text-decoration:underline}
+.lnk svg.i{width:13px;height:13px}
+.empty{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:28px 12px;color:var(--muted);background:var(--card);border:1px dashed var(--line);border-radius:var(--r)}
+.empty svg.i{width:26px;height:26px;color:var(--pink);margin-bottom:4px}
+.empty b{color:var(--text);font-weight:600}
+
+/* הודעת גרסה חדשה */
+.upd{display:flex;gap:10px;align-items:flex-start;background:var(--info-bg);color:var(--info);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:13px}
+.upd svg.i{width:18px;height:18px;margin-top:1px}
+.upd a{color:inherit;font-weight:600}
+
+/* חיפוש */
+.srow{display:flex;gap:8px;margin-bottom:10px}
+.sbox{flex:1;position:relative}
+.sbox>span{position:absolute;inset-inline-start:11px;top:11px;color:var(--muted);display:flex}
+.sbox input{padding-inline-start:34px}
+.pg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow)}
+.pg .ph{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.pg .ph b{font-weight:600;word-break:break-word}
+.pg .bc{font-size:11px;color:var(--muted);direction:ltr;font-variant-numeric:tabular-nums}
+.pg .sum{font-size:12px;color:var(--muted);margin:2px 0 6px}
+.pg table{width:100%;border-collapse:collapse;font-size:13px}
+.pg td{padding:5px 2px;border-top:1px solid var(--line);vertical-align:top}
+.pg td.p{font-weight:600;white-space:nowrap;text-align:left;font-variant-numeric:tabular-nums}
+.pg tr.best td.p{color:var(--ok)}
+.pg td .sub{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);font-weight:400}
+.pg td .sub svg.i{width:12px;height:12px}
+.pg tr.old td{opacity:.6}
+.pg .links{display:flex;gap:14px}
+.tag{display:inline-block;border-radius:999px;padding:0 7px;font-size:10.5px;font-weight:600;margin-inline-start:5px;background:var(--soft);color:var(--text);line-height:17px;vertical-align:1px}
+.tag.deal{background:var(--pink-bg);color:var(--pink-d)}
+.tag.pend{background:var(--warn-bg);color:var(--warn)}
+.tag.auto{background:var(--info-bg);color:var(--info)}
+
+footer{display:flex;justify-content:space-between;padding:7px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);background:var(--bg);flex-shrink:0}
+
+/* חלון ההתראה שקופץ על המסך */
+body.alert{height:100vh}
+body.alert main{flex:1;min-height:0;overflow-y:auto}
+body.alert main{padding:12px}
+.alert .card .acts .btn{flex:1}
+.footbar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--card)}
+.footbar .btn{flex:1}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- טלפונים ברשת נטפרי בלי תעודת האבטחה של נטפרי מותקנת: האפליקציה סומכת גם על תעודת נטפרי שמגיעה איתה.
+     חל גם על חלון האתר (WebView) מאנדרואיד 7 ומעלה. תעודות המערכת ממשיכות לעבוד כרגיל מחוץ לנטפרי.
+     לעדכון התעודה: מחליפים את הקבצים ב-res/raw (חבילת התעודות של נטפרי לאנדרואיד) ובונים גרסה חדשה. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+            <!-- NetFree Root CA X2 (RSA ו-ECC). תעודת ED25519 של נטפרי לא נכללה כי אנדרואיד לא יודע לקרוא אותה -->
+            <certificates src="@raw/netfree_ca_rsa_2200" />
+            <certificates src="@raw/netfree_ca_rsa_2037" />
+            <certificates src="@raw/netfree_ca_ecc384" />
+            <certificates src="@raw/netfree_ca_ecc256" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

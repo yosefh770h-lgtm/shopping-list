@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Yam shopping — צוות</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body class="popup">
+<header class="bar">
+  <img class="logo" src="logo.png" alt="Yam shopping" width="60" height="44">
+  <div class="ttl"><b>מרכז הצוות</b><span id="who">התראות ואישורים</span></div>
+  <button id="btnSearch" class="ibtn" data-i="search" title="חיפוש מוצרים ומחירים" aria-label="חיפוש מוצרים ומחירים" hidden></button>
+  <button id="btnSettings" class="ibtn" data-i="settings" title="הגדרות" aria-label="הגדרות" hidden></button>
+</header>
+
+<main>
+<section id="vLogin" hidden>
+  <h2>כניסה לצוות</h2>
+  <p class="muted">נכנסים עם <b>המייל והקוד של האתר</b>. התוסף פתוח רק לצוות ולמנהלים.</p>
+  <label for="inMail">מייל</label>
+  <input id="inMail" type="email" autocomplete="username" dir="ltr">
+  <label for="inCode">קוד אישי</label>
+  <input id="inCode" type="password" autocomplete="current-password" dir="ltr">
+  <button id="btnLogin" class="btn wide">כניסה</button>
+  <p id="loginErr" class="err" role="alert"></p>
+  <p class="note">נכנסים לאתר עם גוגל? לתוסף צריך קוד: באתר ← הגדרות ← האזור האישי ← "שינוי קוד כניסה" (או במסך הכניסה: "שכחתי קוד"), ואז נכנסים כאן עם המייל והקוד.</p>
+</section>
+
+<section id="vMain" hidden>
+  <div id="upd" class="upd" hidden></div>
+  <div id="pending" class="chips"></div>
+  <div id="todoWrap" class="block" hidden>
+    <h3 id="todoTtl">לאישור עכשיו</h3>
+    <ul id="todo" class="cards"></ul>
+  </div>
+  <div class="row">
+    <button id="btnBO" class="btn grow" data-i="building">פתיחת הבק אופיס</button>
+    <button id="btnSearch2" class="btn sec" data-i="search">חיפוש</button>
+    <button id="btnRefresh" class="btn sec icon-only" data-i="refresh" title="בדיקה עכשיו" aria-label="בדיקה עכשיו"></button>
+  </div>
+  <p id="status" class="status"></p>
+  <div id="filters" class="chips sm"></div>
+  <ul id="events" class="cards"></ul>
+</section>
+
+<section id="vSearch" hidden>
+  <div class="srow">
+    <div class="sbox"><span data-i="search"></span><input id="inQ" type="search" placeholder="שם מוצר או ברקוד" autocomplete="off" aria-label="חיפוש מוצר או ברקוד"></div>
+    <button id="btnSearchBack" class="btn sec">חזרה</button>
+  </div>
+  <div id="sTabs" class="seg" role="tablist">
+    <button class="on" data-st="prices" role="tab" data-i="tag">מחירים</button>
+    <button data-st="products" role="tab" data-i="box">מוצרים בקטלוג</button>
+  </div>
+  <p id="sStatus" class="status"></p>
+  <div id="sResults"></div>
+</section>
+
+<section id="vSettings" hidden>
+  <h3>על מה להתריע</h3>
+  <div id="kindBoxes" class="checks"></div>
+  <h3>איך להתריע</h3>
+  <div class="checks">
+    <label class="chk"><input type="checkbox" id="setPendingOnly"><span>רק דברים שממתינים לאישור</span></label>
+    <label class="chk"><input type="checkbox" id="setNotify"><span>הודעה קופצת במחשב</span></label>
+    <label class="chk"><input type="checkbox" id="setSticky"><span>ההודעה נשארת על המסך עד שלוחצים עליה</span></label>
+    <label class="chk"><input type="checkbox" id="setPopupWin"><span>חלון על המסך שצריך לאשר או לסגור</span></label>
+  </div>
+  <label for="setInterval">בדיקה כל</label>
+  <select id="setInterval"><option value="1">דקה</option><option value="5">5 דקות</option><option value="15">רבע שעה</option><option value="60">שעה</option></select>
+  <label for="setSite">כתובת האתר</label>
+  <input id="setSite" dir="ltr" placeholder="https://yamshopping.com">
+  <p class="note">אם האתר עובר לכתובת אחרת, מעדכנים כאן.</p>
+  <div class="row">
+    <button id="btnSave" class="btn grow">שמירה</button>
+    <button id="btnBack" class="btn sec">חזרה</button>
+  </div>
+  <hr>
+  <button id="btnLogout" class="btn bad wide" data-i="logout">יציאה מהתוסף</button>
+</section>
+</main>
+
+<footer><span>© YAMSHOPPING2026</span><span id="ver"></span></footer>
+<script type="module" src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.yamshopping.app",
+      "sha256_cert_fingerprints": ["21:39:79:7C:4F:76:2E:93:41:C4:EA:AF:6D:37:41:27:69:35:A6:4E:CF:E1:FC:EA:2C:77:DA:D3:28:9F:50:5A"]
+    }
+  }
+]
