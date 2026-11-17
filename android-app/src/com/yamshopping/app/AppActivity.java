@@ -117,6 +117,7 @@ public class AppActivity extends Activity {
         speech = new Speech(this);
         Notifier.channels(this);
         CheckJob.schedule(this);
+        Wake.arm(this); // 🔋 2.2: גיבוי לבדיקה ברקע
         buildViews();
         setupWebView();
         setupBack();
@@ -903,7 +904,8 @@ public class AppActivity extends Activity {
                 o.put("keepScreen", true);
                 o.put("buzz", true);
                 o.put("notif", notifState());
-                o.put("battery", Power.state(AppActivity.this)); // 2.1: "ok" / "ask" / "na"
+                o.put("battery", Power.state(AppActivity.this)); // 2.1: "ok" / "ask" / "na"; 2.2: גם "blocked"
+                o.put("batLost", Power.lost(AppActivity.this)); // 2.2: היה "ללא הגבלות" והטלפון ביטל לבד
                 o.put("autostart", Power.xiaomi()); // 2.1: שיאומי — צריך גם "הפעלה אוטומטית"
                 o.put("splash", true); // 2.1: האתר מנגן את אנימציית הפתיחה (גם אחרי זמן ארוך ברקע)
                 o.put("offline", Offline.has(AppActivity.this)); // 2.1: עותק של האתר בתוך האפליקציה

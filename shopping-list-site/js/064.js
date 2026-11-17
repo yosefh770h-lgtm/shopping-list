@@ -163,7 +163,11 @@ if(inApp&&nat()){
      וההתראות מגיעות רק כשנכנסים. מבקשים את הפטור רק כשהמשתמש לוחץ — חלון של הטלפון, שאפשר לאשר או לסרב */
   const batHtml=n=>{if(!n.battery||n.battery==='na')return '';
     let h='<div class="bat66">';
-    h+=n.battery==='ok'?'<p class="muted-note">🔋 '+T('הטלפון לא עוצר את ההתראות כשהאפליקציה סגורה.','Your phone won\'t block notifications while the app is closed.')+'</p>'
+    /* 🔋 2.2: "blocked" — הטלפון חוסם פעילות ברקע (במסך הסוללה של הטלפון אף אפשרות לא מסומנת, נמצא ב-Qin 3 Ultra).
+       batLost — היה "ללא הגבלות" והטלפון ביטל לבד. בשניהם הכפתור פותח את הגדרות האפליקציה */
+    if(n.battery==='blocked'||(n.batLost&&n.battery!=='ok'))h+='<p class="muted-note">🔋 '+(n.batLost?T('הטלפון ביטל לבד את "ללא הגבלות" לאפליקציה, ולכן ההתראות נעצרות כשהיא סגורה.','Your phone removed "Unrestricted" by itself, so notifications stop while the app is closed.'):T('הטלפון חוסם לאפליקציה לפעול ברקע, ולכן ההתראות נעצרות כשהיא סגורה.','Your phone blocks the app in the background, so notifications stop while it is closed.'))+' '+T('לוחצים, ובמסך שנפתח: סוללה ← "ללא הגבלות". אם יש שם "הפעלה אוטומטית" או "הפעלה ברקע" — להדליק גם אותן.','Tap, then Battery → "Unrestricted". Also turn on "Autostart"/"Run in background" if you see them.')+'</p>'+
+      '<button type="button" class="btn" id="nat66bat">⚙️ '+T('לפתוח את הגדרות האפליקציה','Open app settings')+'</button>';
+    else h+=n.battery==='ok'?'<p class="muted-note">🔋 '+T('הטלפון לא עוצר את ההתראות כשהאפליקציה סגורה.','Your phone won\'t block notifications while the app is closed.')+'</p>'
       :'<p class="muted-note">🔋 '+T('כדי שההתראות יגיעו גם כשהאפליקציה סגורה, צריך לאשר לה לפעול ברקע (היא בודקת פעם ברבע שעה בלבד, וזה כמעט לא צורך סוללה).','To get notifications while the app is closed, allow it to run in the background (it checks only every 15 minutes, barely any battery).')+'</p>'+
         '<button type="button" class="btn" id="nat66bat">🔋 '+T('לאשר פעילות ברקע','Allow background activity')+'</button>';
     if(n.autostart)h+='<p class="muted-note">📱 '+T('בשיאומי צריך גם להדליק "הפעלה אוטומטית" ל"רשימת קניות". לוחצים, ובמסך שנפתח מדליקים את המתג ליד האפליקציה.','On Xiaomi, also turn on "Autostart" for the app: tap below and switch it on.')+'</p>'+
@@ -184,11 +188,17 @@ if(inApp&&nat()){
     let t;
     if(q)t=(q==='night'?'🌙 '+T('עכשיו לילה (22:00–07:00): ההתראות לא קופצות בטלפון, ומגיעות בבוקר אחרי 07:00.','Night (22:00–07:00): notifications wait until 07:00.'):'🕯️ '+T('עכשיו שבת: ההתראות לא קופצות בטלפון, ומגיעות במוצאי שבת.','Shabbat: notifications wait until after Shabbat.'))+(at?' '+T('הבדיקה ברקע רצה לאחרונה ','Last background check ')+ago(mins)+'.':'');
     else if(at&&mins<=45)t='📡 '+T('הבדיקה ברקע עובדת — רצה לאחרונה ','Background check works — last ran ')+ago(mins)+'.';
-    else if(at)t='⚠️ '+T('הבדיקה ברקע רצה לאחרונה ','Background check last ran ')+ago(mins)+'. '+T('כנראה הטלפון עוצר את האפליקציה כשהיא סגורה, ולכן ההתראות מגיעות רק כשנכנסים. לאשר "פעילות ברקע" למעלה, ובהגדרות הטלפון ← אפליקציות ← רשימת קניות ← סוללה ← "ללא הגבלה".','Your phone is probably stopping the app while it is closed. Allow background activity above.');
-    else if(linkedMins>60)t='⚠️ '+T('הבדיקה ברקע עוד לא רצה אף פעם כשהאפליקציה סגורה — הטלפון עוצר אותה. לאשר "פעילות ברקע" למעלה, ובהגדרות הטלפון ← אפליקציות ← רשימת קניות ← סוללה ← "ללא הגבלה".','The background check has never run while the app was closed. Allow background activity above.');
-    else return;
+    /* כשכבר יש פטור מחיסכון סוללה (battery==='ok') אין כפתור "פעילות ברקע" למעלה — אז לא שולחים אליו, אלא להגדרות האפליקציה.
+       ככה זה ב-Qin 3 Ultra: הפטור דלוק, אבל מנהל הסוללה של הטלפון עדיין עוצר (ומבטל לבד את "ללא הגבלות") */
+    else{const n=nat()||{},okBat=n.battery==='ok',fix=okBat?T('הטלפון עדיין עוצר את האפליקציה כשהיא סגורה. לוחצים על הכפתור, ובמסך שנפתח: סוללה ← "ללא הגבלות". אם יש שם "הפעלה אוטומטית" או "הפעלה ברקע" — להדליק גם אותן.','Your phone still stops the app while it is closed. Tap below, then Battery → "Unrestricted".'):(n.battery==='blocked'||n.batLost)?T('לפתוח את הגדרות האפליקציה למעלה ולבחור "ללא הגבלות".','Open the app settings above and choose "Unrestricted".'):T('לאשר "פעילות ברקע" למעלה, ובהגדרות הטלפון ← אפליקציות ← רשימת קניות ← סוללה ← "ללא הגבלה".','Allow background activity above.');
+      if(at)t='⚠️ '+T('הבדיקה ברקע רצה לאחרונה ','Background check last ran ')+ago(mins)+'. '+T('כנראה הטלפון עוצר את האפליקציה כשהיא סגורה, ולכן ההתראות מגיעות רק כשנכנסים.','Your phone is probably stopping the app while it is closed.')+' '+fix;
+      else if(linkedMins>60)t='⚠️ '+T('הבדיקה ברקע עוד לא רצה אף פעם כשהאפליקציה סגורה — הטלפון עוצר אותה.','The background check has never run while the app was closed.')+' '+fix;
+      else return;
+      el.textContent=t;el.hidden=false;
+      if(okBat&&typeof YamApp!=='undefined'&&typeof YamApp.openAutostart==='function'&&!$66('#nat66set')){const b=document.createElement('button');b.type='button';b.className='btn';b.id='nat66set';b.textContent='⚙️ '+T('לפתוח את הגדרות האפליקציה','Open app settings');el.after(b);}
+      return;}
     el.textContent=t;el.hidden=false;}
-  document.addEventListener('click',e=>{const b=e.target.closest('#nat66bat,#nat66auto');if(!b)return;e.stopPropagation();
+  document.addEventListener('click',e=>{const b=e.target.closest('#nat66bat,#nat66auto,#nat66set');if(!b)return;e.stopPropagation();
     try{if(b.id==='nat66bat')YamApp.askBattery();else YamApp.openAutostart();}catch(x){}},true);
   pushEnable=async function(){let p=Notification.permission;if(p!=='granted'){try{p=await Notification.requestPermission();}catch(e){}}
     if(p!=='granted'){flash('⚠️ '+T('ההתראות כבויות בהגדרות הטלפון — מדליקים שם ל"רשימת קניות"','Notifications are off in phone settings'));return false;}
