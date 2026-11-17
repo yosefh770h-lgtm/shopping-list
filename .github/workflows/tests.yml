@@ -18,7 +18,7 @@ permissions:
   contents: read
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 עוד לא תומך ב-ubuntu 26.04
     timeout-minutes: 25
     defaults:
       run:
