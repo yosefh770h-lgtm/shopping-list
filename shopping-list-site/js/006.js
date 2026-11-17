@@ -2241,7 +2241,6 @@ document.querySelector('#favs').addEventListener('click',e=>{
 document.querySelector('#banner').addEventListener('click',e=>{
   if(e.target.dataset.planadd){(state.plans[new Date().getDay()]||[]).forEach(n=>{if(!curList().items.find(i=>i.n===n&&!i.done))addItem(n,'');});}});
 document.querySelector('#paneList').addEventListener('click',e=>{
-  if(e.target.closest('[data-cheapx]')){try{sessionStorage.setItem('cheapX','1');}catch(e2){}const b=e.target.closest('.cheapbar');if(b)b.remove();return;}
   if(e.target.closest('[data-cheapopen]')){storesView='cmp';if(typeof cmpFirst!=='undefined')cmpFirst=false;setTab('stores');}});
 document.querySelector('#paneList').addEventListener('click',async e=>{
   const el=e.target.closest('[data-tgl],[data-delitem],[data-qm],[data-qp],[data-qe],[data-finishpart],[data-basket],[data-reorder],[data-due]');if(!el)return;

@@ -546,12 +546,6 @@ body.dark #bo{--bg:#0d1118;--card:#1c2420;--text:#e6e6da;--muted:#8fa096;--line:
 /* פס התקדמות בקנייה — מסמנים מה קנית, ומסיימים רק את זה */
 .buybar{position:sticky;top:-14px;z-index:3;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--chipbr);border-radius:14px;padding:8px 10px;margin:-4px 0 12px;box-shadow:0 2px 10px rgba(0,0,0,.08);font-size:14px}
 .buybar .prog{flex:1;min-width:140px}
-.cheapbar{display:flex;align-items:center;gap:4px;margin:0 0 10px;padding:3px 4px 3px 3px;border-radius:12px;background:var(--recv);border:1px solid var(--chipbr);box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.cheapbar .cb-go{flex:1;min-width:0;display:flex;align-items:center;gap:6px;border:0;background:none;padding:7px 8px;font:inherit;font-size:14px;color:var(--text);cursor:pointer;text-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cheapbar .cb-go b{color:var(--hdr2)}
-.cheapbar .cb-sub{opacity:.75;overflow:hidden;text-overflow:ellipsis}
-.cheapbar .cb-new{background:#ffd54a;color:#4a3500;border-radius:8px;padding:1px 7px;font-size:11px;font-weight:700}
-.cheapbar .cb-x{border:0;background:none;color:var(--muted);font-size:15px;padding:6px 9px;cursor:pointer;border-radius:8px}
 .buybar .bar{height:6px;background:var(--chipbg);border-radius:4px;overflow:hidden;margin-top:5px}
 .buybar .bar i{display:block;height:100%;background:var(--hdr2);transition:width .3s}
 .buybar button,.minibtn{background:var(--hdr2);color:#fff;border:none;border-radius:10px;padding:7px 11px;font-family:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
@@ -1637,7 +1631,7 @@ window.__jsFail=[];window.addEventListener('error',function(e){var t=e&&e.target
 <script src="/js/004.js?v=14646ff1b1"></script>
 <script src="/vendor/supabase-js-2.117.2/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="/vendor/hebcal-core-6.10.0.min.js" integrity="sha384-zpajhGOLlLnl4el6Jcag1SvW6M8POTfZBYhS4JgLU5UZEKKW5/0TddUVtcBlFFSJ" crossorigin="anonymous"></script>
-<script src="/js/005.js?v=1639cff61c"></script>
+<script src="/js/005.js?v=4e0f0ebd84"></script>
 <script>
 /* ================= v23: קרדיט למדווחים — מי דיווח / כתב =================
    השמות לא נקראים מהטבלאות (השרת חוסם) — במקומם שמים "חריץ" (crSlot), והקוד בסוף הדף ממלא אותו מ-credit_names:
@@ -1657,7 +1651,7 @@ function crSlot(kind,id,o){o=o||{};if(!id)return o.f?esc(o.f):'';
   return '<span class="cr23'+(o.b?' cr23blk':'')+'" data-crn="'+esc(kind)+'|'+esc(id)+'"'+(o.p?' data-crp="'+esc(o.p)+'"':'')+(o.s?' data-crs="'+esc(o.s)+'"':'')+(o.f?' data-crf="'+esc(o.f)+'"':'')+(o.t?' data-crt="1"':'')+'>'+(o.f?esc(o.f):'')+'</span>';}
 </script>
 
-<script src="/js/006.js?v=794a4a5c32"></script>
+<script src="/js/006.js?v=1b8e5387a7"></script>
 <script src="/js/007.js?v=aecf263ce4"></script>
 <script src="/js/008.js?v=21d138702d"></script>
 <script src="/js/009.js?v=83577edc65"></script>
@@ -2335,7 +2329,7 @@ body.dark .v66 .opt66 button.on{background:#26364d;border-color:#7fd8c6}
 .natcard66 .radio{margin:6px 0}
 .natcard66 .bat66{margin-top:10px;border-top:1px solid var(--chipbr);padding-top:8px}.natcard66 .bat66 .btn{margin:2px 0 6px}
 </style>
-<script src="/js/064.js?v=f4b580ade8"></script>
+<script src="/js/064.js?v=c0309637b7"></script>
 <style>
 /* ================= בחירה מרובה ברשימה ================= */
 #paneList .buybar .sel88go{background:var(--chipbg);color:var(--text);border:1px solid var(--chipbr)}
@@ -2349,7 +2343,7 @@ body.dark .v66 .opt66 button.on{background:#26364d;border-color:#7fd8c6}
 .sel88bar button:disabled{opacity:.45;cursor:default}
 .sel88bar .s88sc{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px}.sel88bar .s88sc::-webkit-scrollbar{display:none}
 .sel88bar .s88hint{font-size:13px;color:var(--hdr2);font-weight:600}
-body.sel88 #paneList .buybar,body.sel88 #paneList .cheapbar{display:none}
+body.sel88 #paneList .buybar{display:none}
 body.sel88 #paneList .del,body.sel88 #paneList .qty,body.sel88 #paneList .ixdrag,body.sel88 #paneList .chk,body.sel88 #paneList .it>input[type=checkbox]{display:none!important}
 body.sel88 #paneList .s88row{cursor:pointer;-webkit-user-select:none;user-select:none}
 .s88k{flex-shrink:0;width:24px;height:24px;border-radius:7px;border:2px solid var(--hdr2);background:var(--inputbg);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;line-height:1}
@@ -2547,11 +2541,6 @@ body.r2 #paneList .buybar>button{border-radius:999px!important;font-size:13px!im
 body.r2 #paneList .buybar>button[data-finishpart]{background:var(--hdr)!important;color:#fff!important;border-color:var(--hdr)!important}
 body.r2.dark #paneList .buybar>button:not([data-finishpart]){color:var(--text)!important}
 html.r2d body.r2 #paneList .buybar [data-shop26]{display:none!important}
-body.r2 #paneList .cheapbar{background:var(--hdr)!important;border:0!important;border-radius:18px!important;margin:0 0 12px!important;padding:4px 6px!important;display:flex;align-items:center}
-body.r2 #paneList .cheapbar .cb-go{background:none!important;color:#fff!important;border:0!important;flex:1;text-align:start;font-size:15px;padding:10px 10px!important}
-body.r2 #paneList .cheapbar .cb-go *{color:#fff!important}
-body.r2 #paneList .cheapbar .cb-new{background:var(--pink)!important;color:#1d2939!important;border-radius:99px;padding:1px 8px;font-size:12px}
-body.r2 #paneList .cheapbar .cb-x{background:none!important;border:0!important;color:#fff!important}
 body.r2 #paneList .r2card{background:var(--recv);border-radius:20px;padding:4px 18px;box-shadow:0 1px 2px rgba(30,58,95,.05)}
 body.r2 #paneList .r2card>.row{margin:0;display:block}
 body.r2 #paneList .r2card>.row+.row{border-top:1px solid var(--line)}

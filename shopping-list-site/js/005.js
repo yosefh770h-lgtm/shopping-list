@@ -346,10 +346,9 @@ function render(){
 }
 /* 💰 איפה הכי זול — כרטיס קבוע בראש הרשימה (כשהשוואת הסניפים מוצגת: לכולם, או רק למנהל במצב בדיקה).
    כל הרשימה (כשיש בה מוצרים) + חיפוש של מוצר אחד בכל הסניפים */
-/* 📣 באנר קטן "איפה הכי זול" בראש הרשימה — נפתח בלשונית שלו, ✕ סוגר עד הכניסה הבאה. המנהל מדליק ובוחר עד מתי (collector ← promo_off / promo_until) */
+/* 💰 "איפה הכי זול" ברשימה — המנהל מדליק ובוחר עד מתי (collector ← promo_off / promo_until) */
 function cheapPromoOn(){if(!(typeof srvShown==='function'&&srvShown()))return false;const c=srvCfg||{};if(c.promo_off)return false;
-  if(c.promo_until&&new Date()>new Date(c.promo_until+'T23:59:59'))return false;
-  try{if(sessionStorage.getItem('cheapX'))return false;}catch(e){}return true;}
+  return !(c.promo_until&&new Date()>new Date(c.promo_until+'T23:59:59'));}
 /* 14: במקום הבאנר הכחול הגדול — כפתור קטן "💰 איפה הכי זול" באותה שורה של "בחירה" ו"מצב קנייה" (כדי שהמסך בטלפון לא ייראה עמוס) */
 function cheapPill(){
   if(!cheapPromoOn())return '';

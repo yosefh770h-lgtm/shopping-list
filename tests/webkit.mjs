@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../shopping-list-site');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
   const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html');
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); res.end(); return; }
@@ -24,13 +24,19 @@ const smokeSrc = fs.readFileSync(path.join(HERE, 'smoke.mjs'), 'utf8');
 const STUB = smokeSrc.match(/const STUB = `([\s\S]*?)`;\n/)[1];
 
 const results = [];
+// כל בדיקה מוגבלת בזמן ומדפיסה מיד — כדי שבדיקה תקועה תיכשל עם שם ולא תעצור את כל ה-job
 async function test(name, fn) {
-  try { await fn(); results.push(['✅', name]); } catch (e) { results.push(['❌', name, e.message]); }
+  console.log('▶ ' + name);
+  let t; const limit = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('נתקע יותר מ-90 שניות')), 90000); });
+  try { await Promise.race([fn(), limit]); results.push(['✅', name]); } catch (e) { results.push(['❌', name, e.message]); } finally { clearTimeout(t); }
+  console.log(results[results.length - 1].join(' '));
 }
 const assert = (c, m) => { if (!c) throw new Error(m); };
 
 const engine = process.env.BROWSER === 'chromium' ? chromium : webkit;
+console.log('מפעיל דפדפן…');
 const browser = await engine.launch(process.env.BROWSER === 'chromium' ? { executablePath: process.env.CHROMIUM || undefined } : {});
+console.log('הדפדפן עלה: ' + browser.version());
 
 async function newPage({ user = null, stub = true } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL', deviceScaleFactor: 2 });
@@ -39,8 +45,10 @@ async function newPage({ user = null, stub = true } = {}) {
   if (stub) await ctx.route(/\/vendor\/supabase-js[^/]*\/supabase\.js/, (r) => r.abort());
   await ctx.addInitScript((st) => { localStorage.setItem('yam_tour165', '1'); if (st && !localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); }, user ? { user } : null);
   if (stub) await ctx.addInitScript(STUB);
+
   const page = await ctx.newPage();
   const errors = [];
+  page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   page.on('pageerror', (e) => errors.push(e.message));
   return { ctx, page, errors };
 }
@@ -91,8 +99,7 @@ await test('WebKit: דפי הנחיתה בלי גלילה הצידה ברוחב 
   await ctx.close();
 });
 
-await browser.close(); server.close();
-for (const r of results) console.log(r.join(' '));
+await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 15000))]); server.close();
 const failed = results.filter((r) => r[0] === '❌').length;
 console.log(failed ? `\n${failed} בדיקות נכשלו` : `\nכל ${results.length} הבדיקות עברו ב-${engine === webkit ? 'WebKit' : 'Chromium'} 🎉`);
 process.exit(failed ? 1 : 0);
