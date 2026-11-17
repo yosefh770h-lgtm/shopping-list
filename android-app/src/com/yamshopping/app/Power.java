@@ -1,6 +1,7 @@
 package com.yamshopping.app;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -22,20 +23,47 @@ final class Power {
     private Power() {
     }
 
-    /** "ok" — פטור כבר יש, "ask" — אפשר לבקש, "na" — לא רלוונטי (לפני אנדרואיד 6, או שאי אפשר לבדוק) */
+    /**
+     * "ok" — פטור כבר יש, "ask" — אפשר לבקש, "na" — לא רלוונטי (לפני אנדרואיד 6, או שאי אפשר לבדוק).
+     * 🔋 2.2: "blocked" — הטלפון חוסם לאפליקציה לפעול ברקע (המשתמש או מנהל הסוללה של היצרן בחרו "מוגבל"),
+     * גם אם הפטור מחיסכון סוללה דלוק. זה המצב שבו במסך הסוללה של הטלפון אף אפשרות לא מסומנת (נמצא ב-Qin 3 Ultra).
+     * חלון הפטור לא עוזר כאן — צריך לפתוח את הגדרות האפליקציה ולבחור "ללא הגבלות".
+     */
     static String state(Context c) {
         try {
+            if (Build.VERSION.SDK_INT >= 28) {
+                ActivityManager am = (ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
+                if (am != null && am.isBackgroundRestricted()) return "blocked";
+            }
             PowerManager pm = (PowerManager) c.getSystemService(Context.POWER_SERVICE);
             if (pm == null) return "na";
-            return pm.isIgnoringBatteryOptimizations(c.getPackageName()) ? "ok" : "ask";
+            boolean ok = pm.isIgnoringBatteryOptimizations(c.getPackageName());
+            if (ok) CheckJob.prefs(c).edit().putBoolean("bat_was_ok", true).apply();
+            return ok ? "ok" : "ask";
         } catch (Exception e) {
             return "na";
         }
     }
 
+    /** 🔋 2.2: היה אישור "ללא הגבלות" והטלפון ביטל אותו לבד — האתר מסביר את זה במקום לבקש כאילו בפעם הראשונה */
+    static boolean lost(Context c) {
+        String s = state(c);
+        return !"ok".equals(s) && !"na".equals(s) && CheckJob.prefs(c).getBoolean("bat_was_ok", false);
+    }
+
     /** פותח את חלון המערכת. true — נפתח חלון (התשובה תגיע כשחוזרים לאפליקציה) */
     static boolean ask(Activity a) {
-        if (!"ask".equals(state(a))) return false;
+        String st = state(a);
+        if ("blocked".equals(st)) {
+            // 🔋 2.2: הטלפון חוסם פעילות ברקע — רק המשתמש יכול לשחרר, בהגדרות האפליקציה ← סוללה ← "ללא הגבלות"
+            try {
+                a.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + a.getPackageName())));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        if (!"ask".equals(st)) return false;
         try {
             a.startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + a.getPackageName())));
             return true;

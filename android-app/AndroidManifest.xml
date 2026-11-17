@@ -179,6 +179,14 @@
         <!-- "השב" ו"סימון כנקרא" בהתראת ההודעות מהצוות -->
         <receiver android:name=".ActionReceiver" android:exported="false" />
 
+        <!-- 🔋 2.2: גיבוי לבדיקה ברקע — שעון של המערכת כל רבע שעה, ואחרי הפעלה מחדש של הטלפון ועדכון האפליקציה (Wake.java) -->
+        <receiver android:name=".Wake" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- בדיקה ברקע כל כמה שעות: גרסה חדשה, מה חדש באתר, ערב שבת -->
         <service
             android:name=".CheckJob"
