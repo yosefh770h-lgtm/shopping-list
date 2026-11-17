@@ -1516,12 +1516,13 @@ await test('🏪 השוואת רשימה בין כל הסניפים בארץ (מ
   await ctx.close();
 });
 
-await test('💰 "איפה הכי זול?" בלשונית החנויות (הבאנר בראש הרשימה הוסר): חיפוש מוצר וכפתור אחד בלבד', async () => {
+await test('💰 כפתור "איפה הכי זול" ברשימה — נפתח בלשונית החנויות, והמנהל קובע אם ועד מתי', async () => {
   const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }], missing: [], stores: [{ store: '1:1', chain: 'RAMI_LEVY', chain_name: 'רמי לוי', name: 'בני ברק', city: 'בני ברק', total: 6.5, regular: 6.5, found: 1, lines: [{ q: 'חלב', qty: 1, found: true, name: 'חלב', cost: 6.5, regular: 6.5 }] }] }) });
   const { ctx, page, errors } = await newPage({ priceApi });
   await page.evaluate(() => { applyConfig('collector', { public: true }); curList().items = []; render(); });
-  assert(!(await page.locator('#paneList .cheapbar').count()), 'הבאנר הוסר מהרשימה אבל עדיין מוצג');
-  await page.evaluate(() => { storesView = 'cmp'; setTab('stores'); });
+  await page.evaluate(() => { addItem('חלב', ''); render(); });
+  assert(await page.locator('#paneList .cheap14').isVisible(), 'אין כפתור "איפה הכי זול" ברשימה');
+  await page.click('#paneList .cheap14');
   await page.waitForSelector('#paneStores.on .seg [data-sview="cmp"].on');
   assert(await page.locator('.tab[data-t="prices"].on').count(), 'הלשונית לא סומנה');
   await page.fill('#cmpQ', 'חלב'); await page.press('#cmpQ', 'Enter');
@@ -1530,7 +1531,12 @@ await test('💰 "איפה הכי זול?" בלשונית החנויות (הבא
   await page.click('#btnCloseBasket');
   await page.evaluate(() => { addItem('חלב', ''); setTab('list'); render(); });
   assert(!(await page.locator('#paneList .buybar [data-basket]').count()), 'כפתור כפול: גם בשורת ההתקדמות וגם בבאנר');
-  assert(!(await page.locator('#paneList .cheapbar').count()), 'באנר ברשימה עם פריטים');
+  const promo = await page.evaluate(() => { const has = () => { render(); return !!document.querySelector('#paneList .cheap14'); };
+    applyConfig('collector', { public: true, promo_off: true }); const off = has();
+    applyConfig('collector', { public: true, promo_until: '2020-01-01' }); const past = has();
+    applyConfig('collector', { public: true, promo_until: '2999-01-01' }); const future = has();
+    return { off, past, future }; });
+  assert(!promo.off && !promo.past && promo.future, 'כיבוי / תאריך: ' + JSON.stringify(promo));
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
@@ -1661,7 +1667,7 @@ await test('👁️ בק אופיס שולט מה המשתמשים רואים: �
     { store: '2:2', chain: 'SHUFERSAL', chain_name: 'שופרסל', name: 'ב', city: 'בני ברק', total: 7, regular: 7, found: 1, lines: [] }] }) }); };
   const { ctx, page, errors } = await newPage({ priceApi, viewport: { width: 1366, height: 820 } });
   // משתמש רגיל, המתג כבוי (ברירת המחדל): לא רואה כלום חדש
-  const user = await page.evaluate(() => { authUser = null; myRole = null; srvCfg = null; curList().items = []; addItem('חלב', ''); render(); return { card: !!document.querySelector('#paneList .cheapbar'), btn: !!document.querySelector('#paneList .buybar [data-basket]') }; });
+  const user = await page.evaluate(() => { authUser = null; myRole = null; srvCfg = null; curList().items = []; addItem('חלב', ''); render(); return { card: !!document.querySelector('#paneList .cheap14'), btn: !!document.querySelector('#paneList .buybar [data-basket]') }; });
   assert(!user.card && !user.btn, 'משתמש רגיל רואה את ההשוואה כשהמתג כבוי: ' + JSON.stringify(user));
   // השרת לא עונה (עוד לא הותקן): הודעה ברורה בעברית ולא "Failed to fetch"
   const down = await page.evaluate(async () => { const f = window.fetch; window.fetch = () => Promise.reject(new TypeError('Failed to fetch')); try { await priceApi('/health'); return ''; } catch (e) { return e.message; } finally { window.fetch = f; } });
