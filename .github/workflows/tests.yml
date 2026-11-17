@@ -69,7 +69,6 @@ jobs:
       - name: Install
         run: |
           npm install --no-audit --no-fund
-          npm install --no-audit --no-fund --no-save playwright@1.56.1
           npx playwright install --with-deps webkit
       - name: Site opens in Safari's engine (WebKit)
         run: node webkit.mjs
