@@ -47,13 +47,15 @@ async function newPage({ user = null, stub = true } = {}) {
   if (stub) await ctx.addInitScript(STUB);
   const page = await ctx.newPage();
   const errors = [];
+  page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   page.on('pageerror', (e) => errors.push(e.message));
+  if (process.env.WK_DEBUG) { page.on('console', (m) => console.log('  [console]', m.type(), m.text().slice(0, 200))); page.on('requestfailed', (r) => console.log('  [failed]', r.url().slice(0, 120))); page.on('load', () => console.log('  [load]')); page.on('domcontentloaded', () => console.log('  [dom]')); }
   return { ctx, page, errors };
 }
 
 await test('WebKit: האתר נפתח בלי שגיאות (משתמש קיים)', async () => {
   const { ctx, page, errors } = await newPage({ user: { name: 'בודק', email: '', offline: true } });
-  await page.goto(ORIGIN + '/index.html'); await page.waitForTimeout(2500);
+  await page.goto(ORIGIN + '/index.html'); if (process.env.WK_DEBUG) console.log('  goto done'); await page.waitForTimeout(2500); if (process.env.WK_DEBUG) console.log('  wait done');
   assert(await page.evaluate(() => !!document.querySelector('#paneList')), 'אין רשימה');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();

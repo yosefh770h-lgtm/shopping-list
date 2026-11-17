@@ -72,6 +72,8 @@ jobs:
           npx playwright install --with-deps webkit
       - name: Site opens in Safari's engine (WebKit)
         run: node webkit.mjs
+        env:
+          WK_DEBUG: 1
   collector:
     # אוסף המחירים בשרת (collector/): פענוח קבצי המחירים, המאגר המקומי, ה-API והשהיית השבת
     runs-on: ubuntu-latest
