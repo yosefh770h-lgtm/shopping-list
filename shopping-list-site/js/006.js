@@ -230,21 +230,9 @@ async function submitKnowledge(q,a){
 }
 
 
-/* ================= דברי תורה על הפרשה — רק דרך הבוט ================= */
-function parashaNames(){
-  if(!HC||!HC.parshiot)return [];
-  return HC.parshiot.map(n=>stripNiqqud((HC.Locale.gettext(n,'he-x-NoNikud')||n).replace(/[־-]/g,' ')).replace(/\s+/g,' ').trim());
-}
-function currentParashaName(){const p=nextParasha();if(!p||p.startsWith('השבת חג'))return '';return p.replace(/^פרשת\s+/,'').replace(/־/g,' ').trim();}
-function findParashaIn(t){const names=parashaNames().slice().sort((a,b)=>b.length-a.length);return names.find(n=>t.includes(norm(n)))||'';}
-function sameParasha(a,b){const A=norm(a).replace(/[-־]/g,' '),B=norm(b).replace(/[-־]/g,' ');return A===B||A.replace(/\s/g,'')===B.replace(/\s/g,'')||A.split(' ').some(x=>x.length>1&&B.split(/\s|-/).includes(x))&&(A.includes(B)||B.includes(A));}
-/* האפשרות "דבר תורה / וורט / חידוש" הוסרה מהאתר ומהאפליקציה (נובמבר 2026). הנתונים בשרת נשארים — false מחזיר הכל */
-const TORAH_OFF=true;
+/* דברי תורה הוסרו מהאתר ומהאפליקציה (נובמבר 2026): יאמי עונה על בקשה כזו שהאפשרות לא זמינה */
 /* אין באתר מתכונים (הוסרו בנובמבר 2026): יאמי לא נותנת ולא מציעה מתכונים, ועונה על שאלת מתכון בהפניה לרשימה */
 const RECIPE_ASK_RX=/(מתכון|מתכונים|איך (מכינים|מבשלים|אופים)(\s|$)|מה (אפשר|אני יכול|אני יכולה|אפשר ל?)\s*(להכין|לבשל)|מה (לבשל|מבשלים|נבשל|להכין)(\s|$|[?？!.])|רעיונות לארוחה|תפריט לשבת|אוכל לשבת)/;
-let dtCache=null,dtShown=new Set(),dtLastWant='';
-async function fetchDivreiTorah(){if(!sb||!authUser)return [];try{const {data}=await sb.from('divrei_torah').select('id,parasha,title,body,source_name,created_at').eq('status','approved').order('created_at',{ascending:false}).limit(500);dtCache=data||[];if(typeof crFill23==='function')await crFill23('torah',dtCache,'author_name');}catch(e){dtCache=[];}return dtCache;}
-function dvarText(d){return '📜 '+(d.title?d.title+'\n':'')+'פרשת '+d.parasha+'\n\n'+d.body+'\n\n'+(d.source_name||d.author_name?'— '+(d.source_name||d.author_name):'');}
 
 /* ---- ביצוע פעולות (גם מהבוט המקומי וגם מה-AI) ---- */
 function doAction(a){
@@ -294,7 +282,6 @@ function aiContext(){
     'רשימות קיימות: '+state.lists.map(x=>x.name).join(', '),
     'מה יש בבית: '+(pantryAll().join(', ')||'לא עודכן'),
     'אין באתר מתכונים: לא לתת מתכונים או הוראות בישול. לעזור ברשימה, בבית ובמחירים.',
-    TORAH_OFF?'':'דברי תורה: המשתמש יכול לבקש "דבר תורה" (או "וורט" / "חידוש" — אותו דבר) או לשתף עם "לשתף דבר תורה" (נשלח לאישור מנהל).',
     'רשתות: '+allChainNames().join(', ')].filter(Boolean).join('\n');
 }
 /* תקלה בחיבור לבינה המלאכותית (רשת / שרת) — אומרים את האמת, ולא עונים תשובה מוכנה שלא קשורה לשאלה */
@@ -388,7 +375,6 @@ const YAMI_DT_TAIL='(?:\\s+(?:על\\s+|ל|ב)?(?:ה)?(?:פרשה|פרשת\\s+\\S
 const YAMI_DT_ASK=new RegExp('^(?:(?:בבקשה|אפשר|יש לך|יש|תני לי|תני|תביאי לי|תביאי|תגידי לי|תגידי|תספרי לי|ספרי לי|אני רוצה|רוצה|אשמח ל|אשמח)\\s+)*(עוד\\s+|ועוד\\s+)?'+YAMI_DT_WORD+YAMI_DT_TAIL+'(?:\\s+בבקשה)?$');
 const YAMI_DT_SHARE=new RegExp('^(?:אני\\s+)?(?:רוצה\\s+)?(?:(?:לשתף|אשתף|שתפי|להוסיף|אוסיף|לשלוח|אשלח|שלחי)\\s+(?:את\\s+)?'+YAMI_DT_WORD+'|יש לי\\s+'+YAMI_DT_WORD+'(?:\\s+(?:לשתף|לשלוח))?)'+YAMI_DT_TAIL+'$');
 function yamiDtCanon(raw){
-  if(state.dtFlow)return raw;
   const t=norm(raw).replace(/[?？!.]+$/,'').trim();
   if(YAMI_DT_SHARE.test(t))return 'לשתף דבר תורה';
   const m=t.match(YAMI_DT_ASK);if(!m)return raw;
@@ -415,49 +401,8 @@ async function yamiCore(raw){
   }
 
   /* דבר תורה הוסר: בקשה כזו מקבלת תשובה קצרה, ולא נכנסת לרשימה */
-  if(TORAH_OFF){if(state.dtFlow){state.dtFlow=null;save(true);}
-    if(/(דבר תורה|דברי תורה|וורט|ווארט|ד״ת|חידושי תורה|חידוש תורה)/.test(t)||/^(עוד\s+)?(ה)?(דת|חידוש|חידושים)(\s+(על\s+)?(ה)?פרשה|\s+לשבת|\s+בבקשה)?[?？!.]*$/.test(t))
-      return botSay(T('האפשרות הזו כבר לא זמינה באתר 🙂 אפשר לשאול אותי על פרשת השבוע וזמני שבת.','This option is no longer available 🙂'));}
-  /* שיתוף דבר תורה — שלב אחרי שלב, נשלח לאישור מנהל */
-  if(!TORAH_OFF&&state.dtFlow){
-    const f=state.dtFlow;
-    if(/^(בטל|ביטול|עזוב|לא רוצה|לא עכשיו)$/.test(t)){state.dtFlow=null;save(true);return botSay('בסדר, ביטלתי 🙂');}
-    if(f.step==='parasha'){
-      const found=findParashaIn(t);
-      f.parasha=found||(YES.test(t)&&f.suggest)||raw.trim().replace(/^פרשת\s+/,'').slice(0,60);
-      f.step='title';save(true);return botSay('פרשת '+f.parasha+' 👍\nמה הכותרת? (או "דלג")');}
-    if(f.step==='title'){f.title=/^(דלג|אין|לא)$/.test(t)?'':raw.trim().slice(0,150);f.step='body';save(true);return botSay('ועכשיו — כתבו את דבר התורה עצמו ✍️');}
-    if(f.step==='body'){
-      const body=raw.trim();state.dtFlow=null;save(true);
-      if(body.length<20)return botSay('זה קצר מדי 🙂 אפשר להתחיל שוב: "לשתף דבר תורה"');
-      if(!sb||!authUser)return botSay('צריך להיות מחוברים כדי לשתף 🙂');
-      const {error}=await sb.from('divrei_torah').insert({parasha:f.parasha,title:f.title,body:body.slice(0,20000),author_id:authUser.id});
-      return botSay(error?('לא הצלחתי לשלוח 🙁 '+error.message):'תודה רבה! 📜 דבר התורה נשלח לאישור מנהל האתר, ואחרי האישור כולם יוכלו לבקש אותו ממני 💚');
-    }
-  }
-  if(!TORAH_OFF&&/(לשתף|אשתף|רוצה לשתף|להוסיף|אוסיף|שתפי|שלחי|לשלוח)\s.*(דבר תורה|דברי תורה|וורט|ד״ת)/.test(t)||/^(אני\s+)?(רוצה\s+)?(לשתף|אשתף|שתפי|להוסיף|אוסיף|לשלוח|שלחי)\s+(את\s+)?(ה)?דת$/.test(t)){
-    const cur=currentParashaName();state.dtFlow={step:'parasha',suggest:cur};save(true);
-    return botSay('כיף! 📜 על איזו פרשה?'+(cur?'\n(פרשת השבוע: '+cur+' — '+GW('כתבי','כתוב')+' "כן")':''));
-  }
-  if(!TORAH_OFF&&/(דבר תורה|דברי תורה|וורט|ד״ת|דבר תורה נוסף|עוד דבר תורה)/.test(t)||/^(עוד\s+)?(ה)?דת(\s+(על\s+)?(ה)?פרשה|\s+לשבת|\s+בבקשה)?[?？!.]*$/.test(t)){
-    const list=dtCache||await fetchDivreiTorah();
-    /* "עוד וורט" — ממשיכים באותה פרשה שעליה שאלו קודם */
-    const want=findParashaIn(t)||(/^עוד/.test(t)&&dtLastWant)||currentParashaName();dtLastWant=want;
-    let pool=want?list.filter(d=>sameParasha(d.parasha,want)):list;
-    if(!pool.length){const vo=want?await Promise.race([sefariaVort(want),new Promise(r=>setTimeout(()=>r(null),4000))]):null;
-      if(vo)return botSay(sefVortText(vo)+'\n\n'+T('('+GW('כתבי','כתוב')+' "עוד וורט" — ממפרש אחר · יש לכם וורט? "לשתף דבר תורה")','(Write "more" for another commentator)')+'\n\nשבת שלום! 🕯️');
-      const sv=await sefVersesText(want);
-      if(sv)return botSay(T('עוד אין אצלי דבר תורה על הפרשה 🙏 בינתיים — ','No dvar Torah yet 🙏 Meanwhile — ')+sv.trim()+'\n\n'+T('יש לכם דבר תורה? '+GW('כתבי','כתוב')+' "לשתף דבר תורה"','Have one? Write "share dvar Torah"'));
-      return botSay(want?('עוד אין אצלי דבר תורה על פרשת '+want+' 🙏\nיש לכם דבר תורה? '+GW('כתבי','כתוב')+' "לשתף דבר תורה"'+(list.length?'\n\nיש לי על: '+Array.from(new Set(list.map(d=>d.parasha))).slice(0,10).join(', '):'')):'עוד אין דברי תורה 🙏 אפשר לשתף: "לשתף דבר תורה"');
-    }
-    let fresh=pool.filter(d=>!dtShown.has(d.id));
-    if(!fresh.length&&want){const vo=await Promise.race([sefariaVort(want),new Promise(r=>setTimeout(()=>r(null),4000))]);if(vo){if((sefVortSeen[String(want).replace(/^פרשת\s+/,'')]||0)>=SEF_MEF.length)pool.forEach(d=>dtShown.delete(d.id));return botSay(sefVortText(vo)+'\n\nשבת שלום! 🕯️');}}
-    if(!fresh.length){pool.forEach(d=>dtShown.delete(d.id));fresh=pool;}
-    const d=fresh[Math.floor(Math.random()*fresh.length)];dtShown.add(d.id);
-    const more=pool.length-1;
-    const sv=await sefVersesText(d.parasha);
-    return botSay(dvarText(d)+sv+(more>0?'\n\n('+GW('כתבי','כתוב')+' "עוד דבר תורה" — יש עוד '+more+')':'')+'\n\nשבת שלום! 🕯️');
-  }
+  if(/(דבר תורה|דברי תורה|וורט|ווארט|ד״ת|חידושי תורה|חידוש תורה)/.test(t)||/^(עוד\s+)?(ה)?(דת|חידוש|חידושים)(\s+(על\s+)?(ה)?פרשה|\s+לשבת|\s+בבקשה)?[?？!.]*$/.test(t))
+    return botSay(T('האפשרות הזו כבר לא זמינה באתר 🙂 אפשר לשאול אותי על פרשת השבוע וזמני שבת.','This option is no longer available 🙂'));
   /* לימוד הבוט: "למד: שאלה = תשובה" / "כשאני אומר X תעני Y" */
   const teach=raw.trim().match(/^(?:תלמדי|תלמד|למדי|למד|לימוד|תזכרי|תזכור)\s*:?\s*(.+?)\s*(?:=|->|—|תעני|תענה|התשובה היא|התשובה)\s*:?\s*(.+)$/)||raw.trim().match(/^כש(?:אני )?(?:אומר|אומרת|שואל|שואלת|שואלים|כותבים)\s+(.+?)\s+(?:תעני|תענה|תגידי|תגיד)\s+(.+)$/);
   if(teach){

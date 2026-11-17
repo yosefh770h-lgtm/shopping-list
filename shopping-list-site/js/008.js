@@ -393,7 +393,7 @@ setInterval(()=>{if(document.visibilityState==='visible')checkShopDay();},30*600
 /* ---------- הצעות יזומות נוספות כשפותחים את יאמי ---------- */
 let pendingIntroAsk=false;
 function v8Offers(){
-  if(!state.user)return;const busy=()=>state.pending||pendingDtAsk||state.dtFlow||state.introFlow||pendingIntroAsk;
+  if(!state.user)return;const busy=()=>state.pending||state.introFlow||pendingIntroAsk;
   const me=meData();
   if(!(me.profile&&me.profile.done)&&!state.introOffered&&!state.introFlow){state.pending=null;state.introOffered=true;save(true);pendingIntroAsk=true;
     botSay(T('💚 אפשר להכיר אותך קצת? כמה שאלות קצרות (איפה קונים, באיזה יום, מה קונים כל שבוע) — ואני אדע לעזור לך הרבה יותר טוב. (כן/לא)','Can I get to know you? A few short questions (yes/no)'));return;}
@@ -456,7 +456,6 @@ async function v8BotPre(raw){
   if(/^(בינה|בינה מלאכותית|ai|שאלה לבינה)\s*[:：]/i.test(raw.trim())){aiOff=false;if(!(await askAI()))botSay(T('הבינה המלאכותית לא זמינה כרגע 🙏','AI is not available right now 🙏'));return true;}
   if(pendingIntroAsk){pendingIntroAsk=false;if(/^(כן|בטח|בשמחה|יאללה|אוקיי|אוקי|סבבה|קדימה|למה לא)/.test(t)){startIntro();return true;}if(/^(לא|לא עכשיו|אחר כך|אח"כ|לא תודה)/.test(t)){botSay(T('בסדר גמור 🙂 מתי שתרצו — כתבו "היכרות".','No problem 🙂 Write "intro" anytime.'));return true;}}
   if(askStoreTs){const ts=askStoreTs;setTimeout(()=>{const h=state.history.find(x=>x.ts===ts);if(h&&h.store)syncPurchaseStore(ts,h.store);},50);return false;}
-  if(state.dtFlow)return false;
   if(/^(היכרות|שיחת היכרות|תכירי אותי|להכיר|תלמדי אותי|תשאלי אותי)/.test(t)){startIntro();return true;}
   if(/^(בואי\s+|בוא\s+|יאללה\s+)?(שיחה חדשה|נושא חדש|להתחיל מחדש|נתחיל מחדש|נתחיל שיחה חדשה|להתחיל שיחה חדשה)[.!]*$/.test(t)){newBotChat();return true;}
   if(/(זריחה|שקיעה|מנחה גדולה|מנחה קטנה|פלג המנחה|זמני היום|זמנים להיום|דף יומי|הדף היומי|צאת הכוכבים|חצות|סוף זמן|עלות השחר|זמנים של היום)/.test(t)){botSay(zmanimText());return true;}

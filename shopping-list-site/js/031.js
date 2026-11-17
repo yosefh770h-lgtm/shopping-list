@@ -2,8 +2,8 @@
 /* ================= v23: קרדיט למדווחים — ממלא את החריצים (crSlot) בשמות =================
    משתמש רגיל: "דווח ע״י ..." רק כשהשם מוצג לכולם (לפי ההגדרה הכללית לסוג התוכן, או לפי המנהל לפריט הזה).
    מנהל / צוות: תמיד רואים את השם (+ מייל וקישור למשתמש — מנהל). למנהל יש גם כפתור: ברירת מחדל → הצג שם → הסתר שם. */
-const CR23_CFG={prices:'prices',torah:'torah',reviews:'reviews',clothing:'clothing',shops:'clothing'};
-const CR23_TABLE={prices:'prices',torah:'divrei_torah',reviews:'site_reviews',clothing:'store_recs',shops:'clothing_shops'};
+const CR23_CFG={prices:'prices',reviews:'reviews',clothing:'clothing',shops:'clothing'};
+const CR23_TABLE={prices:'prices',reviews:'site_reviews',clothing:'store_recs',shops:'clothing_shops'};
 let cr23Cache={},cr23Who='',cr23Timer=null,cr23Busy=false;
 (function(){const st=document.createElement('style');st.textContent=
   '.cr23:empty{display:none}.cr23blk{display:block;font-size:12px;margin-top:2px;color:var(--muted)}'+

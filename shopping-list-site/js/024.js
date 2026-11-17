@@ -76,7 +76,7 @@ render=function(){const r=_v165Render.apply(this,arguments);try{const em=$165('#
 document.addEventListener('click',e=>{if(e.target.closest('[data-ready165]'))openReady165();});
 (function(){const a=$165('#miAbout');if(!a)return;
   /* בתפריט ⚙️ ← "שבת וחגים" (אחרי זמני היום) */
-  if(!$165('#miReady')){const z=$165('#miTorah16')||$165('#miZmanim');(z||a).insertAdjacentHTML(z?'afterend':'beforebegin','<button id="miReady">📋<span>'+T('רשימות מוכנות לשבת ולחגים','Ready lists')+'</span></button>');}
+  if(!$165('#miReady')){const z=$165('#miZmanim');(z||a).insertAdjacentHTML(z?'afterend':'beforebegin','<button id="miReady">📋<span>'+T('רשימות מוכנות לשבת ולחגים','Ready lists')+'</span></button>');}
   if(!$165('#miTour'))a.insertAdjacentHTML('beforebegin','<button id="miTour">🧭<span>'+T('סיור באתר','Site tour')+'</span></button>');
   $165('#miReady').onclick=openReady165;$165('#miTour').onclick=()=>{$165('#hMenu').classList.remove('open');openTour165();};})();
 try{render();}catch(e){}

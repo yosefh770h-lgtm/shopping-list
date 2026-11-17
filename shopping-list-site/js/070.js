@@ -222,7 +222,6 @@ openAbout=function(){const r=_pkAbout.apply(this,arguments);try{const b=$pk('#ab
       T(' של מי שצילם אותן. לפניהן מוצגות תמונות שהעליתם ל"המוצרים שלי", ותמונות שמשתמשי האתר צילמו ואושרו (עם קרדיט למצלם, אם ביקש).',' by their photographers. Photos you added to "My products", and photos our users took (approved), come first.')+'</li>'+
     '<li>💰 '+T('<b>מחירים ומבצעים בסניפים</b> — מקבצי שקיפות המחירים שהרשתות מפרסמות לפי חוק.','<b>Branch prices and deals</b> — from the price transparency files the chains publish by law.')+'</li>'+
     '<li>📍 '+T('<b>איתור כתובות ומיקום</b> — ','<b>Address lookup</b> — ')+a('https://nominatim.openstreetmap.org','Nominatim')+' · © '+a('https://www.openstreetmap.org/copyright',T('התורמים של OpenStreetMap','OpenStreetMap contributors'))+'.</li>'+
-    '<li>📖 '+T('<b>פסוקי פרשת השבוע</b> — ','<b>Weekly Torah portion verses</b> — ')+a('https://www.sefaria.org',T('ספריא','Sefaria'))+T(', לפי הרישיון שמצוין ליד כל טקסט.',', under the license shown next to each text.')+'</li>'+
     '</ul></details>';
   const v=b.querySelector('.nfbadge162')||b.querySelector('.ver16');if(v)v.insertAdjacentHTML('beforebegin',html);else b.insertAdjacentHTML('beforeend',html);}catch(e){console.warn('pk53 about',e);}return r;};
 const st=document.createElement('style');st.textContent=

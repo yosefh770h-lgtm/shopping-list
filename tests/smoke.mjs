@@ -361,18 +361,18 @@ await test('קרדיט למדווחים: שם המדווח מוסתר כבריר
 await test('קרדיט למדווחים: כרטיס המתגים בבק אופיס שומר את ההגדרה', async () => {
   const { ctx, page, errors } = await newPage({ viewport: { width: 1366, height: 820 } });
   await page.evaluate(() => {
-    sb = __stub({ 'site_config:one': { value: { prices: false, torah: true } } }); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } };
+    sb = __stub({ 'site_config:one': { value: { prices: false, reviews: true } } }); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } };
     window.__upd = []; const from = sb.from;
     sb.from = (n) => { const c = from(n); return new Proxy(c, { get(t, p) { if (p === 'upsert') return (v) => { window.__upd.push([n, v]); return c; }; return t[p]; } }); };
     openBO('credits');
   });
   await page.waitForTimeout(900);
-  const r = await page.evaluate(() => ({ n: document.querySelectorAll('#cr23card [data-crk]').length, rec: document.querySelector('#cr23_torah').checked, pr: document.querySelector('#cr23_prices').checked, nav: !!document.querySelector('#boNav [data-s="credits"]') }));
-  assert(r.n === 4 && r.rec && !r.pr && r.nav, 'כרטיס המתגים: ' + JSON.stringify(r));
+  const r = await page.evaluate(() => ({ n: document.querySelectorAll('#cr23card [data-crk]').length, rec: document.querySelector('#cr23_reviews').checked, pr: document.querySelector('#cr23_prices').checked, nav: !!document.querySelector('#boNav [data-s="credits"]') }));
+  assert(r.n === 3 && r.rec && !r.pr && r.nav, 'כרטיס המתגים: ' + JSON.stringify(r));
   if (process.env.SHOTS) await page.screenshot({ path: process.env.SHOTS + '/1-backoffice-credits-switches.png' });
   await page.click('#cr23_prices'); await page.waitForTimeout(300);
   const u = await page.evaluate(() => window.__upd.find((x) => x[0] === 'site_config'));
-  assert(u && u[1].key === 'credits' && u[1].value.prices === true && u[1].value.torah === true && u[1].value.reviews === false, 'השמירה: ' + JSON.stringify(u));
+  assert(u && u[1].key === 'credits' && u[1].value.prices === true && u[1].value.reviews === true && u[1].value.clothing === false, 'השמירה: ' + JSON.stringify(u));
   assert(await page.evaluate(() => credCfg23.prices === true), 'ההגדרה לא הוחלה באתר');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
@@ -670,8 +670,6 @@ await test('👀 אורח: בלי יאמי, נספר אנונימית, ובבק 
   await page.waitForTimeout(400);
   const bo = await page.$eval('#boMain', (e) => e.textContent);
   assert(bo.includes('40') && bo.includes('חיים') && bo.includes('20%'), 'בק אופיס אורחים: ' + bo.slice(0, 200));
-  await page.evaluate(() => openBO('torah')); await page.waitForTimeout(800);
-  assert(await page.evaluate(() => !!document.querySelector('#sef27')), 'אין כרטיס ספריא בבק אופיס ← דבר תורה');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });

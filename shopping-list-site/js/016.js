@@ -8,7 +8,7 @@ const fmt=d=>d?new Date(d).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'
 const online=u=>Date.now()-new Date(u.last_seen).getTime()<5*60*1000;
 let me=null;
 async function ok(q,msg){const {error}=await q;if(error){flash('⚠️ '+error.message);return false;}if(msg)flash(msg);return true;}
-const MOD_TABS=['mfa','dash','bot','chains','prices','reporters','posts','torah','reviews','products','community'];
+const MOD_TABS=['mfa','dash','bot','chains','prices','reporters','posts','reviews','products','community'];
 const allowed=s=>s==='mfa'||(isAdmin()||MOD_TABS.includes(s)||(s==='guests'&&permOk('visitors')))&&tabPermOk(s)&&(s!=='guests'||permOk('visitors'));
 window.openBO=function(sec){
   if(!sb||!isStaff()){flash('⛔ הבק אופיס פתוח רק לצוות האתר');return;}
@@ -33,11 +33,11 @@ const VIEWS={
 /* ---------- סקירה ---------- */
 async dash(){
   const since=new Date(Date.now()-86400000).toISOString();
-  const cnt=async(t,f)=>{let q=sb.from(t).select(COLS23[{prices:'prices',divrei_torah:'torah',site_reviews:'reviews',store_recs:'recs',store_posts:'posts',bot_knowledge:'kb'}[t]]?'id':'*',{count:'exact',head:true});if(f)q=f(q);const {count}=await q;return count||0;};
+  const cnt=async(t,f)=>{let q=sb.from(t).select(COLS23[{prices:'prices',site_reviews:'reviews',store_recs:'recs',store_posts:'posts',bot_knowledge:'kb'}[t]]?'id':'*',{count:'exact',head:true});if(f)q=f(q);const {count}=await q;return count||0;};
   const adm=isAdmin();const zero=async()=>0;
-  const [pch,pbr,ppr,ppo,pdt,prv,pfl,pms]=await Promise.all([cnt('chains',q=>q.eq('status','pending')),cnt('branches',q=>q.eq('status','pending')),cnt('prices',q=>q.eq('status','pending')),cnt('store_posts',q=>q.eq('status','pending')),cnt('divrei_torah',q=>q.eq('status','pending')),cnt('site_reviews',q=>q.eq('status','pending')),cnt('prices',q=>q.gt('wrong',0)),adm?cnt('store_messages',q=>q.eq('is_read',false)):zero()]);
+  const [pch,pbr,ppr,ppo,prv,pfl,pms]=await Promise.all([cnt('chains',q=>q.eq('status','pending')),cnt('branches',q=>q.eq('status','pending')),cnt('prices',q=>q.eq('status','pending')),cnt('store_posts',q=>q.eq('status','pending')),cnt('site_reviews',q=>q.eq('status','pending')),cnt('prices',q=>q.gt('wrong',0)),adm?cnt('store_messages',q=>q.eq('is_read',false)):zero()]);
   const [users,on,kp,fb,pr]=await Promise.all([adm?cnt('profiles'):zero(),adm?cnt('profiles',q=>q.gt('last_seen',new Date(Date.now()-300000).toISOString())):zero(),cnt('bot_knowledge',q=>q.eq('status','pending')),adm?cnt('feedback',q=>q.eq('is_read',false)):zero(),cnt('prices',q=>q.gt('created_at',since))]);
-  const tiles=[[users,'משתמשים רשומים','users'],[on,'מחוברים עכשיו 🟢','users'],[kp,'לימודי בוט לאישור','bot'],[fb,'הערות שלא נקראו','feedback'],[pr,'דיווחי מחיר ב-24 שעות','prices'],[pch+pbr,'חנויות/סניפים לאישור','chains'],[ppr,'מחירים מסופרים לאישור','prices'],[ppo,'מבצעי חנויות לאישור','posts'],[pdt,'דברי תורה לאישור','torah'],[prv,'חוות דעת לאישור ⭐','reviews'],[pfl,'מחירים שדווחו כ"לא נכון" ❌','prices'],[pms,'פניות לחנויות שלא נקראו 📨','messages']].filter(t=>allowed(t[2]));
+  const tiles=[[users,'משתמשים רשומים','users'],[on,'מחוברים עכשיו 🟢','users'],[kp,'לימודי בוט לאישור','bot'],[fb,'הערות שלא נקראו','feedback'],[pr,'דיווחי מחיר ב-24 שעות','prices'],[pch+pbr,'חנויות/סניפים לאישור','chains'],[ppr,'מחירים מסופרים לאישור','prices'],[ppo,'מבצעי חנויות לאישור','posts'],[prv,'חוות דעת לאישור ⭐','reviews'],[pfl,'מחירים שדווחו כ"לא נכון" ❌','prices'],[pms,'פניות לחנויות שלא נקראו 📨','messages']].filter(t=>allowed(t[2]));
   $('#boMain').innerHTML='<div class="stats">'+tiles.map(([n,l,s])=>'<div class="stat" style="cursor:pointer" data-go="'+s+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'+
   '<div class="card" style="margin-top:14px"><h2>👋 שלום!</h2><p class="muted">מכאן אפשר לשנות את האתר בלי לגעת בקוד: לשלוט בבוט ובבינה המלאכותית, לעדכן סניפים, להחליף טקסטים וצבעים, ולראות מי הצטרף.</p></div>';
   $('#boMain').onclick=e=>{const g=e.target.closest('[data-go]');if(g)show(g.dataset.go);};
@@ -102,7 +102,6 @@ async bot(){
   '<label>ההוראות האישיות שלך לבוט (אופי, סגנון, מה מותר ומה אסור, מידע עליך ועל האתר)</label><textarea id="aiInstr" style="min-height:140px" placeholder="למשל: תעני תמיד בקצרה. תמליצי על רשתות כשרות למהדרין. אל תמליצי על מוצרים בלי הכשר בד״ץ...">'+esc(ai.instructions||'')+'</textarea>'+
   '<button class="btn" id="aiSave" style="margin-top:10px">💾 שמירת הגדרות AI</button> <button class="btn sec" id="aiDiag" style="margin-top:10px">🔍 בדיקת חיבור</button><div id="aiDiagOut" style="margin-top:10px"></div></div>'+
   '<div class="card"><h2>💬 הגדרות הבוט</h2><label>הודעת פתיחה (ריק = ברירת מחדל)</label><textarea id="bWelcome" style="min-height:60px">'+esc(bc.welcome||'')+'</textarea>'+
-  (TORAH_OFF?'<input type="checkbox" id="bDtRem" hidden '+(bc.dtReminder!==false?'checked':'')+'>':'<div class="check"><input type="checkbox" id="bDtRem" '+(bc.dtReminder!==false?'checked':'')+'><label for="bDtRem" style="margin:0;color:var(--text)">להזכיר בחמישי, בשישי ובערב חג: "יש לך דבר תורה לשתף?"</label></div>')+
   '<label>מילים חסומות נוספות (מופרדות בפסיקים) — בנוסף לרשימת הקללות המובנית</label><textarea id="bBanned" style="min-height:60px">'+esc((bc.bannedExtra||[]).join(', '))+'</textarea>'+
   '<button class="btn" id="bSave" style="margin-top:10px">💾 שמירה</button></div>';
   $('#boMain').innerHTML=settingsHtml+
@@ -141,7 +140,7 @@ async bot(){
     o.innerHTML=h+(data.enabled&&(!data.test||data.test.ok)?'<p class="muted">💡 יאמי עונה קודם בעצמה על דברים שהיא מכירה (רשימה, מתכונים, זמנים...) ופונה לבינה המלאכותית רק בשאלות אחרות. כדי לשאול את הבינה ישירות כותבים: <b>בינה: השאלה שלך</b></p>':'');
   };
   $('#aiSave').onclick=()=>setCfg('ai',{provider:$('#aiProv').value,geminiModel:($('#aiGModel').value.trim()||'gemini-2.5-flash').slice(0,60),enabled:$('#aiOn').checked,audience:$('#aiAud').value,model:$('#aiModel').value,effort:$('#aiEffort').value,dailyLimit:Math.max(1,Math.min(1000,+$('#aiLimit').value||30)),instructions:$('#aiInstr').value.trim()});
-  $('#bSave').onclick=()=>setCfg('bot',{welcome:$('#bWelcome').value.trim(),dtReminder:$('#bDtRem').checked,bannedExtra:$('#bBanned').value.split(',').map(x=>x.trim()).filter(Boolean)});
+  $('#bSave').onclick=()=>setCfg('bot',{welcome:$('#bWelcome').value.trim(),bannedExtra:$('#bBanned').value.split(',').map(x=>x.trim()).filter(Boolean)});
   }
   $('#kAdd').onclick=async()=>{const q=$('#kQ').value.trim(),a=$('#kA').value.trim();if(!q||!a)return;if(await ok(sb.from('bot_knowledge').insert({question:q,answer:a,author_id:me.id,author_name:'מנהל האתר',status:'approved'}),'✅ נוסף'))show('bot');};
   $('#boMain').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;const it=b.closest('[data-id]');const id=it.dataset.id;const v=f=>it.querySelector('[data-f='+f+']').value.trim();let q;
@@ -497,8 +496,8 @@ VIEWS.backup=async function(){
   const own=isOwner();
   $('#boMain').innerHTML='<div class="card"><h2>💾 גיבוי מלא של האתר</h2><p class="muted">מוריד קובץ אחד עם כל הנתונים: הגדרות, מתכונים, ידע הבוט, רשתות וסניפים, מחירים, פרסומות, עדכונים, הערות, משתמשים, צוות ובעלי סופרים'+(own?', והרשימות של המשפחות':'')+'. מומלץ להוריד פעם בשבוע ולשמור במקום בטוח.</p><button class="btn" id="bkExport">⬇️ הורדת גיבוי מלא</button><div class="muted" id="bkStatus" style="margin-top:6px"></div></div>'+
     (own?'<div class="card"><h2>♻️ שחזור מגיבוי</h2><p class="muted">מחזיר נתונים מקובץ גיבוי. שורות קיימות מתעדכנות לגרסה שבקובץ, ושורות שנמחקו חוזרות. משתמשים ומייל לא משוחזרים (הם של מערכת ההתחברות).</p><input type="file" id="bkFile" accept=".json"><div class="muted" id="rsStatus" style="margin-top:6px"></div></div>':'')+
-    '<div class="card"><h2>🕘 היסטוריית שינויים</h2><p class="muted">כל שינוי באתר נשמר כאן — מי שינה, מתי ומה. אפשר לשחזר גרסה קודמת בלחיצה.</p><div class="row" style="margin-bottom:8px"><select id="auTable"><option value="">כל הטבלאות</option>'+[['prices','מחירים'],['store_posts','מבצעי חנויות'],['divrei_torah','דברי תורה'],['chains','רשתות'],['branches','סניפים'],['ads','פרסומות'],['site_updates','עדכונים'],['site_config','הגדרות'],['bot_knowledge','ידע הבוט'],['staff','צוות'],['store_managers','בעלי סופרים'],['feedback','הערות']].map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')+'</select><button class="btn sec" id="auLoad">רענון</button></div><div id="auList"></div></div>';
-  const TABLES=['site_config','bot_knowledge','chains','branches','prices','ads','site_updates','feedback','store_posts','divrei_torah'];
+    '<div class="card"><h2>🕘 היסטוריית שינויים</h2><p class="muted">כל שינוי באתר נשמר כאן — מי שינה, מתי ומה. אפשר לשחזר גרסה קודמת בלחיצה.</p><div class="row" style="margin-bottom:8px"><select id="auTable"><option value="">כל הטבלאות</option>'+[['prices','מחירים'],['store_posts','מבצעי חנויות'],['chains','רשתות'],['branches','סניפים'],['ads','פרסומות'],['site_updates','עדכונים'],['site_config','הגדרות'],['bot_knowledge','ידע הבוט'],['staff','צוות'],['store_managers','בעלי סופרים'],['feedback','הערות']].map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')+'</select><button class="btn sec" id="auLoad">רענון</button></div><div id="auList"></div></div>';
+  const TABLES=['site_config','bot_knowledge','chains','branches','prices','ads','site_updates','feedback','store_posts'];
   const fetchAll=async(t)=>{let out=[],from=0;for(;;){const {data,error}=await sb.from(t).select('*').range(from,from+999);if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000;}return out;};
   $('#bkExport').onclick=async()=>{
     const st=$('#bkStatus');const dump={app:'yam-shopping',version:1,created_at:new Date().toISOString(),by:me.email,tables:{}};
@@ -573,63 +572,6 @@ VIEWS.posts=async function(){
     if(b.dataset.act==='del'&&(await uiConfirm('למחוק?'))&&await ok(sb.from('store_posts').delete().eq('id',id),'🗑️ נמחק'))show('posts');};
 };
 
-/* ---------- דברי תורה ---------- */
-// גרסה חדשה לספרייה מ-cdn.jsdelivr.net? לעדכן גם את script-src ב-CSP (כאן למעלה, ב-vercel.json וב-_headers) — שם מותרות רק הגרסאות האלה
-const JSZIP_SRC='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',JSZIP_SRI='sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG';
-const PDFJS_SRC='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',PDFJS_SRI='sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';
-const PDFW_SRC='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-function loadLib(src,sri,glob){return window[glob]?Promise.resolve(window[glob]):new Promise((res,rej)=>{const sc=document.createElement('script');sc.src=src;sc.integrity=sri;sc.crossOrigin='anonymous';sc.onload=()=>res(window[glob]);sc.onerror=()=>rej(new Error('load'));document.head.appendChild(sc);});}
-/* קובץ → טקסט: Word (docx), PDF, TXT/MD/RTF */
-async function fileToText(file){
-  const n=file.name.toLowerCase();
-  if(n.endsWith('.docx')){
-    const JSZip=await loadLib(JSZIP_SRC,JSZIP_SRI,'JSZip');const zip=await JSZip.loadAsync(await file.arrayBuffer());
-    const xml=await zip.file('word/document.xml').async('string');const doc=new DOMParser().parseFromString(xml,'application/xml');
-    const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-    return Array.from(doc.getElementsByTagNameNS(W,'p')).map(p=>Array.from(p.getElementsByTagNameNS(W,'t')).map(x=>x.textContent).join('')).join('\n').replace(/\n{3,}/g,'\n\n').trim();
-  }
-  if(n.endsWith('.pdf')){
-    const lib=await loadLib(PDFJS_SRC,PDFJS_SRI,'pdfjsLib');lib.GlobalWorkerOptions.workerSrc=PDFW_SRC;
-    const pdf=await lib.getDocument({data:await file.arrayBuffer(),isEvalSupported:false,disableFontFace:true}).promise;
-    let out=[];for(let i=1;i<=Math.min(pdf.numPages,60);i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();
-      let line='',lastY=null,lines=[];tc.items.forEach(it=>{const y=Math.round(it.transform[5]);if(lastY!==null&&Math.abs(y-lastY)>3){lines.push(line);line='';}line+=(line&&!line.endsWith(' ')?' ':'')+it.str;lastY=y;});lines.push(line);out.push(lines.join('\n'));}
-    return out.join('\n\n').replace(/[ \t]+\n/g,'\n').trim();
-  }
-  if(n.endsWith('.rtf')){const t=await file.text();return t.replace(/\\'([0-9a-f]{2})/gi,(m,h)=>String.fromCharCode(parseInt(h,16))).replace(/\\u(-?\d+)\??/g,(m,c)=>String.fromCharCode(c<0?c+65536:+c)).replace(/\{\\[^{}]*\}|\\[a-z]+-?\d* ?|[{}]/gi,'').trim();}
-  const buf=await file.arrayBuffer();let t=new TextDecoder('utf-8').decode(buf);if(t.includes('�'))try{t=new TextDecoder('windows-1255').decode(buf);}catch(e){}
-  return t.trim();
-}
-VIEWS.torah=async function(){
-  const {data,error}=await sb.from('divrei_torah').select(COLS23.torah).order('created_at',{ascending:false}).limit(1000);const all=data||[];
-  const names=parashaNames();const cur=currentParashaName();
-  const opts=sel=>names.map(n=>'<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>').join('');
-  const card=d=>'<div class="item" data-id="'+d.id+'"><div class="row"><select data-f="parasha" style="max-width:170px">'+opts(d.parasha)+(names.includes(d.parasha)?'':'<option selected>'+esc(d.parasha)+'</option>')+'</select><input data-f="title" value="'+esc(d.title)+'" placeholder="כותרת"><input data-f="source_name" value="'+esc(d.source_name)+'" placeholder="מקור / בשם"></div>'+
-    '<textarea data-f="body" style="margin-top:6px;min-height:110px">'+esc(d.body)+'</textarea><div class="row" style="margin-top:6px;align-items:center"><span class="muted">'+crSlot('torah',d.id)+' · '+fmt(d.created_at)+(d.updated_at?' · נערך '+fmt(d.updated_at):'')+' · <span class="pill">'+(d.status==='approved'?'מאושר':'ממתין')+'</span></span>'+
-    '<button class="btn sm" data-act="save">💾</button>'+(d.status!=='approved'?'<button class="btn sm" data-act="ok">✅ אישור</button>':'')+'<button class="btn sm bad" data-act="del">🗑️</button></div></div>';
-  const pend=all.filter(d=>d.status!=='approved'),appr=all.filter(d=>d.status==='approved');
-  $('#boMain').innerHTML='<div class="card"><h2>📜 הוספת דבר תורה</h2><p class="muted">דברי התורה לא מופיעים כלשונית באתר — מבקשים אותם מהבוט ("דבר תורה", "דבר תורה על פרשת נח"). משתמשים יכולים לשתף דרך הבוט ("לשתף דבר תורה"), וזה מגיע לכאן לאישור.</p>'+
-    '<div class="row"><select id="dtPar">'+opts(cur)+'</select><input id="dtTitle" placeholder="כותרת (רשות)"><input id="dtSrc" placeholder="מקור / בשם (רשות)"></div>'+
-    '<label>קבצים (Word, PDF, טקסט) — הופכים לטקסט</label><input id="dtFile" type="file" multiple accept=".docx,.pdf,.txt,.md,.rtf"><div class="muted" id="dtFileSt"></div>'+
-    '<label>הטקסט</label><textarea id="dtBody" style="min-height:160px" placeholder="אפשר להקליד, להדביק, או לבחור קובץ למעלה"></textarea>'+
-    '<div class="row" style="margin-top:8px"><button class="btn" id="dtAdd">פרסום</button><button class="btn sec" id="dtMulti" hidden>העלאת כל הקבצים כדברי תורה נפרדים</button></div></div>'+
-    (error?'<div class="card"><p class="muted">⚠️ צריך להריץ שוב את קוד ה-SQL מ"⚙️ הגדרה ראשונית"</p></div>':'')+
-    '<div class="card"><h2>⏳ ממתינים לאישור ('+pend.length+')</h2>'+(pend.map(card).join('')||'<p class="muted">אין</p>')+'</div>'+
-    '<div class="card"><h2>📚 מאושרים ('+appr.length+')</h2><div class="row" style="margin-bottom:8px"><select id="dtFilter"><option value="">כל הפרשות</option>'+Array.from(new Set(appr.map(d=>d.parasha))).map(n=>'<option>'+esc(n)+'</option>').join('')+'</select></div><div id="dtList">'+(appr.map(card).join('')||'<p class="muted">עוד אין</p>')+'</div></div>';
-  let files=[];
-  $('#dtFile').onchange=async e=>{files=Array.from(e.target.files||[]);if(!files.length)return;const st=$('#dtFileSt');
-    if(files.length===1){st.textContent='קורא את הקובץ...';try{const t=await fileToText(files[0]);$('#dtBody').value=t;if(!$('#dtTitle').value)$('#dtTitle').value=files[0].name.replace(/\.[^.]+$/,'');st.textContent='✔ הקובץ הפך לטקסט ('+t.length+' תווים) — אפשר לתקן לפני הפרסום';}catch(err){st.textContent='⚠️ לא הצלחתי לקרוא את הקובץ ('+(err.message||err)+')';}$('#dtMulti').hidden=true;}
-    else{st.textContent='נבחרו '+files.length+' קבצים — כל קובץ יהפוך לדבר תורה נפרד לפרשה שנבחרה';$('#dtMulti').hidden=false;}};
-  $('#dtAdd').onclick=async()=>{const body=$('#dtBody').value.trim();if(!body){flash('צריך טקסט');return;}
-    if(await ok(sb.from('divrei_torah').insert({parasha:$('#dtPar').value,title:$('#dtTitle').value.trim(),source_name:$('#dtSrc').value.trim(),body,author_id:me.id,author_name:$('#dtSrc').value.trim()||'מנהל האתר',status:'approved'}),'📜 פורסם — אפשר לבקש מהבוט')){dtCache=null;show('torah');}};
-  $('#dtMulti').onclick=async()=>{let done=0;for(const f of files){$('#dtFileSt').textContent='מעלה '+(done+1)+'/'+files.length+'...';try{const t=await fileToText(f);if(!t)continue;const {error}=await sb.from('divrei_torah').insert({parasha:$('#dtPar').value,title:f.name.replace(/\.[^.]+$/,''),source_name:$('#dtSrc').value.trim(),body:t.slice(0,20000),author_id:me.id,author_name:$('#dtSrc').value.trim()||'מנהל האתר',status:'approved'});if(!error)done++;}catch(e){}}
-    flash('📜 הועלו '+done+' מתוך '+files.length);dtCache=null;show('torah');};
-  $('#dtFilter').onchange=e=>{const v=e.target.value;$('#dtList').innerHTML=appr.filter(d=>!v||d.parasha===v).map(card).join('')||'<p class="muted">אין</p>';};
-  $('#boMain').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;const it=b.closest('[data-id]');const id=it.dataset.id;const v=f=>it.querySelector('[data-f='+f+']').value.trim();let q;
-    if(b.dataset.act==='save')q=sb.from('divrei_torah').update({parasha:v('parasha'),title:v('title'),source_name:v('source_name'),body:v('body')}).eq('id',id);
-    if(b.dataset.act==='ok')q=sb.from('divrei_torah').update({status:'approved',parasha:v('parasha'),title:v('title'),source_name:v('source_name'),body:v('body')}).eq('id',id);
-    if(b.dataset.act==='del'){if(!(await uiConfirm('למחוק?')))return;q=sb.from('divrei_torah').delete().eq('id',id);}
-    if(await ok(q,'✔ בוצע')){dtCache=null;show('torah');}};
-};
 
 /* ---------- חוות דעת על האתר ---------- */
 VIEWS.reviews=async function(){
@@ -1243,7 +1185,7 @@ if(!MOD_TABS.includes('clothing'))MOD_TABS.push('clothing');
 const BO_GROUPS=[
   ['📊','ראשי',['dash','pending','activity']],
   ['🛡️','בוטים ואבטחה',['shield','scrapers','security']],
-  ['✅','לאישור ותוכן מהקהילה',['torah','reviews','clothing']],
+  ['✅','לאישור ותוכן מהקהילה',['reviews','clothing']],
   ['👥','משתמשים וקשר',['users','support','broadcast','feedback','abuse','secondary','reporters','staff']],
   ['🏪','חנויות ומחירים',['chains','biz','bizreq','stores','posts','messages','prices','sources','products','categories','icons','ready']],
   ['🎨','האתר והבוט',['texts','content','ui','bot','ads','updates']],
@@ -1407,9 +1349,9 @@ VIEWS.clothing=async function(){
 
 /* ---------- ✅ ממתין לאישור — הכל במקום אחד ---------- */
 if(!MOD_TABS.includes('pending'))MOD_TABS.push('pending');
-const PK={bot:'🤖 לימוד לבוט',review:'⭐ חוות דעת על האתר',chain:'🏪 חנות חדשה',branch:'📍 סניף חדש',price:'💰 מחיר',post:'📣 מבצע של חנות',torah:'📜 דבר תורה',flag:'⚠️ מחיר שסומן "לא נכון"',feedback:'💌 הערה',chat:'💬 הודעה בצ׳אט',message:'📨 פנייה לחנות',abuse:'🚫 שפה לא נקייה',tip:'💰 טיפ לחיסכון',suggest:'💡 הצעה חדשה בלוח (✔ = ראיתי · ✖ = הסתרה)'};
+const PK={bot:'🤖 לימוד לבוט',review:'⭐ חוות דעת על האתר',chain:'🏪 חנות חדשה',branch:'📍 סניף חדש',price:'💰 מחיר',post:'📣 מבצע של חנות',flag:'⚠️ מחיר שסומן "לא נכון"',feedback:'💌 הערה',chat:'💬 הודעה בצ׳אט',message:'📨 פנייה לחנות',abuse:'🚫 שפה לא נקייה',tip:'💰 טיפ לחיסכון',suggest:'💡 הצעה חדשה בלוח (✔ = ראיתי · ✖ = הסתרה)'};
 const READ_ONLY_KINDS=['chat','message','abuse'];
-const PCR23={bot:'kb',review:'reviews',price:'prices',flag:'prices',post:'posts',torah:'torah',chain:'chains',branch:'branches'};
+const PCR23={bot:'kb',review:'reviews',price:'prices',flag:'prices',post:'posts',chain:'chains',branch:'branches'};
 async function pendingData(){
   const [p,cs,cr,cv]=await Promise.all([sb.rpc('staff_pending_items'),sb.from('clothing_shops').select('id,name,city,created_at').eq('status','pending').limit(200),sb.from('store_recs').select('id,kind,shop,body,section,created_at').eq('status','pending').limit(300),sb.from('cloth_votes').select('id,target,reason,by_name,created_at').eq('vote',-1).eq('handled',false).limit(300)]);
   const items=(p.data||[]).filter(x=>isAdmin()||!['feedback','chat','message','abuse'].includes(x.kind));
@@ -1430,7 +1372,7 @@ const _v18OpenBO=window.openBO;window.openBO=async function(){const args=argumen
 VIEWS.pending=async function(){
   const d=await pendingData();const groups={};d.items.forEach(x=>{(groups[x.kind]=groups[x.kind]||[]).push(x);});
   const n=d.items.length+d.cloth.length;const b=$('#boPendN');if(b){b.hidden=!n;b.textContent=n;}
-  let h='<div class="card"><h2>✅ ממתין לאישור ('+n+')</h2><p class="muted">כל מה שמחכה לך — דברי תורה, מחירים, חנויות, חוות דעת, ביגוד ודיווחים — במקום אחד. ✔ מאשר, ✖ דוחה.</p>'+(d.err?'<p class="muted">⚠️ '+esc(d.err.message)+' — צריך להריץ שוב את קוד ה-SQL.</p>':'')+(n?'':'<p style="font-size:18px;margin-top:10px">🎉 הכל מטופל!</p>')+'</div>';
+  let h='<div class="card"><h2>✅ ממתין לאישור ('+n+')</h2><p class="muted">כל מה שמחכה לך — מחירים, חנויות, חוות דעת, ביגוד ודיווחים — במקום אחד. ✔ מאשר, ✖ דוחה.</p>'+(d.err?'<p class="muted">⚠️ '+esc(d.err.message)+' — צריך להריץ שוב את קוד ה-SQL.</p>':'')+(n?'':'<p style="font-size:18px;margin-top:10px">🎉 הכל מטופל!</p>')+'</div>';
   Object.keys(PK).filter(k=>groups[k]).forEach(k=>{h+='<div class="card"><h2>'+PK[k]+' ('+groups[k].length+')</h2>'+groups[k].map(x=>'<div class="item"><b>'+esc(x.title||'')+'</b>'+(x.detail?'<div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(String(x.detail).slice(0,400))+'</div>':'')+'<div class="muted">'+(PCR23[k]?crSlot(PCR23[k],x.ref,{f:x.who||''}):esc(x.who||''))+' · '+esc(fmt(x.created_at))+'</div><div class="row" style="margin-top:6px">'+
     (READ_ONLY_KINDS.includes(k)?'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ טופל</button>':'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ אישור</button><button class="btn sm bad" data-pd="'+esc(k)+'|'+esc(x.ref)+'|0">✖ דחייה</button>')+'</div></div>').join('')+'</div>';});
   if(d.cloth.length)h+='<div class="card"><h2>👗 ביגוד וחתונה ('+d.cloth.length+')</h2>'+d.cloth.map(x=>'<div class="item"><b>'+esc(x.title)+'</b>'+(x.detail?'<div>'+esc(x.detail)+'</div>':'')+'<div class="muted">'+(x.crk?crSlot(x.crk,x.id):esc(x.who||''))+' · '+esc(fmt(x.at))+'</div><div class="row" style="margin-top:6px">'+
@@ -1472,7 +1414,7 @@ const _e18Sources=VIEWS.sources;
 VIEWS.sources=async function(){await _e18Sources.apply(this,arguments);if(cur!=='sources')return;
   document.querySelectorAll('#boMain tr[data-id] td:last-child').forEach(td=>{if(!td.querySelector('[data-e18src]'))td.insertAdjacentHTML('afterbegin','<button class="btn sm sec" data-e18src="1">✏️</button> ');});};
 /* ✅ ממתין לאישור: "✏️ לעריכה" — קופץ למקום שבו עורכים את הפריט, כדי לתקן לפני שמאשרים */
-const EDIT_SEC18={bot:'bot',review:'reviews',chain:'chains',branch:'chains',price:'prices',post:'posts',torah:'torah',flag:'prices',tip:'community',suggest:'community'};
+const EDIT_SEC18={bot:'bot',review:'reviews',chain:'chains',branch:'chains',price:'prices',post:'posts',flag:'prices',tip:'community',suggest:'community'};
 const _e18Pending=VIEWS.pending;
 VIEWS.pending=async function(){await _e18Pending.apply(this,arguments);if(cur!=='pending')return;
   document.querySelectorAll('#boMain [data-pd]').forEach(b=>{const k=b.dataset.pd.split('|')[0];const row=b.parentNode;if(!EDIT_SEC18[k]||row.querySelector('[data-e18go]'))return;
@@ -1520,7 +1462,7 @@ VIEWS.errors=async function(){
   const c=$('#errClr');if(c)c.onclick=async()=>{if((await uiConfirm('לנקות את כל יומן התקלות?'))&&await ok(sb.from('client_errors').delete().gt('id',0),'🗑️ נוקה'))VIEWS.errors();};
 };
 /* ---------- 🏷️ v23: קרדיט למדווחים — מתי הציבור רואה מי דיווח/כתב ---------- */
-const CR23_TYPES=[['prices','💰 דיווחי מחיר ומבצעים','"דווח ע״י ..." ליד כל מחיר'],['torah','📜 דברי תורה','"נשלח ע״י ..." (המקור / "בשם" מוצג תמיד)'],
+const CR23_TYPES=[['prices','💰 דיווחי מחיר ומבצעים','"דווח ע״י ..." ליד כל מחיר'],
   ['reviews','⭐ חוות דעת על האתר','שם הכותב/ת מעל חוות הדעת'],['clothing','👗 ביגוד וחתונה','מי המליץ / מי הציע את החנות']];
 (function(){const nav=$('#boNav');if(!nav||nav.querySelector('[data-s="credits"]'))return;
   const b=document.createElement('button');b.dataset.s='credits';b.textContent='🏷️ קרדיט למדווחים';b.hidden=!isAdmin();
@@ -1719,6 +1661,6 @@ VIEWS.pricefind=async function(){
 /* הוספת מסך לבק אופיס מסקריפט אחר: boView('key', async function(){...}) */
 window.boView=(k,fn)=>{if(typeof fn==='function')VIEWS[k]=fn;};
 window.boShow=k=>show(k);
-/* להוסיף תוכן בסוף מסך קיים בבק אופיס: boAfter('torah', async main=>{...}) */
+/* להוסיף תוכן בסוף מסך קיים בבק אופיס: boAfter('guests', async main=>{...}) */
 window.boAfter=(k,fn)=>{const o=VIEWS[k];if(typeof o!=='function'||typeof fn!=='function')return;VIEWS[k]=async function(){const r=await o.apply(this,arguments);try{await fn($('#boMain'));}catch(e){console.warn('boAfter',k,e);}return r;};};
 })();

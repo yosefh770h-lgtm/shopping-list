@@ -150,7 +150,7 @@ const BASE=['חלב','לחם','ביצים','גבינה','חמאה','עגבניו
 /* ================= נתונים ================= */
 const KEY='yamh_app_v1';
 let state=null;
-function defState(){return {priceAlerts:[],savings:[],basketSnaps:[],user:null,ownerCode:null,follow:null,lists:[{id:uid(),name:'סופר',items:[],created:Date.now()}],active:null,history:[],plans:{},bot:[],stats:{},pantry:{},customPantry:[],customRecipes:[],dark:false,group:false,lastGreet:'',lastTab:'list',homeQ:'',showMissing:false,pending:null,pendingRecipe:null,pendingNav:null,dtFlow:null,pendingCholent:false,lastCholentOffer:'',knowledge:[],gender:'f',room:null,city:'ירושלים',me:{address:{},stores:[],orders:[],providers:[]},geoCity:'',lastOffers:{}};}
+function defState(){return {priceAlerts:[],savings:[],basketSnaps:[],user:null,ownerCode:null,follow:null,lists:[{id:uid(),name:'סופר',items:[],created:Date.now()}],active:null,history:[],plans:{},bot:[],stats:{},pantry:{},customPantry:[],customRecipes:[],dark:false,group:false,lastGreet:'',lastTab:'list',homeQ:'',showMissing:false,pending:null,pendingNav:null,knowledge:[],gender:'f',room:null,city:'ירושלים',me:{address:{},stores:[],orders:[],providers:[]},geoCity:'',lastOffers:{}};}
 function load(){
   try{state=JSON.parse(localStorage.getItem(KEY));}catch(e){}
   if(!state||typeof state!=='object'||Array.isArray(state))state=defState();

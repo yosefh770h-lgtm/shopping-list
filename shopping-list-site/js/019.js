@@ -1,5 +1,5 @@
 
-/* ================= גרסה 16: הרשמה/כניסה/איפוס מוגנים בשרת (בלי שום שלב נוסף), מונה מחוברים, דבר תורה עם תגובות,
+/* ================= גרסה 16: הרשמה/כניסה/איפוס מוגנים בשרת (בלי שום שלב נוסף), מונה מחוברים,
    מכונות אוטומטיות לעסקים, יומן פעילות, תיקון עדכונים בפעמון, גרסה וסיפור באודות ================= */
 const $16=s=>document.querySelector(s);
 const APP_VERSION='20';
@@ -166,84 +166,10 @@ const _v16RenderNotif=renderNotif;
 renderNotif=function(){_v16RenderNotif.apply(this,arguments);document.querySelectorAll('#notifBody [data-nid]').forEach(el=>{if(el.querySelector('.ndel16'))return;el.insertAdjacentHTML('beforeend','<button class="ndel16" data-ndel="'+esc(el.dataset.nid)+'" aria-label="'+T('מחיקת העדכון','Delete')+'">🗑️</button>');});};
 $16('#notifBody').addEventListener('click',e=>{const d=e.target.closest('[data-ndel]');if(!d)return;e.stopPropagation();seen16.add(d.dataset.ndel);saveSeen16();inbox=inbox.filter(x=>x.id!==d.dataset.ndel);saveInbox();updateBell(false);renderNotif();},true);
 
-/* ---------- 📜 דבר תורה מהתפריט: קוראים, מגיבים 👍/👎, ושולחים ---------- */
-(function(){const z=$16('#miZmanim');if(TORAH_OFF||!z||$16('#miTorah16'))return;const b=document.createElement('button');b.id='miTorah16';b.innerHTML='📜<span>'+T('דבר תורה / וורט — לקרוא ולהוסיף','Dvar Torah')+'</span>';z.insertAdjacentElement('afterend',b);b.onclick=()=>{$16('#hMenu').classList.remove('open');openTorah16('list');};})();
-/* ---------- 📖 ספריא: הפסוקים הראשונים של פרשת השבוע — רק טקסט ברישיון פתוח, ותמיד עם ציון המקור והרישיון ---------- */
-let sefCache=null;
-const SEF_OPEN=/^(public domain|cc0|cc-by|cc-by-sa)$/i;
-function sefariaParasha(){if(sefCache)return sefCache;
-  const get=u=>fetch('https://www.sefaria.org/api/'+u).then(r=>r.ok?r.json():Promise.reject(r.status));
-  return sefCache=get('calendars?diaspora=0').then(c=>{const it=(c.calendar_items||[]).find(x=>x.title&&x.title.en==='Parashat Hashavua');
-    const m=it&&String(it.ref||'').match(/^(.+?) (\d+):(\d+)/);if(!m)return null;const ref=m[1]+' '+m[2]+':'+m[3]+'-'+(+m[3]+2);
-    return get('v3/texts/'+encodeURIComponent(ref)+'?version=hebrew&return_format=text_only').then(t=>{const v=(t.versions||[])[0];if(!v||!SEF_OPEN.test(String(v.license||'').trim()))return null;
-      const verses=[].concat(v.text||[]).flat().map(x=>String(x).replace(/<[^>]*>/g,'').replace(/[֑-ֽ֯]/g,'').trim()).filter(Boolean).slice(0,3);
-      if(!verses.length)return null;
-      return {name:String((it.displayValue&&it.displayValue.he)||''),heRef:String(t.heRef||''),verses,license:String(v.license),version:String(v.versionTitle||''),url:'https://www.sefaria.org/'+ref.replace(/ /g,'_')};});})
-    .catch(()=>{sefCache=null;return null;});}
-/* ליאמי: הפסוקים כטקסט (מחכים לספריא עד 2.5 שניות — ואם אין, ממשיכים בלי) */
-async function sefVersesText(parasha){try{const o=await Promise.race([sefariaParasha(),new Promise(r=>setTimeout(()=>r(null),2500))]);
-  /* רק אם זו הפרשה שעליה מדובר (ספריא נותנת את פרשת השבוע) */
-  return o&&(!parasha||sameParasha(o.name,parasha))?'\n\n📖 '+T('מתוך פרשת ','From Parashat ')+o.name+':\n'+o.verses.join(' ')+'\n('+o.heRef+' · '+T('מקור: ספריא','Source: Sefaria')+' · '+o.license+')':'';}catch(e){return '';}}
 /* גרסת האתר — בתחתית התפריט ☰, כדי לבדוק בקלות שהדפדפן טען את העדכון האחרון */
 const SITE_BUILD='13.10.26';
 (function(){const m=document.querySelector('#hMenu');if(!m||document.querySelector('#siteBuild'))return;
   m.insertAdjacentHTML('beforeend','<div id="siteBuild" style="text-align:center;font-size:11px;color:var(--muted);padding:8px 0 2px">'+T('גרסת האתר: ','Version: ')+SITE_BUILD+'</div>');})();
-/* ---------- 📜 וורט מהמפרשים (ספריא) — לכל פרשה: כלי יקר, אור החיים, ספורנו, רש"י על הפסוק הראשון.
-   רק טקסט ברישיון פתוח, תמיד עם המקור. "עוד" — עוברים למפרש הבא ---------- */
-const PARASHA_REF=Object.fromEntries('בראשית|Genesis 1:1;נח|Genesis 6:9;לך לך|Genesis 12:1;וירא|Genesis 18:1;חיי שרה|Genesis 23:1;תולדות|Genesis 25:19;ויצא|Genesis 28:10;וישלח|Genesis 32:4;וישב|Genesis 37:1;מקץ|Genesis 41:1;ויגש|Genesis 44:18;ויחי|Genesis 47:28;שמות|Exodus 1:1;וארא|Exodus 6:2;בא|Exodus 10:1;בשלח|Exodus 13:17;יתרו|Exodus 18:1;משפטים|Exodus 21:1;תרומה|Exodus 25:1;תצוה|Exodus 27:20;כי תשא|Exodus 30:11;ויקהל|Exodus 35:1;פקודי|Exodus 38:21;ויקרא|Leviticus 1:1;צו|Leviticus 6:1;שמיני|Leviticus 9:1;תזריע|Leviticus 12:1;מצורע|Leviticus 14:1;אחרי מות|Leviticus 16:1;קדושים|Leviticus 19:1;אמור|Leviticus 21:1;בהר|Leviticus 25:1;בחוקתי|Leviticus 26:3;במדבר|Numbers 1:1;נשא|Numbers 4:21;בהעלותך|Numbers 8:1;שלח|Numbers 13:1;קרח|Numbers 16:1;חקת|Numbers 19:1;בלק|Numbers 22:2;פנחס|Numbers 25:10;מטות|Numbers 30:2;מסעי|Numbers 33:1;דברים|Deuteronomy 1:1;ואתחנן|Deuteronomy 3:23;עקב|Deuteronomy 7:12;ראה|Deuteronomy 11:26;שופטים|Deuteronomy 16:18;כי תצא|Deuteronomy 21:10;כי תבוא|Deuteronomy 26:1;נצבים|Deuteronomy 29:9;וילך|Deuteronomy 31:1;האזינו|Deuteronomy 32:1;וזאת הברכה|Deuteronomy 33:1'.split(';').map(x=>x.split('|')));
-const SEF_MEF=[['Kli Yakar','כלי יקר'],['Or HaChaim','אור החיים'],['Sforno','ספורנו'],['Rashi','רש"י']];
-const sefVortSeen={},sefVortCache={};
-function parashaRef(p){p=String(p||'').replace(/^פרשת\s+/,'').trim();if(!p)return '';if(PARASHA_REF[p])return PARASHA_REF[p];
-  const k=Object.keys(PARASHA_REF).find(n=>sameParasha(n,p)||sameParasha(p,n));return k?PARASHA_REF[k]:'';}
-async function sefariaVort(parasha){const ref=parashaRef(parasha);if(!ref)return null;const name=String(parasha).replace(/^פרשת\s+/,'');
-  const start=sefVortSeen[name]||0;
-  for(let k=0;k<SEF_MEF.length;k++){const j=(start+k)%SEF_MEF.length,[en,he]=SEF_MEF[j],key=en+' on '+ref;
-    try{let o=sefVortCache[key];
-      if(o===undefined){const r=await fetch('https://www.sefaria.org/api/v3/texts/'+encodeURIComponent(key)+'?version=hebrew&return_format=text_only');
-        const t=r.ok?await r.json():null;const v=t&&(t.versions||[])[0];o=null;
-        if(v&&SEF_OPEN.test(String(v.license||'').trim())){const body=[].concat(v.text||[]).flat().map(x=>String(x).replace(/<[^>]*>/g,'').replace(/[֑-ֽ֯]/g,'').trim()).filter(Boolean).join('\n');
-          if(body.length>40)o={who:he,parasha:name,body:body.length>1200?body.slice(0,1200).replace(/\s\S*$/,'')+'…':body,heRef:String(t.heRef||''),license:String(v.license),version:String(v.versionTitle||''),url:'https://www.sefaria.org/'+key.replace(/ /g,'_')};}
-        sefVortCache[key]=o;}
-      if(o){sefVortSeen[name]=j+1;return o;}}catch(e){}}
-  return null;}
-function sefVortText(o){return '📜 '+T('וורט מהמפרשים — ','From the commentators — ')+o.who+T(' על פרשת ',' on Parashat ')+o.parasha+'\n\n'+o.body+'\n\n('+o.heRef+' · '+T('מקור: ספריא','Source: Sefaria')+' · '+o.license+')';}
-function sefVortCard(o){return '<div class="sef16"><b>📜 '+T('וורט מהמפרשים — ','From the commentators — ')+esc(o.who)+'</b><p class="sefv" style="font-size:16px;line-height:1.8">'+esc(o.body).replace(/\n/g,'<br>')+'</p>'+
-  '<small>'+esc(o.heRef)+' · '+T('מקור: ','Source: ')+'<a href="'+esc(o.url)+'" target="_blank" rel="noopener">'+T('ספריא','Sefaria')+'</a> · '+esc(o.version)+' · '+esc(o.license)+'</small></div>';}
-function sefariaCard(o){return '<div class="sef16"><b>📖 '+T('מתוך פרשת ','From Parashat ')+esc(o.name)+'</b><p class="sefv">'+o.verses.map(esc).join(' ')+'</p>'+
-  '<small>'+esc(o.heRef)+' · '+T('מקור: ','Source: ')+'<a href="'+esc(o.url)+'" target="_blank" rel="noopener">'+T('ספריא','Sefaria')+'</a> · '+esc(o.version)+' · '+esc(o.license)+'</small></div>';}
-async function openTorah16(view){
-  if(!sb||!authUser){flash(T('צריך להיות מחוברים','Sign in first'));return;}
-  const tabs='<div class="catbar"><button class="cb'+(view==='list'?' on':'')+'" data-dtv="list">📖 '+T('דברי תורה','Read')+'</button><button class="cb'+(view==='add'?' on':'')+'" data-dtv="add">➕ '+T('הוספת דבר תורה','Add')+'</button></div>';
-  if(view==='add'){const par=(typeof nextParasha==='function'&&nextParasha())||'';
-    const b=openSheet('📜 '+T('הוספת דבר תורה / וורט','Add a Dvar Torah'),tabs+'<p class="muted-note">'+T('דבר התורה יתפרסם לכולם אחרי אישור של צוות האתר. אפשר לכתוב בשמך או בשם מי שאמר.','Published after approval.')+'</p>'+
-      '<label class="il" for="dt16p">'+T('פרשה / חג','Parasha')+'</label><input id="dt16p" maxlength="60" value="'+esc(par.replace(/^פרשת\s+/,''))+'">'+
-      '<label class="il" for="dt16t">'+T('כותרת','Title')+'</label><input id="dt16t" maxlength="150">'+
-      '<label class="il" for="dt16b">'+T('דבר התורה','Text')+'</label><textarea id="dt16b" maxlength="20000" style="min-height:180px"></textarea>'+
-      '<label class="il" for="dt16s">'+T('בשם (לא חובה)','Source (optional)')+'</label><input id="dt16s" maxlength="120" placeholder="'+T('למשל: הרב ... / שמי','e.g. Rabbi ...')+'">'+
-      '<button id="dt16go" style="width:100%;margin-top:10px">📤 '+T('שליחה לאישור','Send for approval')+'</button>');
-    b.onclick=async e=>{const v=e.target.closest('[data-dtv]');if(v){openTorah16(v.dataset.dtv);return;}
-      if(e.target.closest('#dt16go')){const parasha=$16('#dt16p').value.trim(),title=$16('#dt16t').value.trim(),body=$16('#dt16b').value.trim(),src=$16('#dt16s').value.trim();
-        if(!parasha||body.length<20){flash(T('צריך פרשה ולפחות כמה שורות','Parasha and text needed'));return;}
-        if([parasha,title,body,src].some(hasProfanity)){flash('🙏');return;}
-        const {error}=await sb.from('divrei_torah').insert({parasha,title,body,source_name:src,author_id:authUser.id});
-        if(error){flash('⚠️ '+error.message);return;}logAct('torah_submit',parasha+' · '+title);closeSheet();flash('📜 '+T('תודה! דבר התורה נשלח לאישור','Thanks! Sent for approval'));}};
-    return;}
-  const b=openSheet('📜 '+T('דבר תורה / וורט','Divrei Torah'),tabs+'<div class="empty">'+T('טוען...','Loading...')+'</div>');
-  const {data,error}=await sb.rpc('torah_list',{p_limit:40});
-  const list=Array.isArray(data)?data:[];
-  b.innerHTML=tabs+(error?'<p class="muted-note">⚠️ '+(isAdmin()?T('צריך להריץ שוב את קוד ה-SQL. ',''):'')+esc(error.message)+'</p>':'')+
-    (list.length?list.map(d=>'<article class="dt16" data-dt="'+esc(d.id)+'"><header><b>'+esc(d.title||('פרשת '+d.parasha))+'</b><small>📜 '+esc(d.parasha)+(d.source_name?' · '+esc(d.source_name):'')+crSlot('torah',d.id,{p:' · '+T('נשלח ע״י ','sent by ')})+'</small></header>'+
-      '<div class="dtb16">'+esc(d.body).replace(/\n/g,'<br>')+'</div>'+
-      '<div class="dtr16"><button data-dtr="1" class="'+(d.mine===1?'on':'')+'" aria-pressed="'+(d.mine===1)+'">👍 '+T('אהבתי','Liked')+' <b>'+(d.up||0)+'</b></button><button data-dtr="-1" class="'+(d.mine===-1?'on':'')+'" aria-pressed="'+(d.mine===-1)+'">👎 '+T('פחות','Less')+' <b>'+(d.down||0)+'</b></button></div></article>').join(''):
-    '<div class="empty">'+T('עוד אין דברי תורה מאושרים 🙂<br>אפשר להוסיף ב"➕ הוספת דבר תורה".','None yet 🙂')+'</div>');
-  sefariaParasha().then(async o=>{const bar=b.querySelector('.catbar');if(!o||!bar||!b.isConnected||b.querySelector('.sef16'))return;
-    const vo=await sefariaVort(o.name);if(!b.isConnected||b.querySelector('.sef16'))return;bar.insertAdjacentHTML('afterend',sefariaCard(o)+(vo?sefVortCard(vo):''));});
-  b.onclick=async e=>{const v=e.target.closest('[data-dtv]');if(v){openTorah16(v.dataset.dtv);return;}
-    const r=e.target.closest('[data-dtr]');if(!r)return;const card=r.closest('[data-dt]');const id=card.dataset.dt;const val=+r.dataset.dtr;const d=list.find(x=>x.id===id);
-    if(d.mine===val){await sb.from('torah_reactions').delete().eq('dt_id',id).eq('user_id',authUser.id);if(val===1)d.up--;else d.down--;d.mine=null;}
-    else{const {error:er}=await sb.from('torah_reactions').upsert({dt_id:id,user_id:authUser.id,value:val});if(er){flash('⚠️ '+er.message);return;}if(d.mine===1)d.up--;if(d.mine===-1)d.down--;if(val===1)d.up++;else d.down++;d.mine=val;}
-    card.querySelectorAll('[data-dtr]').forEach(x=>{const on=+x.dataset.dtr===d.mine;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);x.querySelector('b').textContent=+x.dataset.dtr===1?d.up:d.down;});};
-}
 
 /* ---------- 🛠️ יומן פעילות (המנהל רואה מה כל אחד עושה) ---------- */
 function logAct(action,detail){if(!sb||!authUser)return;try{sb.rpc('log_activity',{p_action:action,p_detail:String(detail||'').slice(0,300)}).then(()=>{},()=>{});}catch(e){}}

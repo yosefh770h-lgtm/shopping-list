@@ -188,19 +188,6 @@ async function checkSaleAlerts(){
   }catch(e){console.warn('sale alerts',e);}
 }
 
-/* ---------- דבר תורה: תזכורת בחמישי, שישי וערב חג ---------- */
-function erevChag(d){
-  if(!HC)return '';try{const t=new Date(d);t.setDate(t.getDate()+1);
-    const isChag=x=>holidaysOn(x).filter(e=>e.getFlags()&HC.flags.CHAG);
-    const tm=isChag(t);if(!tm.length||isChag(d).length)return '';return heName(tm[0]);}catch(e){return '';}
-}
-function dtReminderToday(){
-  if(TORAH_OFF)return null;
-  const d=new Date(),dow=d.getDay();const chag=erevChag(d);
-  if(chag)return {kind:'chag',name:chag};
-  if(dow===4||dow===5)return {kind:'shabbat',name:T('שבת','Shabbat')};
-  return null;
-}
 function showNudge(txt){const n=document.querySelector('#botNudge');document.querySelector('#botNudgeTxt').textContent=txt;n.hidden=false;clearTimeout(n._t);n._t=setTimeout(()=>{n.hidden=true;},25000);}
 document.querySelector('#botNudge').addEventListener('click',e=>{document.querySelector('#botNudge').hidden=true;if(e.target.closest('#botNudgeX'))return;openBot();});
 function offeredToday(k){state.lastOffers=state.lastOffers||{};return state.lastOffers[k]===dayKey(new Date());}
@@ -557,7 +544,7 @@ document.querySelector('#miReviews').onclick=openReviews;
 document.querySelector('#btnCloseReviews').onclick=()=>document.querySelector('#reviewsOverlay').classList.remove('open');
 
 /* ---------- יאמי: פקודות חדשות + הצעות יזומות ---------- */
-let askStoreTs=0,pendingDtAsk=false;
+let askStoreTs=0;
 const NOPE=/^(לא|דלג|אין|לא משנה|לא יודע|לא יודעת|עזוב|עזבי|בטל)(\s|$)/;
 const YES2=/^(כן|בטח|יש|יש לי|בשמחה|רוצה|אשמח|אוקיי|אוקי|סבבה|כמובן)(\s|!|$)/;
 function dealsText(r){
@@ -575,17 +562,11 @@ async function v7BotPre(raw){
     if(store&&t.split(' ').length<=5){const hh=state.history.find(h=>h.ts===ts);if(hh){hh.store=store;save();}
       botSay(T('רשמתי שקנית ב'+store+' 🏪 — ככה אני לומדת איפה את/ה קונה כל מוצר, ואזכיר לך בפעם הבאה.','Noted: '+store+' 🏪'));return true;}
   }
-  if(pendingDtAsk&&!TORAH_OFF){
-    pendingDtAsk=false;
-    if(YES2.test(t)){const cur=currentParashaName();state.dtFlow={step:'parasha',suggest:cur};save(true);botSay(T('איזה כיף! 📜 על איזו פרשה?','Great! 📜 Which parasha?')+(cur?'\n('+T('פרשת השבוע: '+cur+' — '+GW2('כתבי','כתוב')+' "כן"','This week: '+cur+' — write "yes"')+')':''));return true;}
-    if(NOPE.test(t)){botSay(T('בסדר גמור 🙂 אם '+GW2('תרצי','תרצה')+' לשמוע דבר תורה — '+GW2('כתבי','כתוב')+' "דבר תורה". שבת שלום! 🕯️','No problem 🙂 Shabbat shalom! 🕯️'));return true;}
-  }
   /* "כן" לקנייה הקודמת — מוסיפים עם הכמויות */
   if(state.pending&&state.pending.qty&&/^(כן|בסדר|סבבה|אישור|רוצה|בצע|טוב|מצוין|אוקיי|אוקי|יאללה|בטח|בשמחה|כמובן)(\s|$)|^(תוסיף|תוסיפי|הוסיפי|הוסף|תוסיפו)(\s|$)/.test(t)){
     const pd=state.pending;state.pending=null;const n=addMany(pd.items.map(x=>({n:x,q:pd.qty[x]||''})));
     botSay(T('הוספתי לרשימה ✅','Added ✅')+' ('+n+')\n'+pd.items.map(x=>'• '+x+(pd.qty[x]?' ×'+pd.qty[x]:'')).join('\n'));return true;}
-  /* שיחה באמצע (דבר תורה, בחירת סניף, שאלת כן/לא) — מעבירים ליאמי הרגילה */
-  if(state.dtFlow)return false;
+  /* שיחה באמצע (בחירת סניף, שאלת כן/לא) — מעבירים ליאמי הרגילה */
   if(state.pendingNav&&/^\d{1,2}$/.test(t))return false;
   if(state.pending&&(/^(כן|בסדר|סבבה|אישור|רוצה|בצע|טוב|מצוין|אוקיי|אוקי|יאללה|בטח|בשמחה|כמובן)(\s|$)|^(תוסיף|תוסיפי|הוסיפי|הוסף|תוסיפו)(\s|$)/.test(t)||/^(לא|בטל|אין|לא עכשיו|לא צריך|לא תודה|אין צורך)(\s|$)/.test(t)))return false;
   /* סיום קנייה — רק מה שסומן, ואז "איפה קנית?" */
@@ -600,12 +581,12 @@ async function v7BotPre(raw){
     const last=lastShopping();if(!last){botSay(T('עוד אין קנייה קודמת 🙂 אחרי שתסיימו קנייה — אזכור אותה.','No previous shopping yet 🙂'));return true;}
     const l=curList();const missing=last.items.filter(i=>!l.items.some(x=>x.n===i.n&&!x.done));
     if(!missing.length){botSay(T('כל מה שקנית בפעם הקודמת כבר ברשימה ✔','Everything from last time is already on the list ✔'));return true;}
-    pendingDtAsk=false;state.pending={items:missing.map(i=>i.n),qty:Object.fromEntries(missing.map(i=>[i.n,i.q||'']))};save();
+    state.pending={items:missing.map(i=>i.n),qty:Object.fromEntries(missing.map(i=>[i.n,i.q||'']))};save();
     botSay('🔁 '+T('בפעם הקודמת ('+fmtDate(new Date(last.ts))+(last.stores.length?' · '+last.stores.join(', '):'')+') קנית:','Last time you bought:')+'\n'+missing.map(i=>'• '+(i.e||emojiOf(i.n))+' '+i.n+(i.q?' ×'+i.q:'')).join('\n')+'\n\n'+T('להוסיף הכל לרשימה? (כן/לא)','Add all to the list? (yes/no)'));return true;
   }
   if(/(מה (כנראה )?נגמר|הצעות לקנייה|מה בדרך כלל אני קונה|מה אני קונה בדרך כלל)/.test(t)||/(מה כדאי (לקנות|להוסיף)|תציעי לי)(\s+(לי|לנו|מה לקנות|מה להוסיף|מוצרים|היום|השבוע|בסופר|לרשימה))*[?？!.]*$/.test(t)){
     const due=dueItems();if(!due.length){const top=habits().prods.slice(0,8);botSay(top.length?T('לפי ההרגלים שלך, לא נראה שמשהו נגמר עכשיו 🙂\nהמוצרים שאת/ה הכי קונה: ','Nothing seems to be running out 🙂 Your top products: ')+top.map(p=>p.n).join(', '):T('עוד אין לי מספיק היסטוריה 🙂','Not enough history yet 🙂'));return true;}
-    pendingDtAsk=false;state.pending={items:due.map(p=>p.n)};save();
+    state.pending={items:due.map(p=>p.n)};save();
     botSay('⏰ '+T('לפי ההרגלים שלך, כנראה הגיע הזמן לקנות:','Based on your habits, probably time to buy:')+'\n'+due.map(p=>'• '+p.e+' '+p.n+' ('+T('כל ~'+p.every+' ימים, לאחרונה '+ago(p.last),'every ~'+p.every+' days')+')').join('\n')+'\n\n'+T('להוסיף לרשימה? (כן/לא)','Add to the list? (yes/no)'));return true;
   }
   const whereP=t.match(/^איפה (?:אני קונה|אני קונה את|קניתי|קנינו|קונים אצלנו) (?:את )?(?:ה)?(.+?)\??$/);
@@ -660,14 +641,7 @@ aiContext=function(){
 /* הצעות יזומות כשפותחים את יאמי — פעם ביום לכל סוג */
 function v7Offers(){
   if(!state.user)return;
-  const asked=()=>state.pending||pendingDtAsk||state.dtFlow;
-  const dt=dtReminderToday();
-  if(dt&&botCfg.dtReminder!==false&&!offeredToday('dtask')){
-    markOffered('dtask');
-    const what=dt.kind==='chag'?T('ערב '+dt.name,'Erev '+dt.name):(new Date().getDay()===4?T('יום חמישי — שבת בפתח','Thursday — Shabbat is coming'):T('ערב שבת קודש','Erev Shabbat'));
-    if(asked())botSay('📜 '+what+' 🕯️\n'+T('יש לך דבר תורה לשתף? '+GW2('כתבי','כתוב')+' "לשתף דבר תורה" ואעביר אותו למנהל — או "דבר תורה" כדי לקבל אחד.','Have a Dvar Torah to share? Write "share dvar torah".'));
-    else{pendingDtAsk=true;botSay('📜 '+what+' 🕯️\n'+T('יש לך דבר תורה לשתף עם כולם? (כן/לא)','Do you have a Dvar Torah to share? (yes/no)'));}
-  }
+  const asked=()=>state.pending;
   const dow=new Date().getDay();const ord=meData().orders.filter(o=>+o.day===dow);
   if(ord.length&&!offeredToday('order')&&(dow!==6||new Date().getHours()>=19)){markOffered('order');botSay('⏰ '+T('תזכורת: היום יום הזמנה','Reminder: order day today')+' — '+ord.map(o=>(o.store||'')+(o.time?' '+T('בשעה','at')+' '+o.time:'')+(o.note?' ('+o.note+')':'')).join(' · '));}
   const due=dueItems();
@@ -682,22 +656,16 @@ function v7Offers(){
 const _v7OpenBot=openBot;
 openBot=function(){_v7OpenBot();document.querySelector('#botNudge').hidden=true;v7Offers();};
 document.querySelector('#botFab').onclick=()=>openBot();
-/* בכל כניסה: תזכורות, התראות על מבצעים, דבר תורה */
+/* בכל כניסה: תזכורות והתראות על מבצעים */
 function v7AfterEnter(){
   if(!state.user)return;
-  const dt=dtReminderToday();
-  if(dt&&botCfg.dtReminder!==false){
-    const what=dt.kind==='chag'?T('ערב '+dt.name,'Erev '+dt.name):T('שבת מתקרבת','Shabbat is coming');
-    if(!offeredToday('dtnudge')){markOffered('dtnudge');setTimeout(()=>showNudge('📜 '+what+' — '+T('יש לך דבר תורה לשתף? לחצו כאן 👩‍🍳','got a Dvar Torah to share? Tap here 👩‍🍳')),3500);}
-    notify('torah:'+dayKey(new Date()),'torah',what+' 🕯️',T('יש לך דבר תורה? אפשר לשתף דרך יאמי — או לבקש ממנה דבר תורה על הפרשה.','Share a Dvar Torah through Yami, or ask her for one.'),'');
-  }
   const dow=new Date().getDay();meData().orders.filter(o=>+o.day===dow&&(dow!==6||new Date().getHours()>=19)).forEach(o=>notify('order:'+o.id+':'+dayKey(new Date()),'order',T('היום יום הזמנה','Order day today')+(o.store?' — '+o.store:''),(o.time?T('בשעה ','at ')+o.time:'')+(o.note?' · '+o.note:''),'list'));
   const due=dueItems();if(due.length)notify('due:'+dayKey(new Date()),'order',T('כנראה נגמרו: ','Probably running out: ')+due.slice(0,4).map(p=>p.n).join(', '),T('לפי ההרגלים שלך — אפשר להוסיף בלחיצה מהרשימה הריקה או מיאמי','Based on your habits'),'list');
   setTimeout(checkSaleAlerts,6000);
 }
 /* ביציאה — מנקים את ההתראות של המשתמש מהמכשיר */
 const _v7Logout=doLogout;
-doLogout=async function(){inbox=[];saveInbox();updateBell(false);document.querySelector('#botNudge').hidden=true;askStoreTs=0;pendingDtAsk=false;return _v7Logout();};
+doLogout=async function(){inbox=[];saveInbox();updateBell(false);document.querySelector('#botNudge').hidden=true;askStoreTs=0;return _v7Logout();};
 const _v7AfterEnter=afterEnter;
 afterEnter=function(){_v7AfterEnter();setTimeout(v7AfterEnter,2500);};
 setInterval(()=>{if(document.visibilityState==='visible')checkSaleAlerts();},10*60*1000);

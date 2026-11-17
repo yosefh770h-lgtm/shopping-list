@@ -300,20 +300,16 @@ async function v18BotPre(raw){if(!clothOn18())return false;const t=norm(raw);
   if(/(חנויות?\s+(ביגוד|בגדים|נעליים)|^(ה)?ביגוד(\s+(ל)?(גברים|נשים))?[?？!.]*$|איפה\s+(לקנות|קונים)\s+(בגדים|חליפ|נעליים|שמל|כובע)|^(חליפות|חליפה|בגדים|נעליים)\s+(ל)?(גברים|נשים|לגבר|לאישה))/.test(t)){const men=/(גבר|חליפ|כובע|קפוט|ציצית|טלית)/.test(t);openClothing18(men?'men':'women');botSay('👗 '+T('פתחתי את חנויות הביגוד — '+(men?'גברים':'נשים')+', לפי קטגוריות ועם המלצות של לקוחות.','Opened clothing stores.'));return true;}
   return false;}
 yamiStep(v18BotPre);
-/* ---------- יאמי: "בטל" עוצר כל שאלה פתוחה, ובקשה חדשה לא נבלעת בשאלות של "לשתף דבר תורה" ---------- */
+/* ---------- יאמי: "בטל" עוצר כל שאלה פתוחה ---------- */
 const CANCEL19=/^(בטל|ביטול|בטלי|עזוב|עזבי|תעזבי|לא רוצה|לא משנה הכל|עצור|stop|cancel)[.!]*$/i;
-const CMD19=/^(עזרה|פרשת השבוע|זמני שבת|דבר תורה|הסידורים שלי|מה ברשימה|מה יש לי בבית|מה חסר|סיימתי קני|מצב כהה|מצב בהיר|איפה הכי זול|מבצעים)/;
-function openFlows19(){return !!(botAdd15||state.dtFlow||state.pending||state.pendingNav||(typeof pendingStockAsk!=='undefined'&&pendingStockAsk));}
-function clearFlows19(){botAdd15=null;state.dtFlow=null;state.pending=null;state.pendingNav=null;try{pendingStockAsk=null;}catch(e){}save();}
+function openFlows19(){return !!(botAdd15||state.pending||state.pendingNav||(typeof pendingStockAsk!=='undefined'&&pendingStockAsk));}
+function clearFlows19(){botAdd15=null;state.pending=null;state.pendingNav=null;try{pendingStockAsk=null;}catch(e){}save();}
 /* הצעה של יאמי ("להוסיף הכל לרשימה?") תקפה רק להודעה שאחריה — אם דיברו על משהו אחר, "כן" מאוחר לא יוסיף פתאום 20 מוצרים */
 let offerSeen19=null;
 function expireOffers19(){const v=state.pending;if(v&&offerSeen19===v){state.pending=null;offerSeen19=null;save();}else offerSeen19=v||null;}
 async function v19BotPre(raw){const t=norm(raw);
   expireOffers19();
   if(CANCEL19.test(t)&&openFlows19()){clearFlows19();botSay(T('בסדר, ביטלתי 🙂','OK, cancelled 🙂'));return true;}
-  /* באמצע "לשתף דבר תורה" כתבו פקודה מוכרת או שאלה — עוזבים את השאלות ועונים לבקשה */
-  if(state.dtFlow&&(CMD19.test(t)||/[?？]$/.test(raw.trim()))){const was=T('שיתוף דבר התורה','sharing the dvar Torah');
-    state.dtFlow=null;save();botSay('↩️ '+T('עזבתי את '+was+' — אפשר להתחיל שוב מתי שרוצים.','Stopped '+was+'.'));return false;}
   return false;}
 yamiStep(v19BotPre);
 
