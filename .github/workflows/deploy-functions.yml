@@ -34,5 +34,5 @@ jobs:
           for dir in supabase/functions/*/; do
             name=$(basename "$dir")
             echo "▶ $name"
-            supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt
+            supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt --yes
           done
