@@ -8,7 +8,7 @@ const nat=()=>{try{return window.YamApp&&typeof YamApp.appInfo==='function'?JSON
 
 /* ---------- 📐 גודל תצוגה ---------- */
 function applyView66(){const v=prefs.view66||'auto';size66(v);const r=document.documentElement;
-  r.classList.toggle('norail66',!!prefs.noRail66);r.classList.toggle('rail66',prefs.noRail66===false);r.classList.toggle('nosugg66',!!prefs.noSugg66);r.classList.toggle('norec66',RECIPES_OFF||!!prefs.noRec66);}
+  r.classList.toggle('norail66',!!prefs.noRail66);r.classList.toggle('rail66',prefs.noRail66===false);r.classList.toggle('nosugg66',!!prefs.noSugg66);}
 window.applyView66=applyView66;
 applyView66();
 const devName=()=>{const n=nat();const r=document.documentElement;const kind=r.classList.contains('dev66-tab')?T('טאבלט','Tablet'):r.classList.contains('dev66-pc')?T('מחשב','Computer'):T('טלפון','Phone');
@@ -28,7 +28,6 @@ function openView66(){
     chk('sugg',!prefs.noSugg66,T('הצעות לקנייה (מה כנראה נגמר, קנייה קודמת, הצעות של יאמי)','Shopping suggestions'))+
     chk('favs',!state.hideFavs,T('שורת המוצרים הקבועים ⭐','Favourites row ⭐'))+
     chk('rail',prefs.noRail66===false,T('הכפתורים בצד (מלאי, לבית, קבלה)','Side buttons (stock, add, receipt)'))+
-    (RECIPES_OFF?'':chk('rec',!prefs.noRec66,T('מתכונים (ספר המתכונים, הוספת מתכון, והצעות מתכונים של יאמי)','Recipes (recipe book, add a recipe, Yami recipe offers)')))+
     '<p class="muted-note">'+T('נשמר במכשיר הזה.','Saved on this device.')+'</p></div>');
   b.onclick=e=>{const s=e.target.closest('[data-sz66]');if(!s)return;prefs.view66=s.dataset.sz66;savePrefs();applyView66();openView66();
     flash('📐 '+T('גודל התצוגה עודכן','Display size updated'));};
@@ -37,7 +36,6 @@ function openView66(){
     if(k==='sugg'){prefs.noSugg66=!on;state.hideBotTips=!on;save(true);try{applyBotTips();}catch(x){}}
     if(k==='favs'){state.hideFavs=!on;if(on)state.favHidden=[];save(true);}
     if(k==='rail')prefs.noRail66=!on;
-    if(k==='rec'){prefs.noRec66=!on;try{renderBotChips();}catch(x){}}
     savePrefs();applyView66();try{render();}catch(x){}};
 }
 window.openView66=openView66;
@@ -52,11 +50,6 @@ document.addEventListener('click',e=>{const x=e.target.closest('[data-tickx66]')
 if(typeof notifySugg==='function'){const _ns=notifySugg;notifySugg=function(){if(prefs.noSugg66)return;return _ns.apply(this,arguments);};}
 if(typeof v7Offers==='function'){const _o7=v7Offers;v7Offers=function(){if(prefs.noSugg66)return;return _o7.apply(this,arguments);};}
 if(typeof v8Offers==='function'){const _o8=v8Offers;v8Offers=function(){if(prefs.noSugg66)return;return _o8.apply(this,arguments);};}
-/* 🍲 מתכונים מוסתרים: לא פותחים את ספר המתכונים (גם לא מקישור או מפרסומת), יאמי לא מציעה מתכונים מיוזמתה, ואין כפתורי מתכונים בצ'אט */
-if(typeof openRecipes==='function'){const _or=openRecipes;openRecipes=function(){if(RECIPES_OFF)return;if(prefs.noRec66){flash('🍲 '+T('המתכונים מוסתרים — אפשר להחזיר ב⚙️ ← גודל תצוגה ומה להציג','Recipes are hidden — turn them back on in ⚙️ → Display'));return;}return _or.apply(this,arguments);};}
-if(typeof offerCholent==='function'){const _oc=offerCholent;offerCholent=function(){if(RECIPES_OFF||prefs.noRec66)return;return _oc.apply(this,arguments);};}
-if(typeof v8Offers==='function'&&typeof markOffered==='function'){const _o8r=v8Offers;v8Offers=function(){if(RECIPES_OFF||prefs.noRec66)try{markOffered('shabbatrec');}catch(e){}return _o8r.apply(this,arguments);};}
-if(typeof botChips==='function'){const _bc=botChips;botChips=function(){const b=_bc.apply(this,arguments);return RECIPES_OFF||prefs.noRec66?b.filter(c=>!/מתכון|להכין|חמין/.test(c)):b;};}
 
 /* ---------- ✨ גרסה חדשה של האתר: האפליקציה (והאתר) מתעדכנים לבד ----------
    בודקים מול השרת אם הדף השתנה (ETag). כשחוזרים לאפליקציה ויש גרסה חדשה — טוענים אותה מחדש, רק כשלא באמצע הקלדה או חלון פתוח.

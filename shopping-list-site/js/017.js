@@ -197,7 +197,7 @@ async function v15BotPre(raw){
   }
   /* "תוסיפי את הכל" כשאין שום דבר שמחכה — שואלת מה להוסיף, ולא מוסיפה "הכל" */
   const askProd=/^(אני )?(רוצה|רוצים|צריך|צריכה|בא לי)?\s*(להוסיף|הוספת|תוסיפי|תוסיף|הוסף|הוסיפי|תוסיפו)\s+(מוצר|משהו|פריט)$/.test(t)||
-    (!state.pending&&!state.pendingRecipe&&/^(תוסיפי|תוסיף|הוסף|הוסיפי|תוסיפו)\s+(את\s+)?(הכל|הכול|אותם|זה|את זה)$/.test(t));
+    (!state.pending&&/^(תוסיפי|תוסיף|הוסף|הוסיפי|תוסיפו)\s+(את\s+)?(הכל|הכול|אותם|זה|את זה)$/.test(t));
   if(askProd){botAdd15={stage:'name',items:[]};botSay(T('איזה מוצר להוסיף? 🙂','Which product?'));return true;}
   const looksQ=/[?？]$/.test(raw.trim())||/^(מה|איך|למה|מי|מתי|איפה|כמה|האם|היכן|אפשר)(\s|$)/.test(t)||YAMI_ASK.test(t);
   if(!looksQ&&ADDVERBS.test(t)&&t.length<120&&!/^(יש לי|יש בבית|אין לי|קניתי|הבאתי|השתמשתי|הסר|מחק|תמחק|למד|סיימתי|גמרתי|סיום|רשימה חדשה|עוד יכולות|עוד דבר תורה|עוד דת|עוד ד״ת|עוד בדיחה|עוד שאלה|עוד משהו$)/.test(t)&&!/(תוכנית|מתכון|חמין|צולנט|קנייה|קניה|קניות|הקנייה|עזרה|לעזור|תעזרי)/.test(t)&&!(/(^|\s)(ב|ל)?יום (ראשון|שני|שלישי|רביעי|חמישי|שישי)(\s|$)/.test(t)&&/(^|\s)(צריך|צריכה|רק)(\s|$)/.test(t))){
@@ -288,7 +288,6 @@ function canSee15(sec){if(!roomAcc15||roomAcc15.role!=='secondary')return true;c
 function applyPermsUi15(){
   const hide=(sel,h)=>document.querySelectorAll(sel).forEach(b=>{b.hidden=!!h;});
   hide('.tab[data-t="hist"]',!canSee15('history'));hide('.tab[data-t="home"]',!canSee15('home'));hide('.tab[data-t="list"]',!canSee15('lists'));
-  hide('#miRecipes,#miRecipe',!canSee15('recipes'));
   if(typeof tab!=='undefined'&&((tab==='hist'&&!canSee15('history'))||(tab==='home'&&!canSee15('home')))){tab='list';setTimeout(()=>setTab('list'),0);}
   const sb15=$15('#secBadge15');if(sb15){sb15.hidden=!(roomAcc15&&roomAcc15.role==='secondary');if(!sb15.hidden)sb15.textContent='👥 '+T('מחובר/ת לחשבון של ','Linked to ')+(roomAcc15.owner_name||'');}
 }
@@ -344,9 +343,9 @@ pushCloud=function(){
 };
 
 /* הזמנה: קישור + סיסמה חד פעמית */
-const PERM_LABELS15={view:[['lists',T('רשימות הקניות','Shopping lists')],['history',T('היסטוריית קניות','Shopping history')],['home',T('הבית שלי (מה יש ומה חסר)','My home')]].concat(RECIPES_OFF?[]:[['recipes',T('המתכונים שלי','My recipes')]]),
+const PERM_LABELS15={view:[['lists',T('רשימות הקניות','Shopping lists')],['history',T('היסטוריית קניות','Shopping history')],['home',T('הבית שלי (מה יש ומה חסר)','My home')]],
   act:[['add',T('להוסיף מוצרים','Add products')],['check',T('לסמן מה נקנה','Tick bought items')],['delete',T('למחוק מוצרים','Delete products')],['finish',T('לאשר קנייה (סיום קנייה)','Approve / finish shopping')],['home_edit',T('לעדכן מה יש בבית','Update home stock')]]};
-const DEF_PERMS15={view:{lists:true,history:true,home:true,recipes:true},act:{add:true,check:true,delete:false,finish:true,home_edit:true}};
+const DEF_PERMS15={view:{lists:true,history:true,home:true},act:{add:true,check:true,delete:false,finish:true,home_edit:true}};
 function permsForm15(p,pre){p=p||DEF_PERMS15;return '<div class="perm15"><b>👁️ '+T('מה הוא/היא יראו:','Can see:')+'</b>'+PERM_LABELS15.view.map(([k,l])=>'<label><input type="checkbox" data-pv="'+k+'"'+(p.view&&p.view[k]===false?'':' checked')+' id="'+pre+'v'+k+'"> '+l+'</label>').join('')+
   '<b>✋ '+T('מה מותר לעשות:','Can do:')+'</b>'+PERM_LABELS15.act.map(([k,l])=>'<label><input type="checkbox" data-pa="'+k+'"'+((p.act&&p.act[k]!==undefined?p.act[k]:DEF_PERMS15.act[k])?' checked':'')+' id="'+pre+'a'+k+'"> '+l+'</label>').join('')+'</div>';}
 function readPerms15(box){const o={view:{},act:{}};box.querySelectorAll('[data-pv]').forEach(c=>o.view[c.dataset.pv]=c.checked);box.querySelectorAll('[data-pa]').forEach(c=>o.act[c.dataset.pa]=c.checked);return o;}

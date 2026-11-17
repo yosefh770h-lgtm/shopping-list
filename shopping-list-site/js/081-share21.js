@@ -4,7 +4,7 @@
    מקבל רק כינוי במקום קוד החשבון, וכותב רק דרך merge_partner_put — שלא נוגע במה שלא שותף איתו. אפשר לשנות בכל רגע. */
 (function(){
   if(typeof openMerge20!=='function'||typeof canSee15!=='function')return;
-  const SECS=[['history','🧾','היסטוריית קניות','Shopping history'],['home','🏠','הבית שלי (מה יש ומה חסר)','My home (stock)']].concat(RECIPES_OFF?[]:[['recipes','🍲','המתכונים שלי','My recipes']]).concat([
+  const SECS=[['history','🧾','היסטוריית קניות','Shopping history'],['home','🏠','הבית שלי (מה יש ומה חסר)','My home (stock)']].concat([
     ['errands','📌','תזכורות וסידורים','Reminders & errands'],['budget','💰','תקציב הבית','Home budget']]);
   const isPartner=()=>!!(roomAcc15&&roomAcc15.role==='partner');
   const shareSig=s=>{try{return JSON.stringify(s||null);}catch(e){return '';}};

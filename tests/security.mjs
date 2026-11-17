@@ -115,21 +115,6 @@ await test('נתונים זדוניים שכבר שמורים במכשיר מנ�
   await ctx.close();
 });
 
-await test('תמונת מתכון זדונית לא מוזרקת (כרטיס + מתכון פתוח)', async () => {
-  const { ctx, page } = await newPage();
-  await page.evaluate((img) => {
-    const id = '11111111-1111-1111-1111-111111111111';
-    recMeta = [{ id, name: 'עוגה', emoji: '🍰', status: 'approved', req: ['קמח'], opt: [], steps: 'לערבב' }];
-    recImgs[id] = img; openRecipes();
-  }, XSS_IMG);
-  await page.waitForTimeout(500);
-  await noInjection(page, 'רשימת מתכונים');
-  await page.evaluate(() => { recView.id = '11111111-1111-1111-1111-111111111111'; drawRecipes(document.querySelector('#v8SheetBody')); });
-  await page.waitForTimeout(300);
-  await noInjection(page, 'מתכון פתוח');
-  await ctx.close();
-});
-
 await test('דף עסק: לוגו, תמונות מוצרים וכפתור "לאתר" זדוניים לא מוזרקים', async () => {
   const { ctx, page } = await newPage();
   await page.evaluate(([img, url]) => {
@@ -143,19 +128,6 @@ await test('דף עסק: לוגו, תמונות מוצרים וכפתור "לא�
   await page.evaluate(() => { try { openBizDirectory(); } catch (e) {} });
   await page.waitForTimeout(600);
   await noInjection(page, 'מדריך עסקים');
-  await ctx.close();
-});
-
-await test('בק אופיס: תמונת מתכון זדונית לא מוזרקת', async () => {
-  const { ctx, page } = await newPage({ viewport: { width: 1366, height: 820 } });
-  await page.evaluate((img) => {
-    const r = { id: '11111111-1111-1111-1111-111111111111', name: 'עוגה', emoji: '🍰', status: 'pending', req: ['קמח'], opt: [], steps: 'x', image: img, author_name: 'א', created_at: new Date().toISOString() };
-    sb = __stub({ recipes: [r], 'recipes:one': r });
-    authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } };
-    openBO('recipes');
-  }, XSS_IMG);
-  await page.waitForTimeout(900);
-  await noInjection(page, 'בק אופיס');
   await ctx.close();
 });
 

@@ -1,5 +1,5 @@
 
-/* ================= גרסה 12 (א): רקע מלא בכל המסך, מיקום משופר + חיפוש בגוגל, החנות הכי קרובה לכתובת, הצעה לשמור מתכון של יאמי ================= */
+/* ================= גרסה 12 (א): רקע מלא בכל המסך, מיקום משופר + חיפוש בגוגל, החנות הכי קרובה לכתובת ================= */
 const $12=s=>document.querySelector(s);
 
 /* ---------- רקע פירות וירקות — שכבה אחת קבועה מאחורי כל המסך, לא משנה כמה ארוכה הרשימה ---------- */
@@ -10,21 +10,8 @@ const $12=s=>document.querySelector(s);
 doodleBg=function(el){el.querySelectorAll(':scope > .dd').forEach(x=>x.remove());};
 document.querySelectorAll('.pane > .dd').forEach(x=>x.remove());
 
-/* ---------- יאמי: אחרי מתכון מהבינה המלאכותית — מציעה להוסיף לספר המתכונים (עובר לאישור מנהל) ---------- */
-const looksLikeRecipe=t=>/(מצרכים|רכיבים|חומרים)/.test(t)&&/(אופן ההכנה|אופן הכנה|הוראות|שלבי הכנה|הכנה:)/.test(t)&&t.length>120;
-const _v12AskAI=askAI;
-askAI=async function(){const n0=state.bot.length;const r=await _v12AskAI();
-  const last=state.bot.slice(n0).reverse().find(m=>m.who==='bot'&&m.ai);
-  if(!RECIPES_OFF&&last&&looksLikeRecipe(last.txt)&&authUser){state.aiRecipeOffer=last.ts;save();
-    botSay('📖 '+T('אהבת את המתכון? רוצה שאוסיף אותו לספר המתכונים של האתר? אפשר לערוך לפני — והוא יעבור אישור מנהל. (כן/לא)','Want me to add this recipe to the site recipe book? It will be reviewed by an admin. (yes/no)'));}
-  return r;};
 async function v12BotPre(raw){
   const t=norm(raw);
-  if(state.aiRecipeOffer){const ts=state.aiRecipeOffer;
-    if(/^(כן|בטח|יאללה|אשמח|רוצה|תוסיפי|הוסיפי|שמרי|בסדר|סבבה|אוקיי|אוקי|כן תודה)(\s|$|!)/.test(t)){state.aiRecipeOffer=null;save();const m=state.bot.find(x=>x.ts===ts&&x.ai);
-      if(m){openRecipeForm(parseAiRecipe(m.txt));botSay('🤖 '+T('פתחתי את המתכון לבדיקה — אפשר לערוך, להוסיף תמונה ולשלוח. הוא יסומן "נוצר ע״י יאמי" ויעבור אישור מנהל.','Opened for review.'));}return true;}
-    if(/^(לא|לא תודה|אין צורך|עזבי|לא צריך)(\s|$|!)/.test(t)){state.aiRecipeOffer=null;save();botSay(T('בסדר 🙂 אם תרצי אחר כך — כתבי "שמרי את המתכון לאתר".','OK 🙂'));return true;}
-    state.aiRecipeOffer=null;save();}
   if(/(הכי קרוב|החנות הקרובה|סופר קרוב|חנויות קרובות|קרוב אליי|קרוב לבית|ליד הבית)/.test(t)&&yamiShopNear(t)){openNearMe();botSay('📍 '+T('פתחתי את החנויות הקרובות — לפי המיקום או הכתובת שלך, וגם חיפוש בגוגל.','Opened nearby stores.'));return true;}
   return false;
 }

@@ -79,9 +79,6 @@ const _v25ClearFlows=clearFlows19;
 clearFlows19=function(){rc25Sug=null;rc25Await=false;return _v25ClearFlows.apply(this,arguments);};
 const _v25BotChips=botChips;
 botChips=function(){const b=_v25BotChips.apply(this,arguments);if(!b.includes('🔁 פריט קבוע')){const i=b.indexOf('📦 המלאי שלי');b.splice(i>=0?i+1:Math.min(2,b.length),0,'🔁 פריט קבוע');}return b;};
-/* כפתור קבוע אצל יאמי: "📜 וורט" — כדי שידעו שאפשר לבקש דבר תורה (ביום חמישי ושישי — בהתחלה) */
-const _dtBotChips=botChips;
-botChips=function(){const b=_dtBotChips.apply(this,arguments);if(!TORAH_OFF&&!b.includes('📜 וורט')){const d=new Date().getDay();const i=b.indexOf('פרשת השבוע');b.splice(d===4||d===5?0:(i>=0?i+1:b.length),0,'📜 וורט');}return b;};
 /* ---------- 🔁 בעריכת מוצר ---------- */
 (function(){const st=document.createElement('style');st.textContent=
   '.rc25it{border:1px solid var(--line);background:var(--chipbg);border-radius:12px;padding:8px 10px;margin:10px 0}'+

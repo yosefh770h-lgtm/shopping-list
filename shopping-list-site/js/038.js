@@ -224,7 +224,10 @@ function shbItems45(){const m=shbMe45();const a=Array.isArray(m.items)?m.items:(
 function shbOn45(){return shbCfg45.on!==false&&shbMe45().off!==true;}
 function candleAt45(){try{const sh=shabbatTimes(userCity());if(!sh||!sh.candlesDate)return null;const m=String(sh.candles||'').match(/(\d{1,2}):(\d{2})/);if(!m)return null;const d=new Date(sh.candlesDate);d.setHours(+m[1],+m[2],0,0);return d;}catch(e){return null;}}
 /* מתי במצב ערב שבת: חמישי ושישי (עד הדלקת נרות), וערב חג */
-function shbNow45(){const dt=dtReminderToday();if(!dt)return null;const c=candleAt45();if(c&&dayKey(c)===dayKey(new Date())&&Date.now()>c.getTime())return null;
+function erevChag45(d){if(typeof HC==='undefined'||!HC)return '';try{const t=new Date(d);t.setDate(t.getDate()+1);
+  const isChag=x=>holidaysOn(x).filter(e=>e.getFlags()&HC.flags.CHAG);const tm=isChag(t);if(!tm.length||isChag(d).length)return '';return heName(tm[0]);}catch(e){return '';}}
+function shbDay45(){const d=new Date(),chag=erevChag45(d);if(chag)return {kind:'chag',name:chag};const dow=d.getDay();return dow===4||dow===5?{kind:'shabbat',name:T('שבת','Shabbat')}:null;}
+function shbNow45(){const dt=shbDay45();if(!dt)return null;const c=candleAt45();if(c&&dayKey(c)===dayKey(new Date())&&Date.now()>c.getTime())return null;
   const d=new Date();if(dt.kind==='chag')return {kind:'chag',name:dt.name,wk:dayKey(d)};const f=new Date(d);f.setDate(d.getDate()+((5-d.getDay()+7)%7));return {kind:'shabbat',name:dt.name,wk:dayKey(f)};}
 function shbWeek45(){const s=shbNow45();if(s)return s.wk;const d=new Date();d.setDate(d.getDate()+((5-d.getDay()+7)%7));return dayKey(d);}
 function shbDone45(){const m=shbMe45(),wk=shbWeek45();if(!m.done||m.done.wk!==wk)m.done={wk,v:{}};return m.done.v;}
@@ -300,7 +303,7 @@ async function cfg45(key){const {data}=await sb.from('site_config').select('valu
 async function setCfg45(key,value,msg){const {error}=await sb.from('site_config').upsert({key,value,updated_at:new Date().toISOString()});if(error){flash('⚠️ '+error.message);return false;}flash(msg||'✔️ נשמר — מתעדכן אצל כל המשתמשים');return true;}
 try{const nav=$45('#boNav');if(nav){
   if(!nav.querySelector('[data-s="kashrut"]')){const b=document.createElement('button');b.dataset.s='kashrut';b.textContent='🥇 הכשרים';const a=nav.querySelector('[data-s="products"]');if(a)a.after(b);else nav.appendChild(b);}
-  if(!nav.querySelector('[data-s="shabbat45"]')){const b=document.createElement('button');b.dataset.s='shabbat45';b.textContent='🕯️ מצב ערב שבת';const a=nav.querySelector('[data-s="torah"]')||nav.querySelector('[data-s="kashrut"]');if(a)a.after(b);else nav.appendChild(b);}}
+  if(!nav.querySelector('[data-s="shabbat45"]')){const b=document.createElement('button');b.dataset.s='shabbat45';b.textContent='🕯️ מצב ערב שבת';const a=nav.querySelector('[data-s="kashrut"]');if(a)a.after(b);else nav.appendChild(b);}}
   window.boView&&window.boView('kashrut',async function(){const m=$45('#boMain');m.innerHTML='<div class="card muted">טוען...</div>';
     const [c,pr]=await Promise.all([cfg45('kashrut'),sb.from('products').select('name,brand,barcode').order('name').limit(10000)]);
     applyKash45(c);let list=kashList45().slice();const prod=Object.assign({},kashCfg45.prod);

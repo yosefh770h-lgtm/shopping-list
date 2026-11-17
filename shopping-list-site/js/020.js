@@ -5,7 +5,8 @@ const $161=s=>document.querySelector(s);
 /* ---------- טקסטים מהבק אופיס (site_config: texts) ---------- */
 let textRules161=[];
 /* מתכונים ודברי תורה הוסרו (נובמבר 2026): גם טקסט ששמור בבק אופיס (אודות, סיור, מה חדש, איך עושים) לא מזכיר אותם */
-function offRx161(){const w=[];if(typeof RECIPES_OFF!=='undefined'&&RECIPES_OFF)w.push('מתכון','מתכונים','מתכוני','recipe');if(typeof TORAH_OFF!=='undefined'&&TORAH_OFF)w.push('דבר תורה','דברי תורה','דבר התורה','וורט','ד״ת','dvar torah','divrei torah');return w.length?new RegExp(w.join('|'),'i'):null;}
+const OFF_RX161=/מתכון|מתכונים|מתכוני|recipe|דבר תורה|דברי תורה|דבר התורה|וורט|ד״ת|dvar torah|divrei torah/i;
+function offRx161(){return OFF_RX161;}
 function cleanOff161(s){const rx=offRx161();if(typeof s!=='string'||!rx||!rx.test(s))return s;
   s=s.replace(/(,\s*|\s+ו)מתכונים(\s*\([^)]*\))?(?=[,.\s])/g,'');
   const parts=s.split(/(\n| · |; )/),out=[];

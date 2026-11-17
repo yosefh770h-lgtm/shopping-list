@@ -62,12 +62,6 @@ window.boAfter&&window.boAfter('guests',async main=>{if(!main||main.querySelecto
       return '<tr><td>'+esc(NM[r.src]||r.src)+(NM[r.src]?' <small class="muted" dir="ltr">'+esc(r.src)+'</small>':'')+'</td><td>'+(r.visits|0)+'</td><td>'+(r.signups|0)+pct(r.signups|0,r.visits|0)+'</td><td>'+((r.week_old|0)?(r.active7|0)+' מתוך '+(r.week_old|0)+pct(r.active7|0,r.week_old|0):'<span class="muted">—</span>')+'</td></tr>';}).join('')+'</tbody></table></div>'+
     '<p class="muted" style="margin-top:6px">"פעילים אחרי שבוע" — מתוך מי שנרשם לפני יותר משבוע, כמה עוד נכנסו לאתר שבוע אחרי ההרשמה. כך רואים איזה פרסום מביא אנשים שנשארים.</p>';};
   dSel.onchange=run;await run();});
-/* ---------- 📖 ספריא גם בבק אופיס ← דבר תורה ---------- */
-window.boAfter&&window.boAfter('torah',async main=>{if(!main||main.querySelector('#sef27'))return;
-  main.insertAdjacentHTML('afterbegin','<div class="card" id="sef27"><h2>📖 מה המשתמשים רואים מספריא השבוע</h2><p class="muted">כשאין דבר תורה מאושר על הפרשה, יאמי וחלון "דבר תורה" מביאים פסוקים ווורט מהמפרשים (כלי יקר, אור החיים, ספורנו, רש״י) מספריא — טקסט פתוח עם ציון מקור. אין צורך לאשר אותו.</p><div id="sef27b" class="muted">טוען מספריא...</div></div>');
-  try{const o=await Promise.race([sefariaParasha(),new Promise(r=>setTimeout(()=>r(null),6000))]);const box=main.querySelector('#sef27b');if(!box)return;
-    if(!o){box.textContent='⚠️ ספריא לא ענתה כרגע — נסו שוב מאוחר יותר.';return;}
-    const vo=await Promise.race([sefariaVort(o.name),new Promise(r=>setTimeout(()=>r(null),6000))]);box.className='';box.innerHTML=sefariaCard(o)+(vo?sefVortCard(vo):'');}catch(e){}});
 /* ---------- ⚠️ אלרגיות בבית: בוחרים פעם אחת, ובכל סריקת ברקוד מקבלים אזהרה ---------- */
 const ALG27=['גלוטן','חלב','ביצים','אגוזים','בוטנים','סויה','שומשום','דגים','רכיכות','סלרי','חרדל','תורמוס','סולפיטים'];
 const myAlg27=()=>{try{return Array.isArray(meData().allergies)?meData().allergies:[];}catch(e){return [];}};

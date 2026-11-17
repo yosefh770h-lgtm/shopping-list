@@ -32,7 +32,7 @@
     return '<button type="button" class="r2bud" data-r2bud="1" data-noicon="1"><div class="r2bt"><b>💰 '+tt('תקציב ב'+mon,'Budget')+'</b><span>'+(lim?Math.round(lim).toLocaleString('he-IL')+' / '+Math.round(sp).toLocaleString('he-IL')+' ₪':tt('להגדרה ←','Set up ←'))+'</span></div>'+(lim?'<div class="r2bb"><i style="width:'+Math.min(100,Math.round(100*sp/lim))+'%"></i></div>':'')+'</button>';}
   function home(){const p=$('#paneHome');if(!p)return;const was=p.querySelector(':scope>.r2home');if(was)was.remove();
     p.insertAdjacentHTML('afterbegin','<div class="r2home" data-noicon="1"><button type="button" class="r2back" data-r2back="1">→ '+tt('הבית שלי','My home')+'</button>'+ph(tt('הבית שלי','My home'),tt('כל מה שקשור לבית במקום אחד','Everything about your home in one place'))+budget()+
-      '<div class="r2grid">'+TILES.map((t,i)=>'<button type="button" class="r2tile'+(t[0]==='🍲'?' r2rec':'')+'" data-r2tile="'+i+'"><span class="r2ti">'+t[0]+'</span><b>'+esc(t[1])+'</b><small>'+esc(t[2]())+'</small></button>').join('')+'</div></div>');}
+      '<div class="r2grid">'+TILES.map((t,i)=>'<button type="button" class="r2tile" data-r2tile="'+i+'"><span class="r2ti">'+t[0]+'</span><b>'+esc(t[1])+'</b><small>'+esc(t[2]())+'</small></button>').join('')+'</div></div>');}
   document.addEventListener('click',e=>{const t=e.target.closest('[data-r2tile]');if(t){TILES[+t.dataset.r2tile][3]();return;}
     if(e.target.closest('[data-r2back]')){$('#paneHome').classList.remove('r2inv');return;}
     if(e.target.closest('[data-r2bud]')){const b=$('#miBudget50');if(b)b.click();}});

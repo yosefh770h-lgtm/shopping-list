@@ -150,7 +150,7 @@ const BASE=['חלב','לחם','ביצים','גבינה','חמאה','עגבניו
 /* ================= נתונים ================= */
 const KEY='yamh_app_v1';
 let state=null;
-function defState(){return {priceAlerts:[],savings:[],basketSnaps:[],user:null,ownerCode:null,follow:null,lists:[{id:uid(),name:'סופר',items:[],created:Date.now()}],active:null,history:[],plans:{},bot:[],stats:{},pantry:{},customPantry:[],customRecipes:[],addRecipeFlow:null,dark:false,group:false,lastGreet:'',lastTab:'list',homeQ:'',showMissing:false,pending:null,pendingRecipe:null,pendingNav:null,dtFlow:null,pendingCholent:false,lastCholentOffer:'',knowledge:[],gender:'f',room:null,city:'ירושלים',me:{address:{},stores:[],orders:[],providers:[]},geoCity:'',lastOffers:{}};}
+function defState(){return {priceAlerts:[],savings:[],basketSnaps:[],user:null,ownerCode:null,follow:null,lists:[{id:uid(),name:'סופר',items:[],created:Date.now()}],active:null,history:[],plans:{},bot:[],stats:{},pantry:{},customPantry:[],customRecipes:[],dark:false,group:false,lastGreet:'',lastTab:'list',homeQ:'',showMissing:false,pending:null,pendingNav:null,knowledge:[],gender:'f',room:null,city:'ירושלים',me:{address:{},stores:[],orders:[],providers:[]},geoCity:'',lastOffers:{}};}
 function load(){
   try{state=JSON.parse(localStorage.getItem(KEY));}catch(e){}
   if(!state||typeof state!=='object'||Array.isArray(state))state=defState();
@@ -161,7 +161,7 @@ function load(){
   if(!state.lists.length)state.lists=d.lists;
   if(!state.lists.find(l=>l.id===state.active))state.active=state.lists[0].id;
   state.plans=state.plans||{};state.bot=state.bot||[];state.stats=state.stats||{};state.history=state.history||[];state.pantry=state.pantry||{};state.customPantry=state.customPantry||[];state.customRecipes=state.customRecipes||[];state.knowledge=state.knowledge||[];delete state.adminUnlocked;
-  /* register any previously-saved custom pantry items into the runtime catalog so they resolve everywhere (bot, recipes, search) */
+  /* register any previously-saved custom pantry items into the runtime catalog so they resolve everywhere (bot, search) */
   state.customPantry.forEach(n=>{if(!P[n]){P[n]={e:'🛒',c:'אחר'};NORMP[norm(n)]=n;}});
 }
 /* שמירה במכשיר. אם המקום בדפדפן התמלא (בעיקר מתמונות של מוצרים) — מפנים מקום ושומרים שוב,
