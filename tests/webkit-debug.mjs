@@ -69,20 +69,36 @@ async function trial(keep, { verbose = false, user = true, extraInit = null } = 
 }
 
 console.log('WebKit', (await (async () => { const b = await webkit.launch(); const v = b.version(); await b.close(); return v; })()));
-console.log('\n=== Verbose run, full page ===');
-const fullHung = await trial(null, { verbose: true });
-console.log('\n=== Verbose run, full page, no saved user ===');
-await trial(null, { verbose: true, user: false });
-if (fullHung) {
-  console.log('\n=== Bisect: smallest number of leading scripts that hangs ===');
-  let lo = 0, hi = SCRIPTS.length; // lo: לא נתקע, hi: נתקע
-  if (await trial(0)) { console.log('hangs with no scripts at all'); hi = 0; }
-  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await trial(mid)) hi = mid; else lo = mid; }
-  if (hi > 0) {
-    console.log('\nFIRST HANGING SCRIPT:', label(hi - 1));
-    console.log('\n=== Verbose run with exactly that many scripts ===');
-    await trial(hi, { verbose: true });
-  }
+
+// ניסוי 1: הדף המלא, כש-getSubscription מוחלף בתשובה ריקה
+console.log('\n=== A: full page, pushManager.getSubscription stubbed ===');
+await trial(null, { verbose: true, extraInit: () => { if (window.PushManager) PushManager.prototype.getSubscription = function () { return Promise.resolve(null); }; } });
+
+// ניסוי 2: הדף המלא בלי service worker בכלל
+console.log('\n=== B: full page, serviceWorker.register disabled ===');
+await trial(null, { extraInit: () => { if (navigator.serviceWorker) navigator.serviceWorker.register = () => new Promise(() => {}); } });
+
+// ניסוי 3: דף מינימלי (privacy.html) — רק רישום sw.js ו-getSubscription. אם נתקע גם כאן, זה WebKit ולא הקוד שלנו
+async function minimal(label, fn, swFile = 'sw.js') {
+  const browser = await webkit.launch();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const t0 = Date.now();
+  page.on('console', (m) => console.log('  [console +' + (Date.now() - t0) + 'ms]', m.text().slice(0, 200)));
+  await page.goto(ORIGIN + '/privacy.html');
+  await page.evaluate(() => { let n = 0; setInterval(() => console.log('hb', ++n), 500); });
+  const r1 = await withTimeout(page.evaluate(fn, swFile), 8000);
+  const r2 = await withTimeout(page.evaluate(() => 'alive'), 4000);
+  console.log(label, '→ step:', JSON.stringify(r1), '| after:', JSON.stringify(r2), '| permission:', JSON.stringify(await withTimeout(page.evaluate(() => typeof Notification !== 'undefined' ? Notification.permission : 'no Notification'), 3000)));
+  await withTimeout(browser.close(), 10000);
 }
+console.log('\n=== C: minimal page ===');
+await minimal('C1 register+ready', async (f) => { const r = await navigator.serviceWorker.register(f); await navigator.serviceWorker.ready; return 'ready ' + !!r.pushManager; });
+await minimal('C2 register+ready+getSubscription', async (f) => { await navigator.serviceWorker.register(f); const r = await navigator.serviceWorker.ready; const s = await r.pushManager.getSubscription(); return 'sub=' + s; });
+fs.writeFileSync(path.join(ROOT, 'empty-sw-debug.js'), '// empty\n');
+await minimal('C3 empty SW + getSubscription', async (f) => { await navigator.serviceWorker.register(f); const r = await navigator.serviceWorker.ready; const s = await r.pushManager.getSubscription(); return 'sub=' + s; }, 'empty-sw-debug.js');
+await minimal('C4 empty SW + permissionState', async (f) => { await navigator.serviceWorker.register(f); const r = await navigator.serviceWorker.ready; return 'perm=' + await r.pushManager.permissionState({ userVisibleOnly: true }); }, 'empty-sw-debug.js');
+await minimal('C5 Notification.permission only', async () => 'perm=' + Notification.permission);
+fs.unlinkSync(path.join(ROOT, 'empty-sw-debug.js'));
 server.close();
 process.exit(0);
