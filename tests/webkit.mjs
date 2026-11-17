@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../shopping-list-site');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
   const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html');
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); res.end(); return; }
@@ -45,6 +45,14 @@ async function newPage({ user = null, stub = true } = {}) {
   if (stub) await ctx.route(/\/vendor\/supabase-js[^/]*\/supabase\.js/, (r) => r.abort());
   await ctx.addInitScript((st) => { localStorage.setItem('yam_tour165', '1'); if (st && !localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); }, user ? { user } : null);
   if (stub) await ctx.addInitScript(STUB);
+  if (process.env.WK_DEBUG) await ctx.addInitScript(() => {
+    const cnt = {}; const hit = (k, info) => { cnt[k] = (cnt[k] || 0) + 1; const n = cnt[k]; if (n === 200 || n === 2000 || n === 20000) console.log('LOOP? ' + k + ' x' + n + ' ' + String(info || '').slice(0, 160) + ' | ' + (new Error().stack || '').split('\n').slice(1, 6).join(' < ').slice(0, 600)); };
+    const sa = Element.prototype.setAttribute; Element.prototype.setAttribute = function (a, v) { hit('setAttribute:' + a, (this.id || this.className || this.tagName) + '=' + v); return sa.apply(this, arguments); };
+    const MO = window.MutationObserver; window.MutationObserver = function (cb) { const id = (new Error().stack || '').split('\n')[1] || '?'; return new MO(function (ms, o) { hit('MO ' + id, ms.length + ' ' + ms.map((m) => m.type + ':' + (m.attributeName || '') + ':' + ((m.target && (m.target.id || m.target.className || m.target.nodeName)) || '')).slice(0, 3).join(',')); return cb.call(this, ms, o); }); };
+    const raf = window.requestAnimationFrame; window.requestAnimationFrame = function (f) { hit('raf', (new Error().stack || '').split('\n')[1]); return raf.call(window, f); };
+    const st = window.setTimeout; window.setTimeout = function (f, t) { if (!t) hit('setTimeout0', (new Error().stack || '').split('\n')[1]); return st.apply(window, arguments); };
+    const qm = window.queueMicrotask; window.queueMicrotask = function (f) { hit('microtask', (new Error().stack || '').split('\n')[1]); return qm.call(window, f); };
+  });
   const page = await ctx.newPage();
   const errors = [];
   page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
