@@ -1,0 +1,24 @@
+# זמני — לאיתור התקיעה ב-WebKit החדש. יימחק לפני המיזוג.
+name: WebKit debug
+on:
+  push:
+    branches: [claude/project-thread-ygfde1]
+    paths: ['tests/webkit-debug.mjs', '.github/workflows/webkit-debug.yml', 'shopping-list-site/**']
+permissions:
+  contents: read
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps webkit
+      - run: node webkit-debug.mjs
