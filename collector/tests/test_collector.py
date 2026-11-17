@@ -281,7 +281,7 @@ def test_daily_cap_and_blocklist(built, monkeypatch, tmp_path):
     assert "מכסה" in c.get("/health").json()["error"]
     assert c.get("/health", headers=VERCEL).status_code == 200  # דרך האתר — מכסה אחרת
     (tmp_path / "blocked.json").write_text('{"ips": ["185.220.101.0/24", "bad"]}')
-    api.blocklist.checked = 0
+    api.blocklist.checked = float("-inf")  # time.monotonic() במכונה שזה עתה עלתה יכול להיות קטן מ-30
     assert c.get("/health", headers=VERCEL).status_code == 403
     assert c.get("/health", headers=dict(VERCEL, **{"x-real-ip": "45.83.64.5"})).status_code == 200
 
