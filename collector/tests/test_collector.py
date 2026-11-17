@@ -477,27 +477,128 @@ def test_visible_needs_public_switch():
     assert not C.visible({"public": True, "hidden": ["SHUFERSAL"]}, "SHUFERSAL")
 
 
-def test_download_counts_limit_itself(tmp_path, monkeypatch):
-    """הספרייה חותכת לפי limit לפני הסינון לפי תאריך — לכן לא מעבירים לה limit, וסופרים בעצמנו."""
-    from yam import scrape
+def test_download_limit_skip_and_cleanup(tmp_path, monkeypatch):
+    """limit נספר אחרי הסינון לפי תאריך, קובץ שכבר נקלט לא מורד שוב, והקובץ נמחק אחרי הפענוח."""
+    from yam import scrape, sources
 
-    class Res:
-        def __init__(self, name):
-            self.file_name, self.downloaded, self.error = name, True, None
+    names = [f"PriceFull7290027600007-001-00{i}-202610250300.gz" for i in range(3)]
+    monkeypatch.setattr(sources, "list_files", lambda http, chain, kind, day=None: [(n, "https://x/" + n) for n in names])
 
-    class FakeScraper:
-        async def scrape(self, limit=None, files_types=None, when_date=None):
-            assert limit is None
-            for i in range(3):
-                name = f"PriceFull7290027600007-001-00{i}-202610250300"
-                (tmp_path / (name + ".gz")).write_bytes(b"x")
-                yield Res(name)
+    class Resp:
+        content = b"\x1f\x8b data"
 
-    monkeypatch.setattr(scrape, "_scraper", lambda *a: (FakeScraper(), str(tmp_path)))
+    monkeypatch.setattr(sources.Http, "get", lambda self, url, **k: Resp())
     got = []
-    n, errors = scrape.download("SHUFERSAL", "pricefull", str(tmp_path), str(tmp_path), lambda k, name, p: got.append(name),
-                                limit=1, day=dt.date(2026, 10, 25))
-    assert n == 1 and got == ["PriceFull7290027600007-001-000-202610250300.gz"] and not errors
+    n, errors = scrape.download("SHUFERSAL", "pricefull", str(tmp_path), str(tmp_path),
+                                lambda k, name, p: got.append((name, os.path.exists(p))),
+                                limit=1, day=dt.date(2026, 10, 25), skip=lambda name: name == names[0])
+    assert n == 1 and got == [(names[1], True)] and not errors
+    assert not os.listdir(tmp_path / "SHUFERSAL")
+
+
+def test_download_rejects_html_and_reports_listing_errors(tmp_path, monkeypatch):
+    from yam import scrape, sources
+
+    monkeypatch.setattr(sources, "list_files", lambda *a, **k: [("Price7290027600007-001-001-202610250300.gz", "https://x")])
+
+    class Html:
+        content = b"<!DOCTYPE html><html>login</html>"
+
+    monkeypatch.setattr(sources.Http, "get", lambda self, url, **k: Html())
+    n, errors = scrape.download("SHUFERSAL", "price", str(tmp_path), str(tmp_path), lambda *a: None)
+    assert n == 0 and "דף אינטרנט" in errors[0]
+
+    def boom(*a, **k):
+        raise RuntimeError("down")
+    monkeypatch.setattr(sources, "list_files", boom)
+    n, errors = scrape.download("SHUFERSAL", "price", str(tmp_path), str(tmp_path), lambda *a: None)
+    assert n == 0 and "down" in errors[0]
+
+
+def test_sources_file_names_and_day_filter(monkeypatch):
+    from yam import sources
+    assert sources.kind_of("PriceFull7290027600007-001-202-20261025-030000.gz") == "pricefull"
+    assert sources.kind_of("Price7290027600007-001-202-202610250300.gz") == "price"
+    assert sources.kind_of("StoresFull7290058140886-000-202610250500.xml") == "stores"
+    assert sources.kind_of("PromoFull7290058140886-001-202610250500.gz") == "promofull"
+    assert sources.file_date("PriceFull7290027600007-001-202-20261025-030000.gz") == dt.date(2026, 10, 25)
+    assert sources.file_date("Price7290058140886-001-202610240500.gz") == dt.date(2026, 10, 24)
+    assert sources.chain_id_of("Price7290058140886-001-202610240500.gz") == "7290058140886"
+
+    files = [("Price7290058140886-001-202610250500.gz", "u1"), ("Price7290058140886-001-202610240500.gz", "u2"),
+             ("PriceFull7290058140886-001-202610250500.gz", "u3"), ("NULLPrice.gz", "u4")]
+    monkeypatch.setitem(sources.LISTERS, "cerberus", lambda http, spec, kind, day: files)
+    got = sources.list_files(None, "RAMI_LEVY", "price", dt.date(2026, 10, 25))
+    assert got == [("Price7290058140886-001-202610250500.gz", "u1")]
+    with pytest.raises(RuntimeError):
+        sources.list_files(None, "NETIV_HASED", "price")
+
+
+def test_every_known_chain_has_a_source_or_is_marked_missing():
+    from yam import chains as C, sources
+    for chain in C.HEBREW:
+        assert chain in sources.SOURCES or chain in sources.MISSING, chain
+    for spec in sources.SOURCES.values():
+        assert spec["engine"] in sources.LISTERS
+    assert set(C.all_chains()) == set(sources.SOURCES)
+
+
+def test_cerberus_login_and_listing(monkeypatch):
+    from yam import sources
+
+    class R:
+        def __init__(self, text="", url="https://url.publishedprices.co.il/file", data=None):
+            self.text, self.url, self._data = text, url, data
+
+        def json(self):
+            return self._data
+
+    calls = []
+
+    class FakeHttp:
+        def get(self, url, **k):
+            calls.append(("GET", url))
+            return R('<meta name="csrftoken" content="T1">', url)
+
+        def post(self, url, data=None, **k):
+            calls.append(("POST", url, dict(data)))
+            if url.endswith("/login/user"):
+                return R('<meta name="csrftoken" content="T2">')
+            return R(data={"aaData": [
+                {"fname": "Price7290058140886-001-202610250500.gz", "type": "file"},
+                {"fname": "Price7290058140886-001-202610250600.gz", "type": "file"},
+                {"fname": "NULLPrice7290058140886-001.gz", "type": "file"},
+                {"fname": "Price7290000000000-001-202610250500.gz", "type": "file"},
+                {"fname": "sub", "type": "folder"}]})
+
+    got = sources.list_cerberus(FakeHttp(), sources.SOURCES["SUPER_YUDA"] | {"chain_id": "7290058140886"},
+                                "price", dt.date(2026, 10, 25))
+    assert [n for n, _ in got] == ["Price7290058140886-001-202610250600.gz", "Price7290058140886-001-202610250500.gz"]
+    assert got[0][1] == "https://url.publishedprices.co.il/file/d/Yuda/Price7290058140886-001-202610250600.gz"
+    login = calls[1][2]
+    assert login["username"] == "yuda_ho" and login["csrftoken"] == "T1"
+    assert calls[2][2]["csrftoken"] == "T2" and calls[2][2]["cd"] == "/Yuda" and calls[2][2]["sSearch"] == "Price"
+
+
+def test_paged_listing_stops_at_older_pages(monkeypatch):
+    from yam import sources
+    pages = {
+        1: '<a href="https://blob/PriceFull7290027600007-001-001-20261025-030000.gz?sig=1&amp;x=2">',
+        2: '<a href="https://blob/PriceFull7290027600007-001-002-20261024-030000.gz?sig=1">',
+        3: '<a href="https://blob/PriceFull7290027600007-001-003-20261023-030000.gz?sig=1">',
+    }
+    seen = []
+
+    class FakeHttp:
+        def get(self, url, **k):
+            p = int(url.rsplit("page=", 1)[1])
+            seen.append(p)
+            return type("R", (), {"text": pages.get(p, "")})()
+
+    got = sources.list_files(FakeHttp(), "SHUFERSAL", "pricefull", dt.date(2026, 10, 25))
+    assert got == [("PriceFull7290027600007-001-001-20261025-030000.gz",
+                    "https://blob/PriceFull7290027600007-001-001-20261025-030000.gz?sig=1&x=2")]
+    assert seen == [1, 2]
 
 
 def test_api_city_spellings_and_local_products(built):

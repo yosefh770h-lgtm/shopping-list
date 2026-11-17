@@ -153,20 +153,14 @@ ok "גרסה $(git -C "$REPO" log -1 --format='%h · %cd' --date=format:'%d/%m %
 [ -f "$REPO/collector/yam/run.py" ] || die "בענף $BRANCH אין עדיין את התיקייה collector/ — צריך למזג את ה-PR קודם (או --branch עם שם הענף)"
 
 # ---------- 6. סביבת פייתון ----------
-say "מתקינים את הספריות (il-supermarket-scraper ועוד) — בפעם הראשונה כמה דקות"
+say "מתקינים את הספריות — בפעם הראשונה כמה דקות"
 [ -x "$VENV/bin/python" ] && "$VENV/bin/python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' || { rm -rf "$VENV"; "$PY" -m venv "$VENV"; }
 "$VENV/bin/pip" install -q --upgrade pip wheel
 "$VENV/bin/pip" install -q -r "$REPO/collector/requirements.txt"
-# חלק מהרשתות דורשות דפדפן (הספרייה משתמשת ב-Playwright)
-if [ $PKG = apt ]; then
-  PLAYWRIGHT_BROWSERS_PATH=$PW "$VENV/bin/python" -m playwright install --with-deps chromium >"$LOGD/playwright.log" 2>&1 \
-    || PLAYWRIGHT_BROWSERS_PATH=$PW "$VENV/bin/python" -m playwright install chromium >>"$LOGD/playwright.log" 2>&1 || warn "הדפדפן של Playwright לא הותקן — רשתות שצריכות אותו ייכשלו (פרטים: $LOGD/playwright.log)"
-else
-  dnf install -y -q nss atk at-spi2-atk cups-libs libdrm libxkbcommon libXcomposite libXdamage libXrandr mesa-libgbm pango alsa-lib >/dev/null 2>&1 || true
-  PLAYWRIGHT_BROWSERS_PATH=$PW "$VENV/bin/python" -m playwright install chromium >"$LOGD/playwright.log" 2>&1 || warn "הדפדפן של Playwright לא הותקן — רשתות שצריכות אותו ייכשלו (פרטים: $LOGD/playwright.log)"
-fi
-chmod -R a+rX "$PW" 2>/dev/null || true
-ok "$("$VENV/bin/pip" show il-supermarket-scraper 2>/dev/null | awk '/^Version/{print "il-supermarket-scraper " $2}')"
+# הספרייה הישנה (il-supermarket-scraper) לא בשימוש יותר — מסירים אותה מהסביבה, אם נשארה
+"$VENV/bin/pip" uninstall -y -q il-supermarket-scraper >/dev/null 2>&1 || true
+rm -rf "$PW"  # הדפדפן ש-Playwright התקין בשבילה (כמה מאות MB)
+ok "הספריות הותקנו"
 
 # ---------- 7. מפתח Supabase (רק בקובץ בשרת, לא ב-git) ----------
 say "חיבור ל-Supabase"
