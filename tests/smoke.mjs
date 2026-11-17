@@ -355,15 +355,10 @@ await test('קרדיט למדווחים: שם המדווח מוסתר כבריר
   await page.click('#latestReports [data-cr23b="prices|c1"]'); await page.waitForTimeout(200);
   const upd = await page.evaluate(() => window.__upd.filter((x) => x[0] === 'prices').map((x) => x[2].show_author));
   assert(JSON.stringify(upd) === '[true,false,null]', 'עדכוני show_author: ' + JSON.stringify(upd));
-  // 4. מתכון: אחרי שהמנהל מפעיל "הצג תמיד" למתכונים — משתמש רגיל רואה "מאת"
-  await page.evaluate(() => { authUser = { id: 'me', email: 'x@y.z' }; myRole = null; applyAdminUi(); recMeta = []; openRecipes({ id: 'r1' }); });
-  await page.waitForTimeout(600);
-  const recHidden = await page.evaluate(() => document.querySelector('#v8Sheet').innerText);
-  assert(/שקשוקה/.test(recHidden) && !/משה כהן/.test(recHidden), 'מתכון: השם מוצג כשהוא מוסתר');
-  await page.evaluate(() => applyConfig('credits', { recipes: true })); await page.waitForTimeout(200);
-  const recShown = await page.evaluate(() => document.querySelector('#v8Sheet').innerText);
-  assert(/מאת משה כהן/.test(recShown), 'מתכון: השם לא מוצג אחרי ההפעלה: ' + recShown.slice(0, 200));
-  if (SH) { await page.evaluate(() => document.querySelector('#flash').classList.remove('show')); await page.waitForTimeout(400); await page.screenshot({ path: SH + '/4-recipe-name-shown-after-enabling.png' }); }
+  // 4. מתכונים כבויים באתר (RECIPES_OFF): גם עם "הצג תמיד" למתכונים לא נפתח מתכון
+  await page.evaluate(() => { authUser = { id: 'me', email: 'x@y.z' }; myRole = null; applyAdminUi(); applyConfig('credits', { recipes: true }); recMeta = []; openRecipes({ id: 'r1' }); });
+  await page.waitForTimeout(300);
+  assert(!/שקשוקה/.test(await page.evaluate(() => document.querySelector('#v8Sheet').innerText)), 'מתכון נפתח למרות שהמתכונים כבויים');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
@@ -794,7 +789,8 @@ await test('🐞 בק אופיס: מעבר ללשונית אחרת בזמן שה
 });
 
 await test('🐞 יומן תקלות: כל תקלה מוסברת בעברית — מה קרה, איפה ובאיזה מכשיר; שם הפונקציה נרשם', async () => {
-  const { ctx, page, errors } = await newPage();
+  // דפדפן רגיל — "HeadlessChrome" של הבדיקות מסונן כבוט ולא נרשם ביומן
+  const { ctx, page, errors } = await newPage({ userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36' });
   const IPH = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
   const D = { client_errors: [
     { id: 1, msg: "Cannot read properties of undefined (reading 'length')", src: 'alertsCheck26 · /:9000:12', ua: IPH, ver: '18', created_at: new Date().toISOString(), user_id: 'u1' },
@@ -1402,22 +1398,13 @@ await test('רשימות מהקהילה: רשימת השבוע למעלה, די�
   await ctx.close();
 });
 
-await test('מתכון לפי מספר סועדים: הכמויות מוכפלות ונכנסות לרשימה', async () => {
+await test('מתכונים כבויים באתר: מתכון לא נפתח ולא מוצע, ופענוח שורות מצרכים עובד', async () => {
   const { ctx, page, errors } = await newPage();
-  const D = { recipes: [{ id: '11111111-2222-3333-4444-555555555555', name: 'קציצות ברוטב', emoji: '🍲', req: ['בשר טחון', 'ביצים', 'קמח', 'שום'], qty: ['500 גרם', '2', '½ כוס', '2 שיני'], serves: 4, opt: [], steps: 'מערבבים ומבשלים.', author_id: 'u1', category: 'בשרי', source: 'user', status: 'approved', created_at: new Date().toISOString() }] };
-  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; state.pantry['קמח'] = 1; recMeta = []; openRecipes({ id: D.recipes[0].id }); }, D);
-  await page.waitForTimeout(600);
-  const t4 = await page.evaluate(() => document.querySelector('#v8SheetBody').innerText);
-  assert(/500 גרם/.test(t4) && /המתכון המקורי ל-4/.test(t4), 'לפני שינוי: ' + t4.slice(0, 300));
-  await page.click('#v8SheetBody [data-rsv="1"]'); await page.click('#v8SheetBody [data-rsv="1"]'); await page.waitForTimeout(150);
-  const t6 = await page.evaluate(() => document.querySelector('#v8SheetBody').innerText);
-  assert(/750 גרם/.test(t6) && /¾ כוס/.test(t6) && /3 שיני/.test(t6) && /\b3\b/.test(t6), 'ל-6 סועדים: ' + t6.slice(0, 400));
-  await page.click('#v8SheetBody [data-raddmiss]'); await page.waitForTimeout(200);
-  const pk = await page.evaluate(() => [...document.querySelectorAll('#v8SheetBody [data-pk]')].map((c) => c.checked));
-  assert(JSON.stringify(pk) === '[true,true,false,true]', 'מה שיש בבית לא מסומן: ' + JSON.stringify(pk));
-  await page.click('#pkAdd'); await page.waitForTimeout(200);
-  const items = await page.evaluate(() => curList().items.map((i) => i.n + '|' + i.q));
-  assert(items.includes('בשר טחון|750 גרם') && items.includes('ביצים|3') && items.includes('שום|') && !items.some((x) => x.startsWith('קמח')), 'ברשימה: ' + items.join(', '));
+  const D = { recipes: [{ id: '11111111-2222-3333-4444-555555555555', name: 'קציצות ברוטב', emoji: '🍲', req: ['בשר טחון'], qty: ['500 גרם'], serves: 4, opt: [], steps: 'מערבבים ומבשלים.', author_id: 'u1', category: 'בשרי', source: 'user', status: 'approved', created_at: new Date().toISOString() }] };
+  const off = await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; recMeta = []; openRecipes({ id: D.recipes[0].id }); return { off: RECIPES_OFF, chips: botChips().join('|') }; }, D);
+  await page.waitForTimeout(300);
+  assert(off.off === true && !/מתכון/.test(off.chips), 'המתכונים לא כבויים: ' + JSON.stringify(off));
+  assert(!/קציצות ברוטב/.test(await page.evaluate(() => document.querySelector('#v8Sheet').innerText)), 'מתכון נפתח למרות שהמתכונים כבויים');
   const parsed = await page.evaluate(() => ['2 כוסות של אורז', 'בשר טחון - 1 קילו', 'חצי כוס סוכר', 'מלח לפי הטעם', 'טונה 2 קופסאות'].map((l) => { const r = parseIngLine(l); return r.n + '=' + r.q; }));
   assert(JSON.stringify(parsed) === JSON.stringify(['אורז=2 כוסות', 'בשר טחון=1 קילו', 'סוכר=½ כוס', 'מלח=לפי הטעם', 'טונה=2 קופסאות']), 'פענוח שורות: ' + JSON.stringify(parsed));
   assert(!errors.length, errors.join(' | '));
@@ -1529,14 +1516,12 @@ await test('🏪 השוואת רשימה בין כל הסניפים בארץ (מ
   await ctx.close();
 });
 
-await test('📣 באנר קטן "איפה הכי זול?" בראש הרשימה — נפתח בלשונית שלו, ✕ סוגר עד הכניסה הבאה, המנהל קובע אם ועד מתי', async () => {
+await test('💰 "איפה הכי זול?" בלשונית החנויות (הבאנר בראש הרשימה הוסר): חיפוש מוצר וכפתור אחד בלבד', async () => {
   const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }], missing: [], stores: [{ store: '1:1', chain: 'RAMI_LEVY', chain_name: 'רמי לוי', name: 'בני ברק', city: 'בני ברק', total: 6.5, regular: 6.5, found: 1, lines: [{ q: 'חלב', qty: 1, found: true, name: 'חלב', cost: 6.5, regular: 6.5 }] }] }) });
   const { ctx, page, errors } = await newPage({ priceApi });
   await page.evaluate(() => { applyConfig('collector', { public: true }); curList().items = []; render(); });
-  assert(await page.locator('#paneList .cheapbar').isVisible(), 'ברשימה ריקה: אין באנר');
-  const h = await page.locator('#paneList .cheapbar').evaluate((e) => e.offsetHeight);
-  assert(h < 60, 'הבאנר גבוה מדי: ' + h);
-  await page.click('#paneList .cheapbar [data-cheapopen]');
+  assert(!(await page.locator('#paneList .cheapbar').count()), 'הבאנר הוסר מהרשימה אבל עדיין מוצג');
+  await page.evaluate(() => { storesView = 'cmp'; setTab('stores'); });
   await page.waitForSelector('#paneStores.on .seg [data-sview="cmp"].on');
   assert(await page.locator('.tab[data-t="prices"].on').count(), 'הלשונית לא סומנה');
   await page.fill('#cmpQ', 'חלב'); await page.press('#cmpQ', 'Enter');
@@ -1545,13 +1530,7 @@ await test('📣 באנר קטן "איפה הכי זול?" בראש הרשימה
   await page.click('#btnCloseBasket');
   await page.evaluate(() => { addItem('חלב', ''); setTab('list'); render(); });
   assert(!(await page.locator('#paneList .buybar [data-basket]').count()), 'כפתור כפול: גם בשורת ההתקדמות וגם בבאנר');
-  await page.click('#paneList .cheapbar [data-cheapx]');
-  const after = await page.evaluate(() => { render(); const a = !!document.querySelector('#paneList .cheapbar');
-    sessionStorage.removeItem('cheapX'); applyConfig('collector', { public: true, promo_off: true }); render(); const b = !!document.querySelector('#paneList .cheapbar');
-    applyConfig('collector', { public: true, promo_until: '2020-01-01' }); render(); const c = !!document.querySelector('#paneList .cheapbar');
-    applyConfig('collector', { public: true, promo_until: '2999-01-01' }); render(); const d = !!document.querySelector('#paneList .cheapbar');
-    return { a, b, c, d }; });
-  assert(!after.a && !after.b && !after.c && after.d, 'סגירה / כיבוי / תאריך: ' + JSON.stringify(after));
+  assert(!(await page.locator('#paneList .cheapbar').count()), 'באנר ברשימה עם פריטים');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
@@ -1689,8 +1668,7 @@ await test('👁️ בק אופיס שולט מה המשתמשים רואים: �
   assert(/שרת המחירים לא זמין/.test(down), 'הודעה כשהשרת לא עונה: ' + down);
   // מנהל, המתג כבוי: רואה, עם הודעת מצב בדיקה, ורשת מוסתרת לא מופיעה
   await page.evaluate(() => { sb = __stub({}); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; applyConfig('collector', { public: false, hidden: ['RAMI_LEVY'] }); state.me = Object.assign(state.me || {}, { address: { city: 'בני ברק' } }); render(); });
-  assert(await page.locator('#paneList .cheapbar').isVisible(), 'המנהל לא רואה את הבאנר');
-  await page.click('#paneList .cheapbar [data-cheapopen]');
+  await page.evaluate(() => { storesView = 'cmp'; setTab('stores'); });
   await page.waitForSelector('#cmpList #srvCmp .srvSt');
   const t = await page.locator('#srvCmp').innerText();
   assert(/מצב בדיקה/.test(t) && /שופרסל/.test(t) && !/רמי לוי/.test(t), 'מצב בדיקה / רשת מוסתרת: ' + t);
@@ -1727,7 +1705,7 @@ await test('👁️ בק אופיס שולט מה המשתמשים רואים: �
   assert(segs === 'cmp,prices,branches,clothing', 'הכפתורים בלשונית החנויות: ' + segs);
   // לשונית אחת "מחירים וחנויות": מעבר בין דיווחי המחירים לחלקי החנויות בשורת כפתורים אחת; ♿ נשארת צפה (חובה)
   const mg = await page.evaluate(() => {
-    const tabs = Array.from(document.querySelectorAll('.tabs .tab')).filter((b) => !b.hidden).map((b) => b.dataset.t).join(',');
+    const tabs = Array.from(document.querySelectorAll('.tabs .tab[data-t]')).filter((b) => !b.hidden).map((b) => b.dataset.t).join(','); // כפתור הקבלה (data-x) הוא פעולה, לא לשונית
     document.querySelector('#paneStores .seg [data-sview="prices"]').click();
     const onPrices = document.querySelector('#panePrices').classList.contains('on') && !!document.querySelector('#panePrices > .seg.mg [data-sview="prices"].on');
     const tabOn = document.querySelector('.tab[data-t="prices"]').classList.contains('on');
