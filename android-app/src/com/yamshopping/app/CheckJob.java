@@ -66,8 +66,22 @@ public class CheckJob extends JobService {
         return prefs(c).getBoolean("on", true);
     }
 
+    /**
+     * 🔋 2.2: הבדיקה מתעוררת משני מקומות (JobScheduler ו-Wake) — רק אחד מהם בודק בכל פעם.
+     * true — לא בדקו ב-12 הדקות האחרונות, ועכשיו זה סומן כבדיקה הנוכחית
+     */
+    static synchronized boolean claim(Context c) {
+        SharedPreferences p = prefs(c);
+        long t = System.currentTimeMillis(), last = p.getLong("run_at", 0);
+        if (t - last < 12 * 60 * 1000L && t >= last) return false;
+        p.edit().putLong("run_at", t).commit();
+        return true;
+    }
+
     @Override
     public boolean onStartJob(JobParameters params) {
+        Wake.arm(getApplicationContext()); // 🔋 2.2: שהגיבוי יישאר דרוך
+        if (!claim(getApplicationContext())) return false;
         new Thread(() -> {
             try {
                 run(getApplicationContext());
