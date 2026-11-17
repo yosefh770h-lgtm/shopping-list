@@ -45,25 +45,17 @@ async function newPage({ user = null, stub = true } = {}) {
   if (stub) await ctx.route(/\/vendor\/supabase-js[^/]*\/supabase\.js/, (r) => r.abort());
   await ctx.addInitScript((st) => { localStorage.setItem('yam_tour165', '1'); if (st && !localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); }, user ? { user } : null);
   if (stub) await ctx.addInitScript(STUB);
-  if (process.env.WK_DEBUG) await ctx.addInitScript(() => {
-    const cnt = {}; const hit = (k, info) => { cnt[k] = (cnt[k] || 0) + 1; const n = cnt[k]; if (n === 200 || n === 2000 || n === 20000) console.log('LOOP? ' + k + ' x' + n + ' ' + String(info || '').slice(0, 160) + ' | ' + (new Error().stack || '').split('\n').slice(1, 6).join(' < ').slice(0, 600)); };
-    const sa = Element.prototype.setAttribute; Element.prototype.setAttribute = function (a, v) { hit('setAttribute:' + a, (this.id || this.className || this.tagName) + '=' + v); return sa.apply(this, arguments); };
-    const MO = window.MutationObserver; window.MutationObserver = function (cb) { const id = (new Error().stack || '').split('\n')[1] || '?'; return new MO(function (ms, o) { hit('MO ' + id, ms.length + ' ' + ms.map((m) => m.type + ':' + (m.attributeName || '') + ':' + ((m.target && (m.target.id || m.target.className || m.target.nodeName)) || '')).slice(0, 3).join(',')); return cb.call(this, ms, o); }); };
-    const raf = window.requestAnimationFrame; window.requestAnimationFrame = function (f) { hit('raf', (new Error().stack || '').split('\n')[1]); return raf.call(window, f); };
-    const st = window.setTimeout; window.setTimeout = function (f, t) { if (!t) hit('setTimeout0', (new Error().stack || '').split('\n')[1]); return st.apply(window, arguments); };
-    const qm = window.queueMicrotask; window.queueMicrotask = function (f) { hit('microtask', (new Error().stack || '').split('\n')[1]); return qm.call(window, f); };
-  });
+
   const page = await ctx.newPage();
   const errors = [];
   page.setDefaultTimeout(30000); page.setDefaultNavigationTimeout(30000);
   page.on('pageerror', (e) => errors.push(e.message));
-  if (process.env.WK_DEBUG) { page.on('console', (m) => console.log('  [console]', m.type(), m.text().slice(0, 200))); page.on('requestfailed', (r) => console.log('  [failed]', r.url().slice(0, 120))); page.on('load', () => console.log('  [load]')); page.on('domcontentloaded', () => console.log('  [dom]')); }
   return { ctx, page, errors };
 }
 
 await test('WebKit: האתר נפתח בלי שגיאות (משתמש קיים)', async () => {
   const { ctx, page, errors } = await newPage({ user: { name: 'בודק', email: '', offline: true } });
-  await page.goto(ORIGIN + '/index.html'); if (process.env.WK_DEBUG) console.log('  goto done'); await page.waitForTimeout(2500); if (process.env.WK_DEBUG) console.log('  wait done');
+  await page.goto(ORIGIN + '/index.html'); await page.waitForTimeout(2500);
   assert(await page.evaluate(() => !!document.querySelector('#paneList')), 'אין רשימה');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
