@@ -80,6 +80,10 @@ class Runner:
         return self.paused()[0]
 
     # ---------- קובץ אחד ----------
+    def done(self, name):
+        """קובץ שכבר נקלט בריצה קודמת — לא מורידים אותו שוב."""
+        return bool(self.con.execute("select 1 from files_done where name=?", (name,)).fetchone())
+
     def handle(self, chain, cache, counts):
         def on_file(kind, name, path):
             if self.con.execute("select 1 from files_done where name=?", (name,)).fetchone():
@@ -118,12 +122,13 @@ class Runner:
                 break
             threads = 1 if chain in C.GENTLE else self.threads
             n, errs = scrape.download(chain, kind, self.dump, self.status_dir, self.handle(chain, cache, counts),
-                                      threads=threads, limit=limit, day=today, should_stop=self.should_stop)
+                                      threads=threads, limit=limit, day=today, should_stop=self.should_stop,
+                                      skip=self.done)
             # קובץ מלא שעוד לא פורסם היום (רשתות שמפרסמות מאוחר) — לוקחים את של אתמול
             if n == 0 and kind in ("stores", "pricefull", "promofull") and self.mode != "hourly":
                 n, errs2 = scrape.download(chain, kind, self.dump, self.status_dir, self.handle(chain, cache, counts),
                                            threads=threads, limit=limit, day=today - dt.timedelta(days=1),
-                                           should_stop=self.should_stop)
+                                           should_stop=self.should_stop, skip=self.done)
                 errs += errs2
             if kind == "pricefull" and n:
                 self.con.execute("insert or replace into meta(k, v) values (?, ?)", (f"full:{chain}", today.isoformat()))
@@ -630,20 +635,6 @@ def _mem_mb():
     return 0
 
 
-def quiet_library():
-    """הספרייה כותבת יומן DEBUG לקובץ logging.log שגדל בלי סוף — משאירים רק אזהרות, ובלי קובץ."""
-    try:
-        import il_supermarket_scarper  # noqa: F401  (יוצר את ה-Logger שלה)
-    except Exception:
-        return
-    lg = logging.getLogger("Logger")
-    lg.setLevel(logging.WARNING)
-    for h in list(lg.handlers):
-        if isinstance(h, logging.FileHandler):
-            lg.removeHandler(h)
-            h.close()
-
-
 def status_report():
     con = db.connect(env("DB_PATH", os.path.join(env("DATA_DIR", "/var/lib/yamshopping"), "prices.db")))
     rows = con.execute("select * from chain_status order by chain").fetchall()
@@ -660,9 +651,8 @@ def main(argv=None):
     mode = argv[0] if argv else "hourly"
     load_env_file(env("YAM_ENV", "/etc/yamshopping/collector.env"))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-    for noisy in ("il_supermarket_scarper", "urllib3", "asyncio"):
+    for noisy in ("urllib3",):
         logging.getLogger(noisy).setLevel(logging.WARNING)
-    quiet_library()
     if mode == "status":
         status_report()
         return 0

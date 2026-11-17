@@ -36,7 +36,8 @@ addEventListener('hashchange',routeHash);
 let pushState={sub:null,prefs:null,key:null};
 function b64uToBytes(s){const t=s.replace(/-/g,'+').replace(/_/g,'/');const p=t+'==='.slice((t.length+3)%4);return Uint8Array.from(atob(p),c=>c.charCodeAt(0));}
 async function pushReg(){if(!PUSH_SUPPORTED)return null;try{return await navigator.serviceWorker.ready;}catch(e){return null;}}
-async function pushRefresh(){const r=await pushReg();pushState.sub=r?await r.pushManager.getSubscription():null;
+/* בלי אישור התראות אין מינוי, אז לא שואלים את הדפדפן. גם חוסך קריאה, וגם עוקף באג ב-WebKit החדש (Playwright 1.65 בלינוקס) שבו getSubscription מקפיא את כל הדף */
+async function pushRefresh(){const r=await pushReg();pushState.sub=r&&Notification.permission==='granted'?await r.pushManager.getSubscription():null;
   if(sb&&authUser){try{const {data}=await sb.from('push_prefs').select('*').eq('user_id',authUser.id).maybeSingle();pushState.prefs=data||null;}catch(e){}}}
 async function pushEnable(){
   if(!PUSH_SUPPORTED){flash(/iPhone|iPad/.test(navigator.userAgent)?T('באייפון: קודם "הוספה למסך הבית" (שיתוף ← הוסף למסך הבית), ואז מפעילים מתוך האפליקציה 📲','On iPhone: Add to Home Screen first 📲'):T('הדפדפן הזה לא תומך בהתראות כשהאתר סגור 🙁','This browser does not support push 🙁'));return false;}

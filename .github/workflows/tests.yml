@@ -56,8 +56,7 @@ jobs:
         run: python3 check-secrets.py
   safari:
     # אותו אתר בדפדפן WebKit — המנוע של ספארי באייפון ובמק
-    # זמנית: WebKit 27.2 (של Playwright 1.65) נתקע בדף הראשי, אז כאן נשארים עם Playwright 1.56 על ubuntu-24.04 עד שנבדוק
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
@@ -70,7 +69,6 @@ jobs:
       - name: Install
         run: |
           npm install --no-audit --no-fund
-          npm install --no-audit --no-fund --no-save playwright@1.56.1
           npx playwright install --with-deps webkit
       - name: Site opens in Safari's engine (WebKit)
         run: node webkit.mjs
