@@ -56,7 +56,7 @@ jobs:
         run: python3 check-secrets.py
   safari:
     # אותו אתר בדפדפן WebKit — המנוע של ספארי באייפון ובמק
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 לא תומך עדיין ב-ubuntu 26.04 (ubuntu-latest)
     timeout-minutes: 15
     defaults:
       run:
@@ -74,7 +74,7 @@ jobs:
         run: node webkit.mjs
   collector:
     # אוסף המחירים בשרת (collector/): פענוח קבצי המחירים, המאגר המקומי, ה-API והשהיית השבת
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 לא תומך עדיין ב-ubuntu 26.04 (ubuntu-latest)
     timeout-minutes: 10
     defaults:
       run:
@@ -91,7 +91,7 @@ jobs:
       - name: Install scripts are valid bash
         run: bash -n setup.sh && bash -n bin/cron-run.sh
   database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 לא תומך עדיין ב-ubuntu 26.04 (ubuntu-latest)
     timeout-minutes: 10
     services:
       postgres:
