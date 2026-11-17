@@ -1,7 +1,7 @@
-"""הרשתות שהאוסף מכיר: השם בספרייה il-supermarket-scraper ← השם שמוצג באתר.
+"""הרשתות שהאוסף מכיר: השם הפנימי (המפתח ב-yam/sources.py) ← השם שמוצג באתר.
 
 ברירת המחדל (כשבבק אופיס עוד לא נשמרה הגדרה): כל הרשתות פעילות חוץ מ-OFF_BY_DEFAULT.
-רשת חדשה שתתווסף בעתיד לספרייה תיאסף אוטומטית, ותוצג באתר בשם האנגלי שלה עד שנוסיף לה שם כאן.
+רשת חדשה שתתווסף ל-sources.SOURCES תיאסף אוטומטית, ותוצג באתר בשם האנגלי שלה עד שנוסיף לה שם כאן.
 """
 
 HEBREW = {
@@ -38,6 +38,7 @@ HEBREW = {
     "YOHANANOF": "יוחננוף",
     "ZOL_VEBEGADOL": "זול ובגדול",
     "WOLT": "וולט",
+    "COFIX": "סופר קופיקס",
 }
 
 # רשתות שהאתר שלהן חוסם כתובת ששולחת הרבה בקשות (laibcatalog חסם את השרת ב-10/2026): פונים אליהן רק בריצה
@@ -54,12 +55,9 @@ def hebrew(chain: str) -> str:
 
 
 def all_chains() -> list:
-    """כל הרשתות שהספרייה המותקנת מכירה (ואם היא לא נטענת — הרשימה שלנו)."""
-    try:
-        from il_supermarket_scarper import ScraperFactory
-        return list(ScraperFactory.all_listed_scrappers())
-    except Exception:  # pragma: no cover - רק כשהספרייה חסרה
-        return list(HEBREW)
+    """כל הרשתות שיש להן מקור הורדה אצלנו (yam/sources.py)."""
+    from .sources import SOURCES
+    return list(SOURCES)
 
 
 def enabled_chains(cfg: dict, known=None) -> list:
