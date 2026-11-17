@@ -7,7 +7,7 @@ const $11=s=>document.querySelector(s);
   const pick=sel=>sel.map(x=>x.startsWith('fw:')?m.querySelector('[data-forward="'+x.slice(3)+'"]'):m.querySelector('#'+x)).filter(Boolean);
   const GROUPS=[
     ['shop','🛒',T('קניות והבית','Shopping & home'),['miFinish','miInv','miUpload','miProdUp','miDeal','fw:btnShare','fw:btnPrint']],
-    ['food','🕯️',T('שבת וחגים','Shabbat & holidays'),['miRecipes','miRecipe','miZmanim']],
+    ['food','🕯️',T('שבת וחגים','Shabbat & holidays'),['miZmanim']],
     ['talk','💬',T('קשר עם האתר','Contact us'),['miChatSite','miReviews','miBizJoin','miAbout']],
     ['view','🎨',T('תצוגה והגדרות','Display & settings'),['miTheme','fw:btnDark','fw:btnGroup','miChats','miFavs','miA11y','miGender','miIntl']],
     ['staff','🛠️',T('ניהול האתר','Site admin'),['miOnline','miAdmin','miBackoffice']],

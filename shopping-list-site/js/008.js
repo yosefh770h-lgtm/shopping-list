@@ -81,21 +81,8 @@ async function lookupBarcode(code){
   $8('#bcReport').onclick=()=>{const n=$8('#bcName').value.trim();closeSheet();$8('#catOverlay').classList.remove('open');setTab('prices');setTimeout(()=>{const a=$8('#prProduct'),c=$8('#prBarcode');if(a)a.value=n;if(c)c.value=code;if(a)a.focus();},300);};
 }
 
-/* ---------- מתכונים לשבת ---------- */
-const SHABBAT_RECIPES=[
-{n:'קוגל ירושלמי',e:'🍮',shabbat:true,req:['פסטה','סוכר','שמן','ביצים','פלפל שחור'],opt:[],steps:'מבשלים 500 גרם אטריות דקות ומסננים. בסיר מקרמלים כוס סוכר עם חצי כוס שמן עד צבע ענבר כהה. מערבבים מהר עם האטריות, מצננים מעט, מוסיפים 4 ביצים, כפית פלפל שחור גרוס וכפית מלח. אופים בתבנית משומנת שעה וחצי על 180°, או שמים על הפלטה לשבת.'},
-{n:'קוגל תפוחי אדמה',e:'🥔',shabbat:true,req:['תפוחי אדמה','בצל','ביצים','שמן'],opt:[],steps:'מגררים דק 6 תפוחי אדמה ו-2 בצלים, מסננים את הנוזלים. מוסיפים 3 ביצים, חצי כוס שמן, מלח ופלפל. אופים בתבנית משומנת וחמה שעה וחצי על 200° עד שהשוליים פריכים.'},
-{n:'חלה ביתית',e:'🍞',shabbat:true,req:['קמח','שמרים','סוכר','שמן','ביצים','מלח'],opt:['שומשום'],steps:'קילו קמח, כף שמרים, חצי כוס סוכר, חצי כוס שמן, ביצה, כפית מלח ו-2 כוסות מים פושרים. לשים 10 דקות, מתפיחים שעה. קולעים חלות, מורחים ביצה ומפזרים שומשום. אופים 25–30 דקות על 180°. לא לשכוח להפריש חלה 🙂'},
-{n:'עוף בתנור לשבת',e:'🍗',shabbat:true,req:['עוף','תפוחי אדמה','בצל','שום'],opt:['פפריקה','סילאן'],steps:'מסדרים בתבנית פרוסות בצל ותפוחי אדמה. מניחים עליהם את העוף, מורחים שמן, שום כתוש, פפריקה, מלח ופלפל (ואם רוצים — מעט סילאן). מכסים ואופים שעה על 180°, מגלים ואופים עוד 30 דקות להשחמה.'},
-{n:'דג חריימה',e:'🐟',shabbat:true,req:['פילה סלמון','שום','פפריקה','רסק עגבניות','שמן'],opt:['פלפלים','כוסברה'],steps:'במחבת רחבה: שמן, 6 שיני שום פרוסות, 2 כפות פפריקה, כף רסק עגבניות וחצי כוס מים. מבשלים 5 דקות, מוסיפים את הדג וכוסברה, מכסים ומבשלים 15 דקות על אש קטנה.'},
-{n:'מרק עוף',e:'🍲',shabbat:true,req:['עוף','גזר','בצל','קישוא'],opt:['פטרוזיליה','שמיר'],steps:'שמים בסיר גדול את העוף עם מים קרים ומביאים לרתיחה (מקפים את הקצף). מוסיפים גזר, בצל, קישוא, מלח ופלפל, ומבשלים שעה וחצי על אש קטנה. בסוף מוסיפים פטרוזיליה ושמיר.'},
-{n:'סלט חצילים במיונז',e:'🍆',shabbat:true,req:['חציל','מיונז','שום'],opt:['לימונים'],steps:'קולים 2 חצילים על האש או בתנור עד שהם רכים. מקלפים, קוצצים ומסננים. מערבבים עם 3 כפות מיונז, שן שום כתושה, מלח ומעט מיץ לימון.'}
-];
-SHABBAT_RECIPES.forEach(r=>{if(!RECIPES.some(x=>norm(x.n)===norm(r.n)))RECIPES.push(r);});
-const shabbatRecipeList=()=>[CHOLENT].concat(SHABBAT_RECIPES);
-function shabbatRecipesText(){return '🕯️ '+T('רעיונות למתכונים לשבת:','Shabbat recipe ideas:')+'\n'+shabbatRecipeList().map(r=>'• '+r.e+' '+r.n).join('\n')+'\n\n'+T(GW2('כתבי','כתוב')+' את שם המתכון — ואראה לך מצרכים ואופן הכנה, ואוסיף לרשימה מה שחסר 🙂','Write a recipe name and I will show it 🙂');}
 const _v8BotChips=botChips;
-botChips=function(){const b=_v8BotChips();const d=new Date().getDay();if(!RECIPES_OFF&&(d===4||d===5))b.splice(1,0,'🍽️ מתכונים לשבת');b.push('🤝 היכרות');b.push('🧮 איך לחסוך');return b;};
+botChips=function(){const b=_v8BotChips();b.push('🤝 היכרות');b.push('🧮 איך לחסוך');return b;};
 
 /* ---------- עוד בדיחות ---------- */
 JOKES.push(
@@ -116,7 +103,7 @@ JOKES.push(
 function chatTitle(msgs){const m=(msgs||[]).find(x=>x.who==='me');return m?m.txt.slice(0,40):T('שיחה','Chat');}
 /* לכל שיחה מזהה קבוע (state.botId) — כדי שהשיחה תסתנכרן בין המכשירים כאותה שיחה ולא תוכפל */
 function archiveCurrent(){const cid=state.botId||uid();state.botId=uid();if((state.bot||[]).some(m=>m.who==='me')){state.botChats=(state.botChats||[]).filter(x=>x.id!==cid);state.botChats.unshift({id:cid,title:chatTitle(state.bot),ts:(state.bot[state.bot.length-1]||{}).ts||Date.now(),msgs:state.bot.slice(-150)});state.botChats=state.botChats.slice(0,30);}}
-function newBotChat(silent){archiveCurrent();state.bot=[];state.pending=null;state.pendingCholent=false;state.introFlow=null;save(true);$8('#botResume').hidden=true;
+function newBotChat(silent){archiveCurrent();state.bot=[];state.pending=null;state.introFlow=null;save(true);$8('#botResume').hidden=true;
   botSay(silent?T('שיחה חדשה 🙂 במה אפשר לעזור?','New chat 🙂 How can I help?'):T('פתחתי שיחה חדשה ✨ במה אפשר לעזור, '+((state.user&&state.user.name)||'')+'?','New chat ✨ How can I help?'));}
 $8('#botNew').onclick=()=>newBotChat();
 $8('#botList').onclick=()=>{
@@ -144,7 +131,7 @@ const INTRO_Q=[
 ['mode',()=>T('קונים יותר אונליין, בחנות — או גם וגם?','Online, in store, or both?')],
 ['notes',()=>T('ויש משהו שחשוב שאדע? כשרות, חברות שאוהבים, תקציב... (או "אין")','Anything else I should know?')]];
 function introAsk(){const f=state.introFlow;const q=INTRO_Q[f.step];botSay((f.step===0?'':'👍 ')+q[1]()+(f.step===0?'':'\n('+(f.step+1)+'/'+INTRO_Q.length+')'));}
-function startIntro(){state.introFlow={step:0};state.pending=null;state.pendingCholent=false;save(true);botSay(T('איזה כיף! 🤝 כמה שאלות קצרות — ואדע לעזור לך הרבה יותר טוב. אפשר תמיד לכתוב "דלג" או "בטל".','Great! A few short questions 🤝'));introAsk();}
+function startIntro(){state.introFlow={step:0};state.pending=null;save(true);botSay(T('איזה כיף! 🤝 כמה שאלות קצרות — ואדע לעזור לך הרבה יותר טוב. אפשר תמיד לכתוב "דלג" או "בטל".','Great! A few short questions 🤝'));introAsk();}
 function findDayIn(t){if(/מוצאי שבת|מוצ"ש|מוצש/.test(t))return 6;for(let i=0;i<6;i++){if(t.includes('יום '+DAYS[i])||t.includes('ב'+DAYS[i])||(i>0&&t.split(' ').includes(DAYS[i]))||t.split(' ').includes(DAYS[i]))return i;}if(/ראשון/.test(t))return 0;return -1;}
 function introAnswer(raw){
   const t=norm(raw);const f=state.introFlow;const me=meData();me.profile=me.profile||{};const skip=/^(דלג|לא יודע|לא יודעת|אין|לא)$/.test(t);
@@ -315,7 +302,6 @@ applyConfig=function(key,v){_v8ApplyConfig(key,v);if(key==='ui'){uiCfg=v||{};app
 const _v8ShowNudge=showNudge;showNudge=function(t){if(uiCfg.botHidden)return;_v8ShowNudge(t);};
 /* בפתיחה הראשונה — קודם ההיכרות, בלי הצעות אחרות באותו רגע */
 let skipOffersOnce=false;
-const _v8OfferCholent=offerCholent;offerCholent=function(){if(skipOffersOnce)return;_v8OfferCholent();};
 const _v8V7Offers=v7Offers;v7Offers=function(){if(skipOffersOnce)return;_v8V7Offers();};
 const _v8OpenBot=openBot;
 openBot=function(){if(uiCfg.botHidden)return;aiOff=false;
@@ -407,12 +393,11 @@ setInterval(()=>{if(document.visibilityState==='visible')checkShopDay();},30*600
 /* ---------- הצעות יזומות נוספות כשפותחים את יאמי ---------- */
 let pendingIntroAsk=false;
 function v8Offers(){
-  if(!state.user)return;const busy=()=>state.pendingCholent||state.pending||pendingDtAsk||state.dtFlow||state.addRecipeFlow||state.introFlow||pendingIntroAsk;
+  if(!state.user)return;const busy=()=>state.pending||pendingDtAsk||state.dtFlow||state.introFlow||pendingIntroAsk;
   const me=meData();
-  if(!(me.profile&&me.profile.done)&&!state.introOffered&&!state.introFlow){state.pendingCholent=false;state.pending=null;state.introOffered=true;save(true);pendingIntroAsk=true;
+  if(!(me.profile&&me.profile.done)&&!state.introOffered&&!state.introFlow){state.pending=null;state.introOffered=true;save(true);pendingIntroAsk=true;
     botSay(T('💚 אפשר להכיר אותך קצת? כמה שאלות קצרות (איפה קונים, באיזה יום, מה קונים כל שבוע) — ואני אדע לעזור לך הרבה יותר טוב. (כן/לא)','Can I get to know you? A few short questions (yes/no)'));return;}
   const d=new Date().getDay();
-  if(!RECIPES_OFF&&(d===4||d===5)&&!offeredToday('shabbatrec')){markOffered('shabbatrec');botSay(shabbatRecipesText());}
   const u=usualDays().get(d);
   if(u&&!state.history.some(h=>dayKey(h.ts)===dayKey(new Date()))&&!offeredToday('shopday-bot')&&!busy()){markOffered('shopday-bot');
     const st=(me.profile&&me.profile.staples||[]).filter(n=>!curList().items.some(i=>i.n===n&&!i.done));
@@ -471,10 +456,9 @@ async function v8BotPre(raw){
   if(/^(בינה|בינה מלאכותית|ai|שאלה לבינה)\s*[:：]/i.test(raw.trim())){aiOff=false;if(!(await askAI()))botSay(T('הבינה המלאכותית לא זמינה כרגע 🙏','AI is not available right now 🙏'));return true;}
   if(pendingIntroAsk){pendingIntroAsk=false;if(/^(כן|בטח|בשמחה|יאללה|אוקיי|אוקי|סבבה|קדימה|למה לא)/.test(t)){startIntro();return true;}if(/^(לא|לא עכשיו|אחר כך|אח"כ|לא תודה)/.test(t)){botSay(T('בסדר גמור 🙂 מתי שתרצו — כתבו "היכרות".','No problem 🙂 Write "intro" anytime.'));return true;}}
   if(askStoreTs){const ts=askStoreTs;setTimeout(()=>{const h=state.history.find(x=>x.ts===ts);if(h&&h.store)syncPurchaseStore(ts,h.store);},50);return false;}
-  if(state.addRecipeFlow||state.dtFlow)return false;
+  if(state.dtFlow)return false;
   if(/^(היכרות|שיחת היכרות|תכירי אותי|להכיר|תלמדי אותי|תשאלי אותי)/.test(t)){startIntro();return true;}
   if(/^(בואי\s+|בוא\s+|יאללה\s+)?(שיחה חדשה|נושא חדש|להתחיל מחדש|נתחיל מחדש|נתחיל שיחה חדשה|להתחיל שיחה חדשה)[.!]*$/.test(t)){newBotChat();return true;}
-  if(/(מתכונים לשבת|מתכון לשבת|מה מבשלים לשבת|מה לבשל לשבת|מה נבשל לשבת|תפריט לשבת|אוכל לשבת)/.test(t)&&!/(איפה|קונים|לקנות|להזמין|מזמינים|קייטרינג|מסעד)/.test(t)){botSay(shabbatRecipesText());return true;}
   if(/(זריחה|שקיעה|מנחה גדולה|מנחה קטנה|פלג המנחה|זמני היום|זמנים להיום|דף יומי|הדף היומי|צאת הכוכבים|חצות|סוף זמן|עלות השחר|זמנים של היום)/.test(t)){botSay(zmanimText());return true;}
   if(/(זמני שבת|כניסת שבת|יציאת שבת|הדלקת נרות|מתי נכנסת שבת|מתי יוצאת שבת)/.test(t)&&!findCityIn(t)){const sh=shabbatTimes(userCity());if(sh){botSay('🕯️ '+T('זמנים ב','Times in ')+sh.city+':\n'+sh.candles+'\n'+sh.havdalah+(nextParasha()?'\n📜 '+nextParasha():'')+'\n\n'+T('ללוח המלא — "עיתים לבינה":','Full calendar:')+'\n'+itimUrl());return true;}}
   const uc=unitCompare(raw);if(uc&&/(משתלם|זול|כדאי|עדיף|יותר טוב|השוואה|השווי)/.test(t)){botSay(uc);return true;}
@@ -485,8 +469,6 @@ async function v8BotPre(raw){
   /* "איך מוחקים?" על האתר — כן; "איך מוחקים כתם קפה מחולצה" — לא (הולך לבינה המלאכותית) */
   if(t.split(' ').length<=3||/(^|\s)(ה|ב|מה|ל|מ)?(רשימה|רשימת|מוצר|מוצרים|פריט|פריטים|אתר|כאן|פה|יאמי|אפליקציה|מחיר|מחירים|ברקוד|קנייה|קניה|קניות|משפחה)(?=\s|$|[?？!.,])/.test(t))
     for(const [re,ans] of HOWTO)if(re.test(t)){botSay(ans);return true;}
-  /* כותבים רק שם של מתכון — מציגים אותו */
-  if(!RECIPES_OFF&&t.length<=40&&!state.pending){const r=allRecipes().find(x=>norm(x.n)===t||(t.length>=4&&norm(x.n).split(/\s*\/\s*/).some(p=>p===t)));if(r){state.pendingRecipe=null;showRecipe(r);return true;}}
   return false;
 }
 yamiStep(v8BotPre);

@@ -167,33 +167,6 @@ function findHolidayDate(name){
   return hit?{name:heName(hit),date:hit.getDate().greg()}:null;
 }
 
-/* ================= מתכון החמין / טשולנט ================= */
-const CHOLENT={n:'חמין / טשולנט',e:'🍲',
-  req:['בשר לחמין','בצל','תפוחי אדמה','שעועית','חומוס','גריסים','שמן','רוטב טריאקי','פלפל שחור','פפריקה','מלח','סילאן','דבש','כמון','שום'],
-  opt:['בטטה','חיטה'],
-  steps:`מכינים מראש:
-• חותכים בצל (לא חייב סימטרי — הוא הולך לטיגון).
-• חותכים תפוחי אדמה, ובטטה אם יש (לא חובה).
-• משרים את השעועית והחומוס במים.
-• מכינים גם את הגריסים או את החיטה.
-
-אופן ההכנה:
-1. שמים שמן בסיר — שכבה אחידה אחת שמכסה את תחתית הסיר. לא להגזים.
-2. כשהשמן רותח מוסיפים את הבצל, ומחכים עד שהבצל יהיה זהוב.
-3. מוסיפים 3 כפיות רוטב טריאקי (אם אין — אפשר סילאן) וכפית פלפל שחור. מערבבים ומחכים 4–5 דקות.
-4. מוסיפים את הבשר. אוהבים חתיכות? חותכים. אם לא — מחלקים ל־3 גושים (כך הבשר פחות מתייבש). נותנים לבשר כ־5 דקות של צלייה ברוטב שבסיר.
-5. מוסיפים מים — קצת פחות מחצי סיר. (אם יהיה צורך להוסיף מים — מוסיפים לקראת הסוף, כי להוציא מים עודפים זה לא כיף...) אפשר לשים מלכתחילה מים חמים.
-6. כשהמים חמים מוסיפים תבלינים: 3 כפיות פפריקה, 3 כפיות מלח, עוד 2 כפיות סילאן, כפית דבש, כפית כמון וחצי ראש שום.
-7. מערבבים, מחכים שיבעבע, ומנמיכים קצת את האש.
-8. מוסיפים את תפוחי האדמה (והבטטה). אחרי 10 דקות מוסיפים את החומוס והשעועית.
-9. כשהכל נראה מסודר בסיר ומעורבב היטב — מוסיפים את החיטה או הגריסים, מה שאוהבים.
-10. מערבבים שוב ומבשלים על אש בינונית שעתיים ויותר.
-11. מעבירים לפלטה עד הבוקר. לפני כניסת שבת בודקים שיש מספיק מים בחמין — ואם צריך, מוסיפים.
-
-בתיאבון! 😋
-💡 לא אוכלים שעועית? שמים במקומה תחליף שאוהבים.`,official:true};
-const CHOLENT_RX=/(חמין|טשולנט|צולנט|צ׳ולנט|צ'ולנט|טשונט|צ׳ונט|צ'ונט|cholent)/;
-
 /* ================= יאמי — הבוט ================= */
 const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const DAYG=['יום ראשון שמח 🌟','יום שני מעולה 💪','יום שלישי פורה 🚀','יום רביעי נפלא ☀️','יום חמישי מוצלח 🎯 — זמן להתחיל לחשוב על החמין 🍲','שישי — יום של הכנות לשבת 🌸','שבת שלום ומנוחה 🕯️'];
@@ -213,33 +186,11 @@ const JOKES=[
 'למה המלח והפלפל הם זוג מושלם? כי הם תמיד יודעים לתבל את הרגע 🧂',
 'החמין אמר לפלטה: "בלעדייך הייתי נשאר קר כל השבת" 🍲😄',
 'הקוגל התלונן: "כולם מדברים רק על החמין!" 🥔'];
-const RECIPES=[
-{n:'חביתה קלאסית',e:'🍳',req:['ביצים','שמן זית'],opt:['גבינה צהובה','עגבניות'],steps:'טורפים 2–3 ביצים עם קורט מלח. מחממים מעט שמן במחבת, מוזגים, מחכים דקה־שתיים, מקפלים. מוכן תוך 5 דקות!'},
-{n:'פסטה עגבניות ושום',e:'🍝',req:['פסטה','עגבניות','שום','שמן זית'],opt:['גבינה צהובה','בזיליקום'],steps:'מרתיחים פסטה לפי האריזה. במחבת: שמן זית + שום קצוץ דקה, מוסיפים עגבניות חתוכות, מבשלים 7 דקות, מלח ופלפל. מערבבים עם הפסטה ומעל גבינה מגוררת.'},
-{n:'שניצלים ביתיים',e:'🍗',req:['חזה עוף פרוס לשניצלים','ביצים','קמח'],opt:['פירורי לחם'],steps:'טובלים כל פרוסה: קמח → ביצה טרופה → פירורים. מטגנים 2–3 דקות מכל צד על אש בינונית. מניחים על נייר סופג.'},
-{n:'סלט יווני',e:'🥗',req:['מלפפונים','עגבניות','גבינה צהובה'],opt:['זיתים','בצל'],steps:'חותכים הכל לקוביות, מוסיפים זיתים, שמן זית, מלח ואורגנו. מערבבים וזהו — 5 דקות ומוכן.'},
-{n:'אורז עם ירקות',e:'🍚',req:['אורז','גזר','בצל'],opt:['תירס','אפונה'],steps:'מטגנים בצל וגזר קצוצים, מוסיפים אורז ומים (פי 2 מהאורז), מכסים ומבשלים 15 דקות על אש קטנה.'},
-{n:'טוסט גבינות',e:'🧀',req:['לחם','גבינה צהובה'],opt:['עגבניות','זיתים'],steps:'לחם + גבינה (+ עגבניות) בטוסטר או מחבת מכוסה 3–4 דקות עד שהגבינה נמסה.'},
-{n:'מרק ירקות מחמם',e:'🍲',req:['תפוחי אדמה','גזר','בצל'],opt:['ברוקולי','תירס'],steps:'חותכים הכל לקוביות, מכסים במים, מוסיפים אבקת מרק/מלח, מבשלים 30 דקות. אפשר לטחון לקרם.'},
-{n:'חומוס ביתי',e:'🥣',req:['חומוס','שום','שמן זית'],opt:['לימונים','טחינה'],steps:'חומוס מושרה ומבושל (או מקופסה) → בלנדר עם שום, שמן זית, מיץ לימון ומעט מים. מערבבים עד קרמי.'},
-{n:'שקשוקה',e:'🍳',req:['עגבניות','ביצים','בצל','שום'],opt:['פלפלים'],steps:'מטגנים בצל ושום, מוסיפים עגבניות חתוכות ומבשלים 10 דקות עד רוטב סמיך. עושים גומות ושוברים לתוכן ביצים, מכסים ומבשלים עד שהחלבון מתקשה.'},
-{n:'עוף בתנור עם תפוחי אדמה',e:'🍗',req:['חזה עוף','תפוחי אדמה','שמן זית'],opt:['שום'],steps:'חותכים תפוחי אדמה לקוביות, מתבלים הכל עם שמן זית, מלח ופלפל. אופים בתנור על 200° כ-40 דקות עד להזהבה.'},
-{n:'מרק עדשים',e:'🍲',req:['עדשים','גזר','בצל'],opt:['שום'],steps:'מטגנים בצל וגזר, מוסיפים עדשים ומים (פי 3), מבשלים 30 דקות עד שהעדשים רכות. אפשר לטחון לקרם חלק.'},
-{n:'פנקייקים',e:'🥞',req:['קמח','ביצים','חלב'],opt:['סוכר'],steps:'מערבבים קמח, ביצים, חלב וקורט סוכר לבלילה חלקה. אופים כפות בלילה במחבת חמה עד שמתחילות להתבעבע, הופכים.'},
-{n:'פשטידת ירקות',e:'🥧',req:['ביצים','קמח','גבינה צהובה'],opt:['תירס','גזר'],steps:'מערבבים ביצים, קמח וגבינה מגוררת לבלילה, מוסיפים ירקות קצוצים. אופים בתבנית משומנת 35 דקות על 180°.'},
-{n:'פסטה ברוטב שמנת',e:'🍝',req:['פסטה','שמנת'],opt:['שום','פטריות'],steps:'מרתיחים פסטה. במחבת מחממים שמנת עם שום קצוץ (ופטריות אם יש) 5 דקות עד סמיך, מערבבים עם הפסטה.'},
-{n:'סלט טונה',e:'🥗',req:['טונה','מלפפונים','מיונז'],opt:['תירס','ביצים'],steps:'מערבבים טונה מסוננת עם מלפפונים קצוצים ומיונז. מוסיפים תירס וביצה קשה חתוכה אם יש.'}
-];
-RECIPES.unshift(CHOLENT);
-let publicRecipes=[],globalKnowledge=[];
-function allRecipes(){const seen=new Set();return RECIPES.concat(publicRecipes).concat(state.customRecipes||[]).filter(r=>{const k=norm(r.n);if(seen.has(k))return false;seen.add(k);return true;});}
+let globalKnowledge=[];
 function botSay(t){state.bot.push({who:'bot',txt:t,ts:Date.now()});if(state.bot.length>150)state.bot=state.bot.slice(-150);save();renderBot();}
 function meSay(t){state.bot.push({who:'me',txt:t,ts:Date.now()});save();}
 function findDay(t){for(let i=0;i<7;i++){if(t.includes('יום '+DAYS[i]))return i;}if(/(^|\s)(ל|ב)?שבת(\s|$)/.test(t)&&!/(זמני|כניסת|יציאת|פרשת|הדלקת)/.test(t))return 6;return -1;}
 function pantryAll(){return Object.keys(state.pantry);}
-function canMake(r){const have=n=>pantryHas(n)||curList().items.some(i=>i.n===n&&!i.done);
-  const miss=(r.req||[]).filter(x=>!have(x));return {ok:miss.length===0,miss};}
-function fmtMissing(m){return m.map(x=>emojiOf(x)+' '+x).join(', ');}
 function levenshtein(a,b){
   const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
   let prev=Array.from({length:n+1},(_,j)=>j);
@@ -256,15 +207,6 @@ function fuzzyResolve(nameRaw){
   Object.keys(NORMP).forEach(k=>{if(k[0]!==key[0]||Math.abs(k.length-key.length)>th)return;const d=levenshtein(key,k);if(d>th)return;
     if(d<bestD){bestD=d;best=NORMP[k];tie=false;}else if(d===bestD&&NORMP[k]!==best)tie=true;});
   return tie?null:best;
-}
-function recipeText(r){
-  return r.e+' '+r.n+'\n\nמצרכים: '+(r.req||[]).join(', ')+((r.opt||[]).length?'\nלא חובה: '+r.opt.join(', '):'')+'\n\n'+r.steps;
-}
-function showRecipe(r){if(RECIPES_OFF)return botSay('🙂 '+T('אני עוזרת ברשימת הקניות, בבית ובמחירים.','I help with your list, home and prices.'));
-  const {miss}=canMake(r);let s=recipeText(r);
-  if(miss.length){state.pendingRecipe=miss;save();s+='\n\n⚠️ חסר: '+fmtMissing(miss)+'\nלהוסיף את החסר לרשימת הקניות? (כן/לא)';}
-  else s+='\n\n✅ יש הכל בבית — בתאבון!';
-  return botSay(s);
 }
 /* ---- ניווט לסניפים ---- */
 function wazeUrl(q){return 'https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes';}
@@ -286,20 +228,6 @@ async function submitKnowledge(q,a){
   if(!sb||!authUser)return false;
   try{const {error}=await sb.from('bot_knowledge').insert({question:q.slice(0,300),answer:a.slice(0,2000),author_id:authUser.id});return !error;}catch(e){return false;}
 }
-async function submitRecipeCloud(r){
-  if(!sb||!authUser)return false;
-  try{const {error}=await sb.from('recipes').insert({name:r.n.slice(0,80),emoji:r.e||'🍽️',req:r.req,opt:r.opt,steps:r.steps.slice(0,8000),author_id:authUser.id});return !error;}catch(e){return false;}
-}
-function saveRecipeFromUser(name,req,opt,steps){
-  name=(name||'').trim();steps=(steps||'').trim();
-  if(!name||!steps){flash('⚠️ צריך לפחות שם ואופן הכנה');return false;}
-  if([name,steps].concat(req,opt).some(hasProfanity)){flash('🙏 יש במתכון מילים לא יפות — אי אפשר לשמור');return false;}
-  const recipe={n:name,e:'🍽️',req:req||[],opt:opt||[],steps,custom:true};
-  state.customRecipes=(state.customRecipes||[]).filter(r=>norm(r.n)!==norm(name));
-  state.customRecipes.push(recipe);save();
-  submitRecipeCloud(recipe).then(ok=>flash(ok?'📨 המתכון נשלח למנהל לאישור — תודה!':'💾 המתכון נשמר אצלך (לא נשלח — אין חיבור לענן)'));
-  return true;
-}
 
 
 /* ================= דברי תורה על הפרשה — רק דרך הבוט ================= */
@@ -312,9 +240,7 @@ function findParashaIn(t){const names=parashaNames().slice().sort((a,b)=>b.lengt
 function sameParasha(a,b){const A=norm(a).replace(/[-־]/g,' '),B=norm(b).replace(/[-־]/g,' ');return A===B||A.replace(/\s/g,'')===B.replace(/\s/g,'')||A.split(' ').some(x=>x.length>1&&B.split(/\s|-/).includes(x))&&(A.includes(B)||B.includes(A));}
 /* האפשרות "דבר תורה / וורט / חידוש" הוסרה מהאתר ומהאפליקציה (נובמבר 2026). הנתונים בשרת נשארים — false מחזיר הכל */
 const TORAH_OFF=true;
-/* המתכונים הוסרו מהאתר ומהאפליקציה (נובמבר 2026): אין ספר מתכונים, אין הוספת מתכון, ויאמי לא נותנת ולא מציעה מתכונים.
-   הנתונים בשרת נשארים כמו שהם (בלי מחיקה), והקוד נשאר כבוי כאן — כדי שאפשר יהיה להחזיר בשינוי אחד. */
-const RECIPES_OFF=true;
+/* אין באתר מתכונים (הוסרו בנובמבר 2026): יאמי לא נותנת ולא מציעה מתכונים, ועונה על שאלת מתכון בהפניה לרשימה */
 const RECIPE_ASK_RX=/(מתכון|מתכונים|איך (מכינים|מבשלים|אופים)(\s|$)|מה (אפשר|אני יכול|אני יכולה|אפשר ל?)\s*(להכין|לבשל)|מה (לבשל|מבשלים|נבשל|להכין)(\s|$|[?？!.])|רעיונות לארוחה|תפריט לשבת|אוכל לשבת)/;
 let dtCache=null,dtShown=new Set(),dtLastWant='';
 async function fetchDivreiTorah(){if(!sb||!authUser)return [];try{const {data}=await sb.from('divrei_torah').select('id,parasha,title,body,source_name,created_at').eq('status','approved').order('created_at',{ascending:false}).limit(500);dtCache=data||[];if(typeof crFill23==='function')await crFill23('torah',dtCache,'author_name');}catch(e){dtCache=[];}return dtCache;}
@@ -367,7 +293,7 @@ function aiContext(){
     'הרשימה הפעילה "'+l.name+'": '+(open.join(', ')||'ריקה'),
     'רשימות קיימות: '+state.lists.map(x=>x.name).join(', '),
     'מה יש בבית: '+(pantryAll().join(', ')||'לא עודכן'),
-    RECIPES_OFF?'אין באתר מתכונים: לא לתת מתכונים או הוראות בישול. לעזור ברשימה, בבית ובמחירים.':'המתכונים שהאתר מכיר: '+allRecipes().map(r=>r.n).join(', '),
+    'אין באתר מתכונים: לא לתת מתכונים או הוראות בישול. לעזור ברשימה, בבית ובמחירים.',
     TORAH_OFF?'':'דברי תורה: המשתמש יכול לבקש "דבר תורה" (או "וורט" / "חידוש" — אותו דבר) או לשתף עם "לשתף דבר תורה" (נשלח לאישור מנהל).',
     'רשתות: '+allChainNames().join(', ')].filter(Boolean).join('\n');
 }
@@ -405,8 +331,7 @@ function yamiStep(fn){if(typeof fn==='function'&&!YAMI_STEPS.includes(fn))YAMI_S
 async function botReply(raw){
   if(hasProfanity(raw)){if(typeof reportAbuse==='function')reportAbuse(raw,'bot');
     botSay('🙏 '+T('בואו נשמור על לשון נקייה — אני לא עונה על קללות וגסויות.\n⚠️ לתשומת לבך: שפה כזו מדווחת לצוות האתר, ושימוש חוזר עלול להוביל להשעיה מהאתר.','Please keep it clean. Repeated abuse is reported and may lead to suspension.'));return;}
-  if(RECIPES_OFF){if(state.pendingCholent||state.pendingRecipe||state.addRecipeFlow||state.aiRecipeOffer){state.pendingCholent=false;state.pendingRecipe=null;state.addRecipeFlow=null;state.aiRecipeOffer=null;save();}
-    if(RECIPE_ASK_RX.test(norm(raw)))return botSay('🙂 '+T('אני עוזרת ברשימת הקניות, בבית ובמחירים. אפשר לכתוב לי למשל "מה חסר לי בבית?" או "איפה הכי זול?"','I help with your shopping list, your home and prices. Try "What am I missing at home?" or "Where is it cheapest?"'));}
+  if(RECIPE_ASK_RX.test(norm(raw)))return botSay('🙂 '+T('אני עוזרת ברשימת הקניות, בבית ובמחירים. אפשר לכתוב לי למשל "מה חסר לי בבית?" או "איפה הכי זול?"','I help with your shopping list, your home and prices. Try "What am I missing at home?" or "Where is it cheapest?"'));
   raw=yamiDtCanon(yamiCanon(raw));
   for(const step of YAMI_STEPS){if(await step(raw))return;}
   return yamiCore(raw);
@@ -463,7 +388,7 @@ const YAMI_DT_TAIL='(?:\\s+(?:על\\s+|ל|ב)?(?:ה)?(?:פרשה|פרשת\\s+\\S
 const YAMI_DT_ASK=new RegExp('^(?:(?:בבקשה|אפשר|יש לך|יש|תני לי|תני|תביאי לי|תביאי|תגידי לי|תגידי|תספרי לי|ספרי לי|אני רוצה|רוצה|אשמח ל|אשמח)\\s+)*(עוד\\s+|ועוד\\s+)?'+YAMI_DT_WORD+YAMI_DT_TAIL+'(?:\\s+בבקשה)?$');
 const YAMI_DT_SHARE=new RegExp('^(?:אני\\s+)?(?:רוצה\\s+)?(?:(?:לשתף|אשתף|שתפי|להוסיף|אוסיף|לשלוח|אשלח|שלחי)\\s+(?:את\\s+)?'+YAMI_DT_WORD+'|יש לי\\s+'+YAMI_DT_WORD+'(?:\\s+(?:לשתף|לשלוח))?)'+YAMI_DT_TAIL+'$');
 function yamiDtCanon(raw){
-  if(state.dtFlow||state.addRecipeFlow)return raw;
+  if(state.dtFlow)return raw;
   const t=norm(raw).replace(/[?？!.]+$/,'').trim();
   if(YAMI_DT_SHARE.test(t))return 'לשתף דבר תורה';
   const m=t.match(YAMI_DT_ASK);if(!m)return raw;
@@ -482,33 +407,11 @@ async function yamiCore(raw){
     if(/^(לא|בטל|עזוב)/.test(t)){state.pendingNav=null;save();return botSay('בסדר 🙂');}
     state.pendingNav=null;
   }
-  if(state.pendingCholent){
-    state.pendingCholent=false;save();
-    if(YES.test(t)||/^כמובן/.test(t))return showRecipe(CHOLENT);
-    if(/^(לא|אין צורך|לא עכשיו|לא תודה)/.test(t))return botSay('בסדר גמור 🙂 המתכון תמיד זמין — פשוט לכתוב "חמין" 🍲');
-  }
   if(state.pending){
     if(YES.test(t)){
       const p=state.pending;state.pending=null;p.items.forEach(n=>addItem(n,''));
       return botSay('הוספתי הכל לרשימה ✅\n'+p.items.map(n=>'• '+n).join('\n'));}
     if(/^(לא|בטל|אין|לא עכשיו|לא צריך)/.test(t)){state.pending=null;save();return botSay('בסדר, לא נוגעים 🙂');}
-  }
-  if(state.pendingRecipe){
-    if(YES.test(t)){
-      const pr=state.pendingRecipe;state.pendingRecipe=null;pr.forEach(n=>addItem(n,''));
-      return botSay('הוספתי את המצרכים החסרים לרשימה ✅ בתאבון! 🍽️');}
-    if(/^(לא|בטל)/.test(t)){state.pendingRecipe=null;save();return botSay('בסדר גמור 🙂');}
-  }
-  /* למידת מתכון בשיחה */
-  if(state.addRecipeFlow){
-    const f=state.addRecipeFlow;
-    if(/^(בטל|ביטול|עזוב|לא רוצה|לא עכשיו)/.test(t)){state.addRecipeFlow=null;save();return botSay('ביטלתי את הוספת המתכון 🙂');}
-    if(f.step==='name'){f.name=raw.trim();f.step='req';save();return botSay('"'+f.name+'" 📝 אילו מצרכים צריך? (מפרידים בפסיקים)');}
-    if(f.step==='req'){f.req=raw.split(/,|\sו(?=[א-ת])/).map(x=>x.trim()).filter(Boolean);f.step='opt';save();return botSay('יש מצרכים שהם לא חובה? אם אין — '+GW('כתבי','כתוב')+' "אין" 🙂');}
-    if(f.step==='opt'){f.opt=/^(אין|לא|שום דבר)/.test(t)?[]:raw.split(/,|\sו(?=[א-ת])/).map(x=>x.trim()).filter(Boolean);f.step='steps';save();return botSay('ועכשיו — איך מכינים? שלב אחרי שלב 👩‍🍳');}
-    if(f.step==='steps'){state.addRecipeFlow=null;save();
-      if(saveRecipeFromUser(f.name,f.req,f.opt,raw.trim()))return botSay('שמרתי את "'+f.name+'" 🎉 והוא נשלח למנהל האתר לאישור — אחרי האישור כולם יראו אותו.');
-      return botSay('לא הצלחתי לשמור את המתכון 🙁');}
   }
 
   /* דבר תורה הוסר: בקשה כזו מקבלת תשובה קצרה, ולא נכנסת לרשימה */
@@ -573,8 +476,6 @@ async function yamiCore(raw){
   if(/^(עזרה|מה את יודעת|מה אפשר לעשות|איך משתמשים|הדרכה|מה את יודעת לעשות|מה אתה יודע|מה אתה יודע לעשות)(\s+(לעשות|כאן|פה|באתר|יאמי|בבקשה|בעצם))*[?？!.]*$/.test(t)){
     return botSay('הנה מה שאני יודעת 🤍\n🛒 "חלב 2 ולחם" — הוספה · "הסר חלב" — מחיקה · "סמני חלב" — נקנה\n✅ "סיימתי קנייה" — הכל עובר להיסטוריה עם ✓✓ כחולים\n🏠 "יש לי ביצים" / "אין לי חלב" / "מה חסר לי בבית?"\n📅 "איזה חג היום?" · "החג הבא" · "מתי פסח?" · "פרשת השבוע" · "זמני שבת בבני ברק"\n📍 "סניפים של נתיב החסד" · "נווט לבר כל טוב בבני ברק" · "כמה עולה חלב?"\n🧠 "למד: שאלה = תשובה" — ללמד אותי כל דבר\n⚙️ "מצב כהה" · "פתחי היסטוריה" · "רשימה חדשה לשבת" · "שתפי בוואטסאפ" · "הדפסה" · "אודות" · "התנתקות"');
   }
-  /* חמין */
-  if(!RECIPES_OFF&&CHOLENT_RX.test(t)&&!ADDVERBS.test(t)&&!/^(יש לי|אין לי|קניתי|הסר|מחק)/.test(t)&&!/בשר ל?(חמין|צולנט|טשולנט)/.test(t))return showRecipe(CHOLENT);
   /* תאריך, שעה, לוח עברי */
   if(/^(מה|כמה)\s+השעה(\s+(עכשיו|כרגע|בבקשה|יאמי))*[?？!.]*$/.test(t)||(/^שעה/.test(t)&&t.length<12))return botSay('עכשיו '+fmtTime(now)+' ⏰');
   if(/(זמני שבת|כניסת שבת|יציאת שבת|הדלקת נרות|מתי נכנסת שבת|מתי יוצאת שבת|הבדלה|מתי שבת)/.test(t)){
@@ -662,33 +563,6 @@ async function yamiCore(raw){
     rows.sort((a,b)=>a.price-b.price);
     return botSay('💰 '+priceM[1]+' — הכי זול:\n'+rows.slice(0,4).map(r=>'• ₪'+Number(r.price).toFixed(2)+' ב'+r.chain+(r.branch?' ('+r.branch+')':'')).join('\n'));
   }
-  /* מתכונים */
-  if(/(תלמדי מתכון|ללמד אותך מתכון|להוסיף מתכון|תוסיפי מתכון|מתכון חדש|לשמור מתכון|אני רוצה להוסיף מתכון)/.test(t)){state.addRecipeFlow={step:'name'};save();return botSay('כיף! 👩‍🍳 איך קוראים למתכון? (אפשר גם דרך התפריט ⚙️ ← "הוספת מתכון")');}
-  if(/(המתכונים שלי|מתכונים שהוספתי|אילו מתכונים למדת)/.test(t)){
-    if(!state.customRecipes.length)return botSay('עוד לא הוספת מתכונים 🙂 אפשר לכתוב "מתכון חדש"');
-    return botSay('המתכונים שלך:\n'+state.customRecipes.map(r=>'🍽️ '+r.n).join('\n')+'\n\nלמחיקה: "מחקי מתכון <שם>"');
-  }
-  const delRecipeM=t.match(/^(?:מחקי|מחק|תמחקי|בטלי)\s+מתכון\s+(.+)/);
-  if(delRecipeM){const name=delRecipeM[1].trim();const before=state.customRecipes.length;state.customRecipes=state.customRecipes.filter(r=>norm(r.n)!==norm(name));save();
-    return botSay(state.customRecipes.length<before?('מחקתי את "'+name+'" 🗑️'):'לא מצאתי מתכון שלך בשם כזה 🤷');}
-  if(/(מה אפשר להכין|מה לבשל|רעיונות לארוחה|מה מבשלים|מה נבשל)/.test(t)||t==='מתכונים'){
-    const results=allRecipes().map(r=>({r,...canMake(r)}));
-    const ready=results.filter(x=>x.ok),almost=results.filter(x=>!x.ok&&x.miss.length<=2);
-    let s='';
-    if(ready.length)s+='אפשר להכין עכשיו:\n'+ready.map(x=>x.r.e+' '+x.r.n).join('\n');
-    if(almost.length)s+=(s?'\n\n':'')+'כמעט — חסר מעט:\n'+almost.map(x=>x.r.e+' '+x.r.n+' (חסר: '+x.miss.join(', ')+')').join('\n');
-    if(!s)s='המתכונים שאני מכירה: '+allRecipes().map(r=>r.e+' '+r.n).join(', ')+'\n💡 ככל ש'+GW('תעדכני','תעדכן')+' מה יש בבית ("יש לי ביצים, קמח...") — אדייק יותר.';
-    else s+='\n\n'+GW('כתבי','כתוב')+' "מתכון ל..." ואתן הסבר מלא 🍳';
-    if(dow===4||dow===5)s+='\n\n🍲 ולקראת שבת — יש לי מתכון חמין מעולה! '+GW('כתבי','כתוב')+' "חמין"';
-    return botSay(s);
-  }
-  if(/(מתכון|איך מכינים|איך מבשלים|איך עושים|איך אופים)/.test(t)){
-    const all=allRecipes();
-    const found=all.find(r=>t.includes(norm(r.n)))||all.find(r=>r.n.split(/[\s/]+/).some(w=>w.length>3&&t.includes(norm(w))));
-    if(found)return showRecipe(found);
-    if(await askAI())return;
-    return botSay('אני מכירה את אלה: '+all.map(r=>r.e+' '+r.n).join(', ')+'\nעל איזה להרחיב? או "מתכון חדש" כדי ללמד אותי 😊');
-  }
   /* מה יש בבית */
   if(/(מה יש לי בבית|מה יש במקרר|מה יש לי$)/.test(t)){
     const have=pantryAll();
@@ -763,20 +637,12 @@ async function yamiCore(raw){
 }
 
 /* ================= חיבור ממשק יאמי ================= */
-function botChips(){const d=new Date().getDay();
-  const base=(RECIPES_OFF?[]:['🍲 מתכון חמין']).concat(['מה חסר לי בבית?']).concat(RECIPES_OFF?[]:['מה אפשר להכין?']).concat(['סיימתי קנייה ✅','פרשת השבוע','זמני שבת','החג הבא','עזרה']);
-  if(!RECIPES_OFF&&(d===4||d===5)){base.splice(base.indexOf('🍲 מתכון חמין'),1);base.unshift('🍲 מתכון חמין');}
-  return base;}
+function botChips(){
+  return ['מה חסר לי בבית?','סיימתי קנייה ✅','פרשת השבוע','זמני שבת','החג הבא','עזרה'];}
 function renderBotChips(){document.querySelector('#botChips').innerHTML=botChips().map(c=>'<button data-chip="'+esc(c)+'">'+esc(c)+'</button>').join('');}
-function offerCholent(){if(RECIPES_OFF)return;
-  const d=new Date().getDay();const k=dayKey(new Date());
-  if(!((d===4||d===5)&&botCfg.cholentOffer!==false&&state.lastCholentOffer!==k))return;
-  state.lastCholentOffer=k;state.pendingCholent=true;save();
-  botSay((d===4?'יום חמישי הגיע 🎯 ':'ערב שבת קודש 🕯️ ')+'— זה הזמן להתכונן לשבת!\n🍲 רוצה את מתכון החמין / טשולנט שלנו? (כן/לא)\nאפשר גם ללחוץ על "🍲 מתכון חמין" בכל זמן.');
-}
 function openBot(){document.querySelector('#botSheet').classList.add('open');
   if(!state.bot.length)botSay((botCfg.welcome||('שלום '+(state.user?state.user.name:'')+'! 👩‍🍳 אני יאמי.\nאני עוזרת עם הקניות, הבית וההכנות לשבת — אפשר לכתוב לי הכל, או ללחוץ "עזרה".')));
-  renderBotChips();offerCholent();renderBot();setTimeout(()=>document.querySelector('#botText').focus(),150);}
+  renderBotChips();renderBot();setTimeout(()=>document.querySelector('#botText').focus(),150);}
 document.querySelector('#botFab').onclick=openBot;
 document.querySelector('#botClose').onclick=()=>document.querySelector('#botSheet').classList.remove('open');
 document.querySelector('#botSheet').addEventListener('click',e=>{if(e.target.id==='botSheet')e.target.classList.remove('open');});
@@ -985,6 +851,7 @@ setInterval(()=>{if(document.visibilityState==='visible')touchPresence();},60000
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')touchPresence();});
 
 /* ================= סנכרון ענן — "חדר" משפחתי עם קוד ================= */
+/* customRecipes: מתכונים ששמרו פעם (לפני שהמתכונים הוסרו) — רק עוברים הלאה בסנכרון, כדי לא למחוק נתונים של משתמשים */
 const SYNC_KEYS=['lists','history','plans','pantry','customPantry','customRecipes','stats','knowledge','me','tomb'];
 /* האזור האישי (me) לא עובר לרשימה משותפת של מישהו אחר — רק לחדר שלי */
 function syncPayload(){const o={};SYNC_KEYS.forEach(k=>{if(k==='me'&&state.follow)return;o[k]=state[k];});return o;}
@@ -1206,7 +1073,7 @@ function srvShown(){return srvPublic()||(typeof isAdmin==='function'&&isAdmin())
 function srvHidden(){return srvCfg&&Array.isArray(srvCfg.hidden)?srvCfg.hidden.filter(x=>typeof x==='string'):[];}
 async function loadPublicData(){
   if(!sb)return;
-  /* הכול במקביל (קודם אחד אחרי השני). המתכונים נטענים ב-loadRecipeMeta (עם כל העמודות) — לא מורידים אותם פעמיים */
+  /* הכול במקביל (קודם אחד אחרי השני) */
   await Promise.all([
     /* הגדרות: קטנות וקובעות מתגים — תמיד מהשרת, אבל השמור מוצג מיד */
     cachedLoad('cfg',0,async()=>{const {data,error}=await sb.from('site_config').select('key,value');return error?null:(data||[]);},d=>d.forEach(r=>applyConfig(r.key,r.value))),
@@ -1707,7 +1574,6 @@ const AD_ACTIONS={
   scan:['📷 לסריקת ברקוד',()=>{setTab('list');openListScanner();}],
   share:['🔗 לשיתוף הרשימה',()=>{setTab('list');document.querySelector('#btnShare').click();}],
   cheap:['💰 איפה הכי זול',()=>{setTab('list');openBasket();}],
-  recipes:['📖 למתכונים',()=>openRecipes()],
   prices:['💲 למחירים',()=>setTab('prices')],
   yami:['🤖 לשאול את יאמי',()=>openBot()],
   install:['📲 להוספה למסך הבית',()=>document.querySelector('#miInstall').click()],
@@ -2025,12 +1891,12 @@ const I18N=[
  ['#btnForgot','t','שכחתי סיסמה','Forgot password'],['.lcard .tiny','t','🔒 חיבור מאובטח · הקוד שלך מוצפן ואף אחד לא רואה אותו','🔒 Secure connection · your code is encrypted'],
  ['#brand b','t','רשימת קניות','Shopping List'],
  ['#miMe span','t','האזור האישי שלי','My personal area'],['#miNotif span','t','התראות ועדכונים','Notifications'],['#miReviews span','t','חוות דעת על האתר','Site reviews'],['[data-forward=btnDark] span','t','מצב כהה','Dark mode'],['#miTheme span','t','ערכת צבעים','Color theme'],['[data-forward=btnGroup] span','t','תצוגת קטגוריות','Category view'],['[data-forward=btnPrint] span','t','הדפסה / PDF','Print / PDF'],['[data-forward=btnShare] span','t','שליחה בוואטסאפ ושיתוף','Send on WhatsApp & share'],['#shSendLbl','t','📤 שליחת הרשימה כטקסט מסודר','📤 Send the list as neat text'],['#shKeepLbl','t','☁️ שיתוף עם המשפחה וגיבוי','☁️ Family sharing & backup'],
- ['#miFinish span','t','סיום קנייה (להיסטוריה)','Finish shopping'],['#miRecipe span','t','הוספת מתכון','Add a recipe'],['#miIntl span','t','שפה, מטבע ומיקום','Language, currency & location'],['#miAbout span','t','אודות האתר','About'],['#miOnline span','t','מי מחובר עכשיו','Who is online'],['#miAdmin span','t','ניהול האתר','Site management'],['#miBackoffice span','t','בק אופיס','Back office'],['#miLogout span','t','יציאה מהחשבון','Sign out'],['#miInstall span','t','התקנת האפליקציה (טלפון ומחשב)','Install the app (phone & computer)'],['#miDelete span','t','מחיקת החשבון שלי','Delete my account'],
+ ['#miFinish span','t','סיום קנייה (להיסטוריה)','Finish shopping'],['#miIntl span','t','שפה, מטבע ומיקום','Language, currency & location'],['#miAbout span','t','אודות האתר','About'],['#miOnline span','t','מי מחובר עכשיו','Who is online'],['#miAdmin span','t','ניהול האתר','Site management'],['#miBackoffice span','t','בק אופיס','Back office'],['#miLogout span','t','יציאה מהחשבון','Sign out'],['#miInstall span','t','התקנת האפליקציה (טלפון ומחשב)','Install the app (phone & computer)'],['#miDelete span','t','מחיקת החשבון שלי','Delete my account'],
  ['.tab[data-t=list]','t','📝 רשימה','📝 List'],['.tab[data-t=hist]','t','🕘 היסטוריה','🕘 History'],['.tab[data-t=home]','t','🏠 הבית שלי','🏠 My home'],['.tab[data-t=prices] .tlbl','t','💰 מחירים וחנויות','💰 Prices & stores'],
  ['#inText','p','מה להוסיף?','What to add?'],['#inQty','p','כמות','Qty'],['#botText','p','לשאול את יאמי...','Ask Yami...'],['.ruthy-head small','t','● עוזרת הקניות שלך','● Your shopping assistant'],
  ['#shWa','t','💬 וואטסאפ','💬 WhatsApp'],['#shGmail','t','📧 ג׳ימייל','📧 Gmail'],['#shCopy','t','📋 העתקה','📋 Copy'],['#shBackup','t','💾 גיבוי','💾 Backup'],['#shRestore','t','📥 שחזור','📥 Restore'],
  ['#catOverlay .phead b','t','כל המוצרים לפי קטגוריות','All products by category'],['#inCatSearch','p','🔍 חיפוש מוצר...','🔍 Search product...'],
- ['#aboutOverlay .phead b','t','ℹ️ אודות האתר','ℹ️ About'],['#recipeOverlay .phead b','t','📝 הוספת מתכון','📝 Add a recipe'],['#rfName','p','שם המתכון','Recipe name'],['#rfReq','p','מצרכים עיקריים (מופרדים בפסיקים)','Main ingredients (comma separated)'],['#rfOpt','p','מצרכים לא חובה (רשות)','Optional ingredients'],['#rfSteps','p','אופן ההכנה, שלב אחרי שלב','Instructions, step by step'],['#rfSubmit','t','שליחה ✨','Send ✨'],
+ ['#aboutOverlay .phead b','t','ℹ️ אודות האתר','ℹ️ About'],
  ['#updTitle','t','🆕 מה חדש באתר','🆕 What\'s new'],['#updLater','t','אחר כך','Later'],['#updOk','t','קראתי ✔','I\'ve read it ✔'],['#updHint','t','גללו עד הסוף כדי לאשר 👇','Scroll to the end to confirm 👇'],
  ['#intlTitle','t','🌍 שפה, מטבע ומיקום','🌍 Language, currency & location'],
  ['#btnGuest','t','👀 לנסות עכשיו, בלי הרשמה','👀 Try it now, no sign-up'],['#botFab small','t','יאמי','Yami'],['.ruthy-head b','t','יאמי','Yami']
@@ -2106,18 +1972,6 @@ document.querySelector('#aboutOverlay').addEventListener('click',async e=>{
   }
 });
 
-/* ================= הוספת מתכון (טופס) ================= */
-document.querySelector('#miRecipe').onclick=()=>{document.querySelector('#hMenu').classList.remove('open');document.querySelector('#recipeOverlay').classList.add('open');};
-document.querySelector('#btnCloseRecipe').onclick=()=>document.querySelector('#recipeOverlay').classList.remove('open');
-document.querySelector('#recipeOverlay').addEventListener('click',e=>{if(e.target.id==='recipeOverlay')e.target.classList.remove('open');});
-document.querySelector('#rfSubmit').onclick=()=>{
-  const split=v=>v.split(/,|،/).map(x=>x.trim()).filter(Boolean);
-  if(saveRecipeFromUser(document.querySelector('#rfName').value,split(document.querySelector('#rfReq').value),split(document.querySelector('#rfOpt').value),document.querySelector('#rfSteps').value)){
-    ['#rfName','#rfReq','#rfOpt','#rfSteps'].forEach(s=>document.querySelector(s).value='');
-    document.querySelector('#recipeOverlay').classList.remove('open');
-  }
-};
-
 /* ================= פנייה בלשון זכר/נקבה ================= */
 function GW(fem,masc){return state.gender==='m'?masc:fem;}
 function updateGenderLabel(){const el=document.querySelector('#miGenderLabel');if(el)el.textContent='פנייה: '+(state.gender==='m'?'זכר':'נקבה');}
@@ -2156,14 +2010,13 @@ document.querySelector('#miFinish').onclick=()=>{document.querySelector('#hMenu'
 
 /* ================= ניהול (רק למנהל האתר) ================= */
 async function adminFetch(){
-  const out={users:[],recipes:[],kb:[],fb:[]};if(!sb||!isStaff())return out;
+  const out={users:[],kb:[],fb:[]};if(!sb||!isStaff())return out;
   const adm=isAdmin();
-  const [u,r,k,f]=await Promise.all([
+  const [u,k,f]=await Promise.all([
     !adm?{data:[]}:sb.from('profiles').select('id,name,email,created_at,last_seen').order('created_at',{ascending:false}).limit(1000),
-    sb.from('recipes').select('id,name,req,opt,steps,created_at').eq('status','pending').order('created_at'),
     sb.from('bot_knowledge').select('id,question,answer').eq('status','pending').order('created_at'),
     !adm?{data:[]}:sb.from('feedback').select('id,name,email,message,created_at,is_read').order('created_at',{ascending:false}).limit(50)]);
-  out.users=u.data||[];out.recipes=r.data||[];out.kb=k.data||[];out.fb=f.data||[];return out;
+  out.users=u.data||[];out.kb=k.data||[];out.fb=f.data||[];return out;
 }
 const isOnline=u=>Date.now()-new Date(u.last_seen).getTime()<5*60*1000;
 function usersTable(users){
@@ -2182,8 +2035,6 @@ async function renderAdminPanel(){
   const d=await adminFetch();
   let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px"><button class="btn" onclick="openBO()">🏢 פתיחת הבק אופיס המלא</button></div>';
   if(isAdmin())html+='<h4>👥 המשתמשים שהצטרפו ('+d.users.length+') · מחוברים עכשיו: '+d.users.filter(isOnline).length+'</h4><div style="overflow-x:auto;margin:6px 0 14px">'+usersTable(d.users)+'</div>';
-  html+='<h4>📝 מתכונים ממתינים לאישור ('+d.recipes.length+')</h4>';
-  html+=d.recipes.length?d.recipes.map(r=>'<div class="grp" style="margin-top:6px"><b>🍽️ '+esc(r.name)+'</b> <span style="color:var(--muted);font-size:12px">'+crSlot('recipes',r.id)+'</span><div style="font-size:13px;margin:4px 0">מצרכים: '+esc((r.req||[]).join(', '))+'</div><div style="font-size:13px;white-space:pre-wrap;max-height:120px;overflow:auto">'+esc(r.steps)+'</div><div style="margin-top:6px"><button class="btn" data-rapprove="'+r.id+'">✅ אישור</button> <button class="btn sec" data-rreject="'+r.id+'">🗑️ דחייה</button></div></div>').join(''):'<div class="empty">אין מתכונים לבדיקה</div>';
   html+='<h4 style="margin-top:14px">🧠 דברים שלימדו את הבוט — ממתינים ('+d.kb.length+')</h4>';
   html+=d.kb.length?d.kb.map(k=>'<div class="mrow" style="flex-wrap:wrap"><span style="flex:1">❓ '+esc(k.question)+'<br>💬 '+esc(k.answer)+' <small style="color:var(--muted)">'+crSlot('kb',k.id)+'</small></span><button data-kapprove="'+k.id+'">✅</button><button data-kreject="'+k.id+'" style="background:#b23b3b">🗑️</button></div>').join(''):'<div class="empty">אין</div>';
   if(isAdmin())html+='<h4 style="margin-top:14px">💌 הערות אחרונות</h4>'+(d.fb.length?d.fb.slice(0,10).map(f=>'<div class="grp" style="margin-top:6px;font-size:13px"><b>'+esc(f.name)+'</b> <span dir="ltr" style="color:var(--muted)">'+esc(f.email)+'</span><div style="white-space:pre-wrap">'+esc(f.message)+'</div></div>').join(''):'<div class="empty">אין הערות</div>');
@@ -2192,8 +2043,6 @@ async function renderAdminPanel(){
 document.querySelector('#adminBody').addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||!isStaff())return;
   const ds=b.dataset;let q=null;
-  if(ds.rapprove)q=sb.from('recipes').update({status:'approved'}).eq('id',ds.rapprove);
-  if(ds.rreject)q=sb.from('recipes').update({status:'rejected'}).eq('id',ds.rreject);
   if(ds.kapprove)q=sb.from('bot_knowledge').update({status:'approved'}).eq('id',ds.kapprove);
   if(ds.kreject)q=sb.from('bot_knowledge').update({status:'rejected'}).eq('id',ds.kreject);
   if(!q)return;const {error}=await q;flash(error?'⚠️ '+error.message:'✔️ בוצע');renderAdminPanel();loadPublicData();

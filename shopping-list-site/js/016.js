@@ -8,7 +8,7 @@ const fmt=d=>d?new Date(d).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'
 const online=u=>Date.now()-new Date(u.last_seen).getTime()<5*60*1000;
 let me=null;
 async function ok(q,msg){const {error}=await q;if(error){flash('⚠️ '+error.message);return false;}if(msg)flash(msg);return true;}
-const MOD_TABS=['mfa','dash','recipes','bot','chains','prices','reporters','posts','torah','reviews','products','community'];
+const MOD_TABS=['mfa','dash','bot','chains','prices','reporters','posts','torah','reviews','products','community'];
 const allowed=s=>s==='mfa'||(isAdmin()||MOD_TABS.includes(s)||(s==='guests'&&permOk('visitors')))&&tabPermOk(s)&&(s!=='guests'||permOk('visitors'));
 window.openBO=function(sec){
   if(!sb||!isStaff()){flash('⛔ הבק אופיס פתוח רק לצוות האתר');return;}
@@ -33,13 +33,13 @@ const VIEWS={
 /* ---------- סקירה ---------- */
 async dash(){
   const since=new Date(Date.now()-86400000).toISOString();
-  const cnt=async(t,f)=>{let q=sb.from(t).select(COLS23[{prices:'prices',recipes:'recipes',divrei_torah:'torah',site_reviews:'reviews',store_recs:'recs',store_posts:'posts',bot_knowledge:'kb'}[t]]?'id':'*',{count:'exact',head:true});if(f)q=f(q);const {count}=await q;return count||0;};
+  const cnt=async(t,f)=>{let q=sb.from(t).select(COLS23[{prices:'prices',divrei_torah:'torah',site_reviews:'reviews',store_recs:'recs',store_posts:'posts',bot_knowledge:'kb'}[t]]?'id':'*',{count:'exact',head:true});if(f)q=f(q);const {count}=await q;return count||0;};
   const adm=isAdmin();const zero=async()=>0;
   const [pch,pbr,ppr,ppo,pdt,prv,pfl,pms]=await Promise.all([cnt('chains',q=>q.eq('status','pending')),cnt('branches',q=>q.eq('status','pending')),cnt('prices',q=>q.eq('status','pending')),cnt('store_posts',q=>q.eq('status','pending')),cnt('divrei_torah',q=>q.eq('status','pending')),cnt('site_reviews',q=>q.eq('status','pending')),cnt('prices',q=>q.gt('wrong',0)),adm?cnt('store_messages',q=>q.eq('is_read',false)):zero()]);
-  const [users,on,rp,kp,fb,pr]=await Promise.all([adm?cnt('profiles'):zero(),adm?cnt('profiles',q=>q.gt('last_seen',new Date(Date.now()-300000).toISOString())):zero(),cnt('recipes',q=>q.eq('status','pending')),cnt('bot_knowledge',q=>q.eq('status','pending')),adm?cnt('feedback',q=>q.eq('is_read',false)):zero(),cnt('prices',q=>q.gt('created_at',since))]);
-  const tiles=[[users,'משתמשים רשומים','users'],[on,'מחוברים עכשיו 🟢','users'],[rp,'מתכונים לאישור','recipes'],[kp,'לימודי בוט לאישור','bot'],[fb,'הערות שלא נקראו','feedback'],[pr,'דיווחי מחיר ב-24 שעות','prices'],[pch+pbr,'חנויות/סניפים לאישור','chains'],[ppr,'מחירים מסופרים לאישור','prices'],[ppo,'מבצעי חנויות לאישור','posts'],[pdt,'דברי תורה לאישור','torah'],[prv,'חוות דעת לאישור ⭐','reviews'],[pfl,'מחירים שדווחו כ"לא נכון" ❌','prices'],[pms,'פניות לחנויות שלא נקראו 📨','messages']].filter(t=>allowed(t[2]));
+  const [users,on,kp,fb,pr]=await Promise.all([adm?cnt('profiles'):zero(),adm?cnt('profiles',q=>q.gt('last_seen',new Date(Date.now()-300000).toISOString())):zero(),cnt('bot_knowledge',q=>q.eq('status','pending')),adm?cnt('feedback',q=>q.eq('is_read',false)):zero(),cnt('prices',q=>q.gt('created_at',since))]);
+  const tiles=[[users,'משתמשים רשומים','users'],[on,'מחוברים עכשיו 🟢','users'],[kp,'לימודי בוט לאישור','bot'],[fb,'הערות שלא נקראו','feedback'],[pr,'דיווחי מחיר ב-24 שעות','prices'],[pch+pbr,'חנויות/סניפים לאישור','chains'],[ppr,'מחירים מסופרים לאישור','prices'],[ppo,'מבצעי חנויות לאישור','posts'],[pdt,'דברי תורה לאישור','torah'],[prv,'חוות דעת לאישור ⭐','reviews'],[pfl,'מחירים שדווחו כ"לא נכון" ❌','prices'],[pms,'פניות לחנויות שלא נקראו 📨','messages']].filter(t=>allowed(t[2]));
   $('#boMain').innerHTML='<div class="stats">'+tiles.map(([n,l,s])=>'<div class="stat" style="cursor:pointer" data-go="'+s+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'+
-  '<div class="card" style="margin-top:14px"><h2>👋 שלום!</h2><p class="muted">מכאן אפשר לשנות את האתר בלי לגעת בקוד: לאשר מתכונים, לשלוט בבוט ובבינה המלאכותית, לעדכן סניפים, להחליף טקסטים וצבעים, ולראות מי הצטרף.</p></div>';
+  '<div class="card" style="margin-top:14px"><h2>👋 שלום!</h2><p class="muted">מכאן אפשר לשנות את האתר בלי לגעת בקוד: לשלוט בבוט ובבינה המלאכותית, לעדכן סניפים, להחליף טקסטים וצבעים, ולראות מי הצטרף.</p></div>';
   $('#boMain').onclick=e=>{const g=e.target.closest('[data-go]');if(g)show(g.dataset.go);};
 },
 /* ---------- משתמשים: עריכה, אישור מייל, קישור לקוד חדש, מחיקה ---------- */
@@ -83,35 +83,6 @@ async users(){
       users=users.filter(x=>x.id!==id);tr.remove();flash('🗑️ המשתמש נמחק');}
   };
 },
-/* ---------- מתכונים ---------- */
-async recipes(){
-  const sel=c=>sb.from('recipes').select(c).order('created_at',{ascending:false}).limit(1000);
-  let {data,error}=await sel(COLS23.recipes+',serves,qty');const hasQ=!error;if(error)({data}=await sel(COLS23.recipes));
-  const ingTxt=r=>(r.req||[]).map((x,i)=>((r.qty||[])[i]?r.qty[i]+' ':'')+x).join('\n');
-  const ingRows=v=>{const a=v.split('\n').map(parseIngLine).filter(x=>x&&x.n);return {req:a.map(x=>x.n),qty:a.map(x=>x.q)};};
-  const servesOf=v=>{const n=parseInt(v);return n>=1&&n<=100?n:null;};
-  const all=data||[];const by=s=>all.filter(r=>r.status===s);
-  const card=r=>'<div class="item" data-id="'+r.id+'"><div class="row"><input data-f="name" value="'+esc(r.name)+'" maxlength="80">'+icField('data-f="emoji" aria-label="אייקון"',r.emoji)+'</div>'+
-    (hasQ?'<label>👥 לכמה סועדים</label><input data-f="serves" type="number" min="1" max="100" style="max-width:100px" value="'+(r.serves||'')+'"><label>מצרכים — שורה לכל מצרך, עם כמות (למשל: 500 גרם בשר טחון)</label><textarea data-f="ing" style="min-height:90px">'+esc(ingTxt(r))+'</textarea>':'<label>מצרכים (מופרדים בפסיקים)</label><input data-f="req" value="'+esc((r.req||[]).join(', '))+'">')+'<label>לא חובה</label><input data-f="opt" value="'+esc((r.opt||[]).join(', '))+'">'+
-    '<label>אופן הכנה</label><textarea data-f="steps">'+esc(r.steps)+'</textarea><div class="row" style="margin-top:8px;align-items:center"><span class="muted">'+crSlot('recipes',r.id)+' · '+fmt(r.created_at)+' · <span class="pill">'+({pending:'ממתין',approved:'מפורסם',rejected:'נדחה'}[r.status])+'</span></span>'+
-    '<button class="btn sm" data-act="save">💾 שמירה</button>'+(r.status!=='approved'?'<button class="btn sm" data-act="approve">✅ אישור ופרסום</button>':'<button class="btn sm sec" data-act="hide">🙈 הסתרה</button>')+(r.status==='pending'?'<button class="btn sm sec" data-act="reject">דחייה</button>':'')+'<button class="btn sm bad" data-act="del">🗑️</button></div></div>';
-  $('#boMain').innerHTML='<div class="card"><h2>⏳ ממתינים לאישור ('+by('pending').length+')</h2>'+(by('pending').map(card).join('')||'<p class="muted">אין מתכונים לבדיקה 🎉</p>')+'</div>'+
-    '<div class="card"><h2>➕ מתכון רשמי חדש (מתפרסם מיד)</h2><input id="nrName" placeholder="שם המתכון">'+(hasQ?'<label>👥 לכמה סועדים</label><input id="nrServes" type="number" min="1" max="100" value="4" style="max-width:100px"><label>מצרכים — שורה לכל מצרך, עם כמות</label><textarea id="nrReq" placeholder="500 גרם בשר טחון&#10;2 כוסות אורז"></textarea>':'<label>מצרכים</label><input id="nrReq" placeholder="מופרדים בפסיקים">')+'<label>לא חובה</label><input id="nrOpt"><label>אופן הכנה</label><textarea id="nrSteps"></textarea><button class="btn" id="nrAdd" style="margin-top:8px">פרסום</button></div>'+
-    '<div class="card"><h2>📗 מפורסמים ('+by('approved').length+')</h2>'+(by('approved').map(card).join('')||'<p class="muted">אין עדיין</p>')+'</div>'+
-    (by('rejected').length?'<div class="card"><h2>🗂️ נדחו ('+by('rejected').length+')</h2>'+by('rejected').map(card).join('')+'</div>':'');
-  const split=v=>v.split(',').map(x=>x.trim()).filter(Boolean);
-  $('#nrAdd').onclick=async()=>{const n=$('#nrName').value.trim(),st=$('#nrSteps').value.trim();if(!n||!st){flash('צריך שם ואופן הכנה');return;}
-    if(await ok(sb.from('recipes').insert(Object.assign({name:n},hasQ?Object.assign({serves:servesOf($('#nrServes').value)},ingRows($('#nrReq').value)):{req:split($('#nrReq').value)},{opt:split($('#nrOpt').value),steps:st,author_id:me.id,author_name:'מנהל האתר',status:'approved'})),'✅ פורסם'))show('recipes');};
-  $('#boMain').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;const it=b.closest('[data-id]');const id=it.dataset.id;const v=f=>it.querySelector('[data-f='+f+']').value;
-    const a=b.dataset.act;let q;
-    const ingUpd=()=>hasQ?Object.assign({serves:servesOf(v('serves'))},ingRows(v('ing'))):{req:split(v('req'))};
-    if(a==='save')q=sb.from('recipes').update(Object.assign({name:v('name').trim(),emoji:v('emoji').trim()||'🍽️',opt:split(v('opt')),steps:v('steps').trim()},ingUpd())).eq('id',id);
-    if(a==='approve')q=sb.from('recipes').update(Object.assign({status:'approved',name:v('name').trim(),opt:split(v('opt')),steps:v('steps').trim()},ingUpd())).eq('id',id);
-    if(a==='reject')q=sb.from('recipes').update({status:'rejected'}).eq('id',id);
-    if(a==='hide')q=sb.from('recipes').update({status:'pending'}).eq('id',id);
-    if(a==='del'){if(!(await uiConfirm('למחוק לצמיתות?')))return;q=sb.from('recipes').delete().eq('id',id);}
-    if(await ok(q,'✔️ בוצע'))show('recipes');};
-},
 /* ---------- הבוט וה-AI ---------- */
 async bot(){
   const adm=isAdmin();
@@ -131,7 +102,6 @@ async bot(){
   '<label>ההוראות האישיות שלך לבוט (אופי, סגנון, מה מותר ומה אסור, מידע עליך ועל האתר)</label><textarea id="aiInstr" style="min-height:140px" placeholder="למשל: תעני תמיד בקצרה. תמליצי על רשתות כשרות למהדרין. אל תמליצי על מוצרים בלי הכשר בד״ץ...">'+esc(ai.instructions||'')+'</textarea>'+
   '<button class="btn" id="aiSave" style="margin-top:10px">💾 שמירת הגדרות AI</button> <button class="btn sec" id="aiDiag" style="margin-top:10px">🔍 בדיקת חיבור</button><div id="aiDiagOut" style="margin-top:10px"></div></div>'+
   '<div class="card"><h2>💬 הגדרות הבוט</h2><label>הודעת פתיחה (ריק = ברירת מחדל)</label><textarea id="bWelcome" style="min-height:60px">'+esc(bc.welcome||'')+'</textarea>'+
-  '<div class="check"><input type="checkbox" id="bCholent" '+(bc.cholentOffer!==false?'checked':'')+'><label for="bCholent" style="margin:0;color:var(--text)">להציע את מתכון החמין בימי חמישי ושישי</label></div>'+
   (TORAH_OFF?'<input type="checkbox" id="bDtRem" hidden '+(bc.dtReminder!==false?'checked':'')+'>':'<div class="check"><input type="checkbox" id="bDtRem" '+(bc.dtReminder!==false?'checked':'')+'><label for="bDtRem" style="margin:0;color:var(--text)">להזכיר בחמישי, בשישי ובערב חג: "יש לך דבר תורה לשתף?"</label></div>')+
   '<label>מילים חסומות נוספות (מופרדות בפסיקים) — בנוסף לרשימת הקללות המובנית</label><textarea id="bBanned" style="min-height:60px">'+esc((bc.bannedExtra||[]).join(', '))+'</textarea>'+
   '<button class="btn" id="bSave" style="margin-top:10px">💾 שמירה</button></div>';
@@ -171,7 +141,7 @@ async bot(){
     o.innerHTML=h+(data.enabled&&(!data.test||data.test.ok)?'<p class="muted">💡 יאמי עונה קודם בעצמה על דברים שהיא מכירה (רשימה, מתכונים, זמנים...) ופונה לבינה המלאכותית רק בשאלות אחרות. כדי לשאול את הבינה ישירות כותבים: <b>בינה: השאלה שלך</b></p>':'');
   };
   $('#aiSave').onclick=()=>setCfg('ai',{provider:$('#aiProv').value,geminiModel:($('#aiGModel').value.trim()||'gemini-2.5-flash').slice(0,60),enabled:$('#aiOn').checked,audience:$('#aiAud').value,model:$('#aiModel').value,effort:$('#aiEffort').value,dailyLimit:Math.max(1,Math.min(1000,+$('#aiLimit').value||30)),instructions:$('#aiInstr').value.trim()});
-  $('#bSave').onclick=()=>setCfg('bot',{welcome:$('#bWelcome').value.trim(),cholentOffer:$('#bCholent').checked,dtReminder:$('#bDtRem').checked,bannedExtra:$('#bBanned').value.split(',').map(x=>x.trim()).filter(Boolean)});
+  $('#bSave').onclick=()=>setCfg('bot',{welcome:$('#bWelcome').value.trim(),dtReminder:$('#bDtRem').checked,bannedExtra:$('#bBanned').value.split(',').map(x=>x.trim()).filter(Boolean)});
   }
   $('#kAdd').onclick=async()=>{const q=$('#kQ').value.trim(),a=$('#kA').value.trim();if(!q||!a)return;if(await ok(sb.from('bot_knowledge').insert({question:q,answer:a,author_id:me.id,author_name:'מנהל האתר',status:'approved'}),'✅ נוסף'))show('bot');};
   $('#boMain').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;const it=b.closest('[data-id]');const id=it.dataset.id;const v=f=>it.querySelector('[data-f='+f+']').value.trim();let q;
@@ -527,8 +497,8 @@ VIEWS.backup=async function(){
   const own=isOwner();
   $('#boMain').innerHTML='<div class="card"><h2>💾 גיבוי מלא של האתר</h2><p class="muted">מוריד קובץ אחד עם כל הנתונים: הגדרות, מתכונים, ידע הבוט, רשתות וסניפים, מחירים, פרסומות, עדכונים, הערות, משתמשים, צוות ובעלי סופרים'+(own?', והרשימות של המשפחות':'')+'. מומלץ להוריד פעם בשבוע ולשמור במקום בטוח.</p><button class="btn" id="bkExport">⬇️ הורדת גיבוי מלא</button><div class="muted" id="bkStatus" style="margin-top:6px"></div></div>'+
     (own?'<div class="card"><h2>♻️ שחזור מגיבוי</h2><p class="muted">מחזיר נתונים מקובץ גיבוי. שורות קיימות מתעדכנות לגרסה שבקובץ, ושורות שנמחקו חוזרות. משתמשים ומייל לא משוחזרים (הם של מערכת ההתחברות).</p><input type="file" id="bkFile" accept=".json"><div class="muted" id="rsStatus" style="margin-top:6px"></div></div>':'')+
-    '<div class="card"><h2>🕘 היסטוריית שינויים</h2><p class="muted">כל שינוי באתר נשמר כאן — מי שינה, מתי ומה. אפשר לשחזר גרסה קודמת בלחיצה.</p><div class="row" style="margin-bottom:8px"><select id="auTable"><option value="">כל הטבלאות</option>'+[['recipes','מתכונים'],['prices','מחירים'],['store_posts','מבצעי חנויות'],['divrei_torah','דברי תורה'],['chains','רשתות'],['branches','סניפים'],['ads','פרסומות'],['site_updates','עדכונים'],['site_config','הגדרות'],['bot_knowledge','ידע הבוט'],['staff','צוות'],['store_managers','בעלי סופרים'],['feedback','הערות']].map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')+'</select><button class="btn sec" id="auLoad">רענון</button></div><div id="auList"></div></div>';
-  const TABLES=['site_config','recipes','bot_knowledge','chains','branches','prices','ads','site_updates','feedback','store_posts','divrei_torah'];
+    '<div class="card"><h2>🕘 היסטוריית שינויים</h2><p class="muted">כל שינוי באתר נשמר כאן — מי שינה, מתי ומה. אפשר לשחזר גרסה קודמת בלחיצה.</p><div class="row" style="margin-bottom:8px"><select id="auTable"><option value="">כל הטבלאות</option>'+[['prices','מחירים'],['store_posts','מבצעי חנויות'],['divrei_torah','דברי תורה'],['chains','רשתות'],['branches','סניפים'],['ads','פרסומות'],['site_updates','עדכונים'],['site_config','הגדרות'],['bot_knowledge','ידע הבוט'],['staff','צוות'],['store_managers','בעלי סופרים'],['feedback','הערות']].map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')+'</select><button class="btn sec" id="auLoad">רענון</button></div><div id="auList"></div></div>';
+  const TABLES=['site_config','bot_knowledge','chains','branches','prices','ads','site_updates','feedback','store_posts','divrei_torah'];
   const fetchAll=async(t)=>{let out=[],from=0;for(;;){const {data,error}=await sb.from(t).select('*').range(from,from+999);if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000;}return out;};
   $('#bkExport').onclick=async()=>{
     const st=$('#bkStatus');const dump={app:'yam-shopping',version:1,created_at:new Date().toISOString(),by:me.email,tables:{}};
@@ -805,7 +775,7 @@ VIEWS.abuse=async function(){
   Object.keys(banOf).forEach(id=>{if(!by[id])by[id]=[];});
   const ids=Object.keys(by).sort((a,b)=>(by[b].filter(r=>!r.handled).length-by[a].filter(r=>!r.handled).length)||((by[b][0]||{}).created_at||'').localeCompare((by[a][0]||{}).created_at||''));
   const banTxt=b=>!b?'':b.kind==='warn'?'<span class="pill">⚠️ קיבל/ה אזהרה'+(b.seen?' (ראה/תה)':'')+'</span>':b.kind==='block'?'<span class="pill" style="background:#f8d7da">⛔ חסום/ה</span>':(b.until&&new Date(b.until)<new Date()?'<span class="pill">⏸️ ההשעיה הסתיימה</span>':'<span class="pill" style="background:#fff3cd">⏸️ מושעה עד '+fmt(b.until)+'</span>');
-  $('#boMain').innerHTML='<div class="card"><h2>🚫 שפה לא נקייה ומשתמשים ('+ids.length+')</h2><p class="muted">כשמשתמש כותב קללות או גסויות (ליאמי, ברשימה, בצ\'אט או במתכון) — זה מגיע לכאן מיד, וגם לתוסף הכרום. <b>ההחלטה שלך:</b> ⚠️ אזהרה (המשתמש רואה הודעה) · ⏸️ השעיה לכמה ימים · ⛔ חסימה. משתמש מושעה/חסום לא יכול לפרסם כלום באתר, אבל יכול לכתוב לצוות בצ\'אט.</p>'+
+  $('#boMain').innerHTML='<div class="card"><h2>🚫 שפה לא נקייה ומשתמשים ('+ids.length+')</h2><p class="muted">כשמשתמש כותב קללות או גסויות (ליאמי, ברשימה או בצ\'אט) — זה מגיע לכאן מיד, וגם לתוסף הכרום. <b>ההחלטה שלך:</b> ⚠️ אזהרה (המשתמש רואה הודעה) · ⏸️ השעיה לכמה ימים · ⛔ חסימה. משתמש מושעה/חסום לא יכול לפרסם כלום באתר, אבל יכול לכתוב לצוות בצ\'אט.</p>'+
     (ids.length?ids.map(id=>{const u=users[id]||{};const rs=by[id];const open=rs.filter(r=>!r.handled).length;const b=banOf[id];
       return '<div class="item" data-uid="'+id+'"><div class="row" style="align-items:center"><span style="flex:1;min-width:220px"><b>'+esc(u.name||(rs[0]||{}).name||'—')+'</b> <span class="muted" dir="ltr">'+esc(u.email||'')+'</span><br><span class="muted">'+rs.length+' דיווחים'+(open?' · <b style="color:var(--bad)">'+open+' חדשים</b>':'')+'</span></span>'+banTxt(b)+'</div>'+
         (rs.length?'<div class="muted" style="margin:6px 0">'+rs.slice(0,4).map(r=>'• '+fmt(r.created_at)+' ('+esc({bot:'ליאמי',list:'ברשימה',chat:'בצ\'אט',recipe:'במתכון',deal:'במבצע'}[r.source]||r.source)+'): <span style="filter:blur(3px)" title="לחיצה להצגה" onclick="this.style.filter=\'none\'">'+esc(r.text)+'</span>'+(()=>{const w=profanityMatch(r.text);return w?' <span class="pill" style="filter:blur(3px)" title="לחיצה להצגה" onclick="this.style.filter=\'none\'">🔎 זוהה בגלל: «'+esc(w)+'»</span>':' <span class="pill" style="background:#d4edda">✅ לפי המסנן של היום אין כאן מילה אסורה — כנראה דיווח שגוי</span>';})()).join('<br>')+'</div>':'')+
@@ -822,26 +792,6 @@ VIEWS.abuse=async function(){
     await sb.from('abuse_reports').update({handled:true}).eq('user_id',id).eq('handled',false);
     if(a==='warn')await sb.from('support_messages').insert({user_id:id,body:'⚠️ '+reason});
     show('abuse');};
-};
-/* ---------- מתכונים: תמונה, קטגוריה, מקור, ואימוג'י לדירוג (גרסה 10) ---------- */
-const RCATS_BO=['','שבת וחג','בשרי','עוף','דגים','חלבי','פרווה','סלטים','מרקים','תוספות','אפייה ועוגות','קינוחים','ילדים','מהיר וקל','בריא','אחר'];
-const _bo10Recipes=VIEWS.recipes;
-VIEWS.recipes=async function(){await _bo10Recipes.call(VIEWS);if(cur!=='recipes')return;
-  const [{data:all},{data:rx},{data:cfgRow}]=await Promise.all([sb.from('recipes').select('id,image,category,source,emojis'),sb.from('recipe_reactions').select('recipe_id,emoji'),sb.from('site_config').select('value').eq('key','recipes').maybeSingle()]);
-  const info={};(all||[]).forEach(r=>info[r.id]=r);const cnt={};(rx||[]).forEach(r=>{const m=cnt[r.recipe_id]=cnt[r.recipe_id]||{};m[r.emoji]=(m[r.emoji]||0)+1;});
-  const glob=((cfgRow&&cfgRow.value&&cfgRow.value.emojis)||['😋','❤️','👍','🔥','🤤']).join(' ');
-  $('#boMain').insertAdjacentHTML('afterbegin','<div class="card"><h2>😋 דירוג מתכונים באימוג\'י</h2><p class="muted">המשתמשים מדרגים כל מתכון באחד האימוג\'ים האלה. אפשר לקבוע לכל המתכונים יחד כאן, או לכל מתכון בנפרד (בשדה "אימוג\'י לדירוג" בתוך המתכון).</p><div class="row"><input id="rxGlob" value="'+esc(glob)+'" placeholder="😋 ❤️ 👍 🔥 🤤"><button class="btn" id="rxGlobSave">💾 שמירה לכל המתכונים</button></div></div>');
-  document.querySelectorAll('#boMain .item[data-id]').forEach(it=>{const r=info[it.dataset.id];if(!r)return;const c=cnt[r.id]||{};
-    it.insertAdjacentHTML('afterbegin','<div class="row" style="align-items:center;margin-bottom:6px">'+(safeImg(r.image)?'<img src="'+esc(safeImg(r.image))+'" alt="" style="width:84px;height:64px;object-fit:cover;border-radius:10px"><button class="btn sm sec" data-act="rmimg">🗑️ הסרת התמונה</button>':'<span class="muted">אין תמונה</span>')+
-      (r.source==='ai'?'<span class="pill">🤖 נוצר ע״י יאמי (AI)</span>':'')+(Object.keys(c).length?'<span class="muted">דירוגים: '+Object.entries(c).map(([e,n])=>esc(e)+' '+n).join(' · ')+'</span>':'')+'</div>'+
-      '<div class="row"><label style="margin:0">קטגוריה <select data-f="category">'+RCATS_BO.map(x=>'<option value="'+esc(x)+'"'+(x===(r.category||'')?' selected':'')+'>'+(x||'—')+'</option>').join('')+'</select></label><label style="margin:0;flex:1">אימוג\'י לדירוג (ריק = כמו בכל המתכונים) <input data-f="emojis" value="'+esc((r.emojis||[]).join(' '))+'" placeholder="'+esc(glob)+'"></label></div>');});
-  $('#rxGlobSave').onclick=()=>{const em=$('#rxGlob').value.trim().split(/\s+/).filter(Boolean).slice(0,8);if(!em.length){flash('צריך לפחות אימוג\'י אחד');return;}setCfg('recipes',{emojis:em});};
-  const orig=$('#boMain').onclick;
-  $('#boMain').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return orig&&orig(e);const it=b.closest('[data-id]');const a=b.dataset.act;
-    if(a==='rmimg'){if((await uiConfirm('להסיר את התמונה?'))&&await ok(sb.from('recipes').update({image:''}).eq('id',it.dataset.id),'🗑️ הוסרה'))show('recipes');return;}
-    if((a==='save'||a==='approve')&&it&&it.querySelector('[data-f=category]')){const em=it.querySelector('[data-f=emojis]').value.trim().split(/\s+/).filter(Boolean).slice(0,8);
-      const {error}=await sb.from('recipes').update({category:it.querySelector('[data-f=category]').value,emojis:em.length?em:null}).eq('id',it.dataset.id);if(error){flash('⚠️ '+error.message);return;}}
-    return orig&&orig(e);};
 };
 /* ---------- 💬 צ'אט עם משתמשים — מסודר: פתוחות/טופלו, נושא, תשובות מוכנות (גרסה 10) ---------- */
 let supFilter='open';
@@ -988,7 +938,7 @@ VIEWS.setup=function(){_bo10Setup();
     '<li><a href="https://supabase.com/dashboard/project/ygyfodxfbebnkwdcbjrp/functions" target="_blank" rel="noopener">פתיחת Edge Functions</a> ← <b>Deploy a new function</b> ← <b>Via Editor</b> ← שם הפונקציה בדיוק: <code dir="ltr">push</code> ← Ctrl+A ← Ctrl+V ← <b>Deploy function</b>.</li>'+
     '<li><b>חשוב:</b> <a href="https://supabase.com/dashboard/project/ygyfodxfbebnkwdcbjrp/functions/push/details" target="_blank" rel="noopener">push ← Details</a> ← מכבים <b>"Verify JWT with legacy secret"</b> ← <b>Save</b>.</li>'+
     '<li>באתר: 🔔 הפעמון ← <b>"📲 להפעיל התראות במכשיר הזה"</b> ← מאשרים ← <b>"🧪 שליחת התראת ניסיון"</b>. אם הגיעה — הכל עובד 🎉</li></ol>'+
-    '<p class="muted">מה נשלח: תשובה בצ\'אט, תשובה מחנות, מבצע בחנות שעוקבים אחריה, מתכון שפורסם/דורג, מתכון חדש בקטגוריה שעוקבים, ותזכורת עדינה פעם בשבוע למי שלא נכנס 5 ימים. למנהל: הודעות צ\'אט, בקשות הצטרפות ודיווחי שפה. בלי לילה, בלי שבת, ועד 6 ביום (כל משתמש יכול לשנות).</p><button class="btn sec" id="pushDl">⬇️ או: הורדת הקוד כקובץ</button></div>');
+    '<p class="muted">מה נשלח: תשובה בצ\'אט, תשובה מחנות, מבצע בחנות שעוקבים אחריה, ותזכורת עדינה פעם בשבוע למי שלא נכנס 5 ימים. למנהל: הודעות צ\'אט, בקשות הצטרפות ודיווחי שפה. בלי לילה, בלי שבת, ועד 6 ביום (כל משתמש יכול לשנות).</p><button class="btn sec" id="pushDl">⬇️ או: הורדת הקוד כקובץ</button></div>');
   const src=()=>document.getElementById('pushFnSrc').textContent.trim()+'\n';
   $('#pushCopy').onclick=async()=>{try{await navigator.clipboard.writeText(src());flash('📋 הקוד הועתק — עכשיו להדביק ב-Supabase');}catch(e){const ta=document.createElement('textarea');ta.value=src();document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();flash('📋 הועתק');}};
   $('#pushDl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([src()],{type:'text/plain'}));a.download='index.ts';a.click();};
@@ -1293,7 +1243,7 @@ if(!MOD_TABS.includes('clothing'))MOD_TABS.push('clothing');
 const BO_GROUPS=[
   ['📊','ראשי',['dash','pending','activity']],
   ['🛡️','בוטים ואבטחה',['shield','scrapers','security']],
-  ['✅','לאישור ותוכן מהקהילה',['recipes','torah','reviews','clothing']],
+  ['✅','לאישור ותוכן מהקהילה',['torah','reviews','clothing']],
   ['👥','משתמשים וקשר',['users','support','broadcast','feedback','abuse','secondary','reporters','staff']],
   ['🏪','חנויות ומחירים',['chains','biz','bizreq','stores','posts','messages','prices','sources','products','categories','icons','ready']],
   ['🎨','האתר והבוט',['texts','content','ui','bot','ads','updates']],
@@ -1457,9 +1407,9 @@ VIEWS.clothing=async function(){
 
 /* ---------- ✅ ממתין לאישור — הכל במקום אחד ---------- */
 if(!MOD_TABS.includes('pending'))MOD_TABS.push('pending');
-const PK={recipe:'📝 מתכון',bot:'🤖 לימוד לבוט',review:'⭐ חוות דעת על האתר',chain:'🏪 חנות חדשה',branch:'📍 סניף חדש',price:'💰 מחיר',post:'📣 מבצע של חנות',torah:'📜 דבר תורה',flag:'⚠️ מחיר שסומן "לא נכון"',feedback:'💌 הערה',chat:'💬 הודעה בצ׳אט',message:'📨 פנייה לחנות',abuse:'🚫 שפה לא נקייה',tip:'💰 טיפ לחיסכון',suggest:'💡 הצעה חדשה בלוח (✔ = ראיתי · ✖ = הסתרה)'};
+const PK={bot:'🤖 לימוד לבוט',review:'⭐ חוות דעת על האתר',chain:'🏪 חנות חדשה',branch:'📍 סניף חדש',price:'💰 מחיר',post:'📣 מבצע של חנות',torah:'📜 דבר תורה',flag:'⚠️ מחיר שסומן "לא נכון"',feedback:'💌 הערה',chat:'💬 הודעה בצ׳אט',message:'📨 פנייה לחנות',abuse:'🚫 שפה לא נקייה',tip:'💰 טיפ לחיסכון',suggest:'💡 הצעה חדשה בלוח (✔ = ראיתי · ✖ = הסתרה)'};
 const READ_ONLY_KINDS=['chat','message','abuse'];
-const PCR23={recipe:'recipes',bot:'kb',review:'reviews',price:'prices',flag:'prices',post:'posts',torah:'torah',chain:'chains',branch:'branches'};
+const PCR23={bot:'kb',review:'reviews',price:'prices',flag:'prices',post:'posts',torah:'torah',chain:'chains',branch:'branches'};
 async function pendingData(){
   const [p,cs,cr,cv]=await Promise.all([sb.rpc('staff_pending_items'),sb.from('clothing_shops').select('id,name,city,created_at').eq('status','pending').limit(200),sb.from('store_recs').select('id,kind,shop,body,section,created_at').eq('status','pending').limit(300),sb.from('cloth_votes').select('id,target,reason,by_name,created_at').eq('vote',-1).eq('handled',false).limit(300)]);
   const items=(p.data||[]).filter(x=>isAdmin()||!['feedback','chat','message','abuse'].includes(x.kind));
@@ -1480,7 +1430,7 @@ const _v18OpenBO=window.openBO;window.openBO=async function(){const args=argumen
 VIEWS.pending=async function(){
   const d=await pendingData();const groups={};d.items.forEach(x=>{(groups[x.kind]=groups[x.kind]||[]).push(x);});
   const n=d.items.length+d.cloth.length;const b=$('#boPendN');if(b){b.hidden=!n;b.textContent=n;}
-  let h='<div class="card"><h2>✅ ממתין לאישור ('+n+')</h2><p class="muted">כל מה שמחכה לך — מתכונים, דברי תורה, מחירים, חנויות, חוות דעת, ביגוד ודיווחים — במקום אחד. ✔ מאשר, ✖ דוחה.</p>'+(d.err?'<p class="muted">⚠️ '+esc(d.err.message)+' — צריך להריץ שוב את קוד ה-SQL.</p>':'')+(n?'':'<p style="font-size:18px;margin-top:10px">🎉 הכל מטופל!</p>')+'</div>';
+  let h='<div class="card"><h2>✅ ממתין לאישור ('+n+')</h2><p class="muted">כל מה שמחכה לך — דברי תורה, מחירים, חנויות, חוות דעת, ביגוד ודיווחים — במקום אחד. ✔ מאשר, ✖ דוחה.</p>'+(d.err?'<p class="muted">⚠️ '+esc(d.err.message)+' — צריך להריץ שוב את קוד ה-SQL.</p>':'')+(n?'':'<p style="font-size:18px;margin-top:10px">🎉 הכל מטופל!</p>')+'</div>';
   Object.keys(PK).filter(k=>groups[k]).forEach(k=>{h+='<div class="card"><h2>'+PK[k]+' ('+groups[k].length+')</h2>'+groups[k].map(x=>'<div class="item"><b>'+esc(x.title||'')+'</b>'+(x.detail?'<div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(String(x.detail).slice(0,400))+'</div>':'')+'<div class="muted">'+(PCR23[k]?crSlot(PCR23[k],x.ref,{f:x.who||''}):esc(x.who||''))+' · '+esc(fmt(x.created_at))+'</div><div class="row" style="margin-top:6px">'+
     (READ_ONLY_KINDS.includes(k)?'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ טופל</button>':'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ אישור</button><button class="btn sm bad" data-pd="'+esc(k)+'|'+esc(x.ref)+'|0">✖ דחייה</button>')+'</div></div>').join('')+'</div>';});
   if(d.cloth.length)h+='<div class="card"><h2>👗 ביגוד וחתונה ('+d.cloth.length+')</h2>'+d.cloth.map(x=>'<div class="item"><b>'+esc(x.title)+'</b>'+(x.detail?'<div>'+esc(x.detail)+'</div>':'')+'<div class="muted">'+(x.crk?crSlot(x.crk,x.id):esc(x.who||''))+' · '+esc(fmt(x.at))+'</div><div class="row" style="margin-top:6px">'+
@@ -1522,7 +1472,7 @@ const _e18Sources=VIEWS.sources;
 VIEWS.sources=async function(){await _e18Sources.apply(this,arguments);if(cur!=='sources')return;
   document.querySelectorAll('#boMain tr[data-id] td:last-child').forEach(td=>{if(!td.querySelector('[data-e18src]'))td.insertAdjacentHTML('afterbegin','<button class="btn sm sec" data-e18src="1">✏️</button> ');});};
 /* ✅ ממתין לאישור: "✏️ לעריכה" — קופץ למקום שבו עורכים את הפריט, כדי לתקן לפני שמאשרים */
-const EDIT_SEC18={recipe:'recipes',bot:'bot',review:'reviews',chain:'chains',branch:'chains',price:'prices',post:'posts',torah:'torah',flag:'prices',tip:'community',suggest:'community'};
+const EDIT_SEC18={bot:'bot',review:'reviews',chain:'chains',branch:'chains',price:'prices',post:'posts',torah:'torah',flag:'prices',tip:'community',suggest:'community'};
 const _e18Pending=VIEWS.pending;
 VIEWS.pending=async function(){await _e18Pending.apply(this,arguments);if(cur!=='pending')return;
   document.querySelectorAll('#boMain [data-pd]').forEach(b=>{const k=b.dataset.pd.split('|')[0];const row=b.parentNode;if(!EDIT_SEC18[k]||row.querySelector('[data-e18go]'))return;
@@ -1570,7 +1520,7 @@ VIEWS.errors=async function(){
   const c=$('#errClr');if(c)c.onclick=async()=>{if((await uiConfirm('לנקות את כל יומן התקלות?'))&&await ok(sb.from('client_errors').delete().gt('id',0),'🗑️ נוקה'))VIEWS.errors();};
 };
 /* ---------- 🏷️ v23: קרדיט למדווחים — מתי הציבור רואה מי דיווח/כתב ---------- */
-const CR23_TYPES=[['prices','💰 דיווחי מחיר ומבצעים','"דווח ע״י ..." ליד כל מחיר'],['recipes','🍽️ מתכונים','"מאת ..." במתכון'],['torah','📜 דברי תורה','"נשלח ע״י ..." (המקור / "בשם" מוצג תמיד)'],
+const CR23_TYPES=[['prices','💰 דיווחי מחיר ומבצעים','"דווח ע״י ..." ליד כל מחיר'],['torah','📜 דברי תורה','"נשלח ע״י ..." (המקור / "בשם" מוצג תמיד)'],
   ['reviews','⭐ חוות דעת על האתר','שם הכותב/ת מעל חוות הדעת'],['clothing','👗 ביגוד וחתונה','מי המליץ / מי הציע את החנות']];
 (function(){const nav=$('#boNav');if(!nav||nav.querySelector('[data-s="credits"]'))return;
   const b=document.createElement('button');b.dataset.s='credits';b.textContent='🏷️ קרדיט למדווחים';b.hidden=!isAdmin();

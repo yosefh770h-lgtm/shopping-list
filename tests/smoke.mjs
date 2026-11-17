@@ -305,16 +305,15 @@ await test('קרדיט למדווחים: שם המדווח מוסתר כבריר
   const pr = (id, product, chain, price, by) => ({ id, product, product_key: product, chain, branch: 'בני ברק', price, currency: 'ILS', confirms: 2, wrong: 0, created_at: iso, by_id: by, status: 'approved' });
   const D = {
     prices: [pr('c1', 'חלב 3%', 'רמי לוי', 6.2, 'u1'), pr('c2', 'לחם אחיד', 'אושר עד', 7.5, 'u2'), pr('c3', 'ביצים L', 'שופרסל', 13.9, 'u3')],
-    recipes: [{ id: 'r1', name: 'שקשוקה', emoji: '🍳', req: ['ביצים', 'עגבניות'], opt: [], steps: 'מטגנים בצל, מוסיפים עגבניות ושוברים ביצים.', author_id: 'u1', category: '', source: '', status: 'approved', created_at: iso }],
     // מה שהשרת מחזיר (כאן — גם שמות של פריטים מוסתרים, כדי לבדוק שגם הדפדפן לא מציג אותם)
-    'rpc:credit_names': { c1: { n: 'משה כהן', e: 'moshe@example.com', u: 'u1' }, c2: { n: 'רחל לוי', s: true, e: 'rachel@example.com', u: 'u2' }, c3: { n: 'דוד', s: false, e: 'david@example.com', u: 'u3' }, r1: { n: 'משה כהן', e: 'moshe@example.com', u: 'u1' } },
+    'rpc:credit_names': { c1: { n: 'משה כהן', e: 'moshe@example.com', u: 'u1' }, c2: { n: 'רחל לוי', s: true, e: 'rachel@example.com', u: 'u2' }, c3: { n: 'דוד', s: false, e: 'david@example.com', u: 'u3' } },
   };
   const names = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#latestReports .price-row[data-pid]')].map((r) => [r.dataset.pid, (r.querySelector('.cr23') || {}).textContent || ''])));
   await page.evaluate((D) => {
     sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; myRole = null; applyAdminUi();
     window.__upd = []; const from = sb.from;
     sb.from = (n) => { const c = from(n); return new Proxy(c, { get(t, p) { if (p === 'update' || p === 'upsert') return (v) => { window.__upd.push([n, p, v]); return c; }; return t[p]; } }); };
-    applyConfig('credits', { prices: false, recipes: false }); setTab('prices');
+    applyConfig('credits', { prices: false }); setTab('prices');
   }, D);
   await page.waitForTimeout(900);
   // 1. ברירת מחדל: משתמש רגיל לא רואה; פריט שהמנהל סימן "הצג" — כן
@@ -355,10 +354,6 @@ await test('קרדיט למדווחים: שם המדווח מוסתר כבריר
   await page.click('#latestReports [data-cr23b="prices|c1"]'); await page.waitForTimeout(200);
   const upd = await page.evaluate(() => window.__upd.filter((x) => x[0] === 'prices').map((x) => x[2].show_author));
   assert(JSON.stringify(upd) === '[true,false,null]', 'עדכוני show_author: ' + JSON.stringify(upd));
-  // 4. מתכונים כבויים באתר (RECIPES_OFF): גם עם "הצג תמיד" למתכונים לא נפתח מתכון
-  await page.evaluate(() => { authUser = { id: 'me', email: 'x@y.z' }; myRole = null; applyAdminUi(); applyConfig('credits', { recipes: true }); recMeta = []; openRecipes({ id: 'r1' }); });
-  await page.waitForTimeout(300);
-  assert(!/שקשוקה/.test(await page.evaluate(() => document.querySelector('#v8Sheet').innerText)), 'מתכון נפתח למרות שהמתכונים כבויים');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
@@ -366,18 +361,18 @@ await test('קרדיט למדווחים: שם המדווח מוסתר כבריר
 await test('קרדיט למדווחים: כרטיס המתגים בבק אופיס שומר את ההגדרה', async () => {
   const { ctx, page, errors } = await newPage({ viewport: { width: 1366, height: 820 } });
   await page.evaluate(() => {
-    sb = __stub({ 'site_config:one': { value: { prices: false, recipes: true } } }); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } };
+    sb = __stub({ 'site_config:one': { value: { prices: false, torah: true } } }); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } };
     window.__upd = []; const from = sb.from;
     sb.from = (n) => { const c = from(n); return new Proxy(c, { get(t, p) { if (p === 'upsert') return (v) => { window.__upd.push([n, v]); return c; }; return t[p]; } }); };
     openBO('credits');
   });
   await page.waitForTimeout(900);
-  const r = await page.evaluate(() => ({ n: document.querySelectorAll('#cr23card [data-crk]').length, rec: document.querySelector('#cr23_recipes').checked, pr: document.querySelector('#cr23_prices').checked, nav: !!document.querySelector('#boNav [data-s="credits"]') }));
-  assert(r.n === 5 && r.rec && !r.pr && r.nav, 'כרטיס המתגים: ' + JSON.stringify(r));
+  const r = await page.evaluate(() => ({ n: document.querySelectorAll('#cr23card [data-crk]').length, rec: document.querySelector('#cr23_torah').checked, pr: document.querySelector('#cr23_prices').checked, nav: !!document.querySelector('#boNav [data-s="credits"]') }));
+  assert(r.n === 4 && r.rec && !r.pr && r.nav, 'כרטיס המתגים: ' + JSON.stringify(r));
   if (process.env.SHOTS) await page.screenshot({ path: process.env.SHOTS + '/1-backoffice-credits-switches.png' });
   await page.click('#cr23_prices'); await page.waitForTimeout(300);
   const u = await page.evaluate(() => window.__upd.find((x) => x[0] === 'site_config'));
-  assert(u && u[1].key === 'credits' && u[1].value.prices === true && u[1].value.recipes === true && u[1].value.torah === false, 'השמירה: ' + JSON.stringify(u));
+  assert(u && u[1].key === 'credits' && u[1].value.prices === true && u[1].value.torah === true && u[1].value.reviews === false, 'השמירה: ' + JSON.stringify(u));
   assert(await page.evaluate(() => credCfg23.prices === true), 'ההגדרה לא הוחלה באתר');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
@@ -987,18 +982,18 @@ await test('📢 פרסומות: מי רואה (כולם / רק מנהלים / �
     window.fetch = async () => new Response('', { status: 200, headers: { 'content-type': 'video/mp4' } }); r.old = await adVidDiag('https://x.supabase.co/storage/v1/object/public/ad-videos/v.mp4', 4);
     window.fetch = f0; return r; });
   assert(/סינון/.test(diag.ok) && /SQL/.test(diag.missing) && /דף חסימה/.test(diag.page) && /חוסם/.test(diag.blocked) && /חוסם פרסומות/.test(diag.old) && /להעלות שוב/.test(diag.old), 'אבחון סרטון: ' + JSON.stringify(diag));
-  // לחיצה על פרסומת מובילה לפעולה באתר (למשל סורק ברקוד / מתכונים) — בלי לפתוח לשונית חדשה; גם התמונה עצמה לחיצה
+  // לחיצה על פרסומת מובילה לפעולה באתר (למשל סורק ברקוד / יאמי) — בלי לפתוח לשונית חדשה; גם התמונה עצמה לחיצה
   const act = await page.evaluate(async () => {
     const goOpts = document.querySelectorAll('#adGo option').length;
-    let called = ''; const orig = openRecipes; openRecipes = () => { called = 'recipes'; };
+    let called = ''; const orig = openBot; openBot = () => { called = 'yami'; };
     document.querySelector('#bo').classList.add('hidden');
-    sb = __stub({ ads: [{ id: 'r1', title: 'מתכון', placement: 'side', emoji: '📖', theme: 'green', image: '', link_url: 'https://www.yamshopping.com/?a=recipes', active: true, close_after: 0, advertiser: '', body: '' }] });
+    sb = __stub({ ads: [{ id: 'r1', title: 'יאמי', placement: 'side', emoji: '🤖', theme: 'green', image: '', link_url: 'https://www.yamshopping.com/?a=yami', active: true, close_after: 0, advertiser: '', body: '' }] });
     authUser = { id: 'u', email: 'u@x.com', email_confirmed_at: 'x' }; myRole = null; hideAds(); await loadAds(true);
     const cta = document.querySelector('#ybSide .ybcta'), pic = document.querySelector('#ybSide a.ybpic');
     const r = { goOpts, text: cta && cta.textContent, target: cta && cta.getAttribute('target'), pic: !!pic };
-    pic.click(); r.called = called; openRecipes = orig; return r; });
+    pic.click(); r.called = called; openBot = orig; return r; });
   assert(act.goOpts >= 10, 'אין בחירה לאן הלחיצה מובילה: ' + act.goOpts);
-  assert(act.text === '📖 למתכונים' && !act.target && act.pic && act.called === 'recipes', 'פעולה באתר מפרסומת לא עובדת: ' + JSON.stringify(act));
+  assert(act.text === '🤖 לשאול את יאמי' && !act.target && act.pic && act.called === 'yami', 'פעולה באתר מפרסומת לא עובדת: ' + JSON.stringify(act));
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
@@ -1394,19 +1389,6 @@ await test('רשימות מהקהילה: רשימת השבוע למעלה, די�
   const bo = await page.evaluate(() => { const m = document.querySelector('#boMain'); m.querySelector('[data-new27]').click();
     return { txt: m.textContent, nav: !!document.querySelector('#boNav [data-s="commlists"]'), ed: !!m.querySelector('.x27new [data-f="items"]'), week: !!m.querySelector('[data-week27]') }; });
   assert(bo.nav && bo.txt.includes('רשימות מהקהילה') && bo.ed && bo.week, 'הבק אופיס של רשימות מהקהילה לא נפתח כמו שצריך');
-  assert(!errors.length, errors.join(' | '));
-  await ctx.close();
-});
-
-await test('מתכונים כבויים באתר: מתכון לא נפתח ולא מוצע, ופענוח שורות מצרכים עובד', async () => {
-  const { ctx, page, errors } = await newPage();
-  const D = { recipes: [{ id: '11111111-2222-3333-4444-555555555555', name: 'קציצות ברוטב', emoji: '🍲', req: ['בשר טחון'], qty: ['500 גרם'], serves: 4, opt: [], steps: 'מערבבים ומבשלים.', author_id: 'u1', category: 'בשרי', source: 'user', status: 'approved', created_at: new Date().toISOString() }] };
-  const off = await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; recMeta = []; openRecipes({ id: D.recipes[0].id }); return { off: RECIPES_OFF, chips: botChips().join('|') }; }, D);
-  await page.waitForTimeout(300);
-  assert(off.off === true && !/מתכון/.test(off.chips), 'המתכונים לא כבויים: ' + JSON.stringify(off));
-  assert(!/קציצות ברוטב/.test(await page.evaluate(() => document.querySelector('#v8Sheet').innerText)), 'מתכון נפתח למרות שהמתכונים כבויים');
-  const parsed = await page.evaluate(() => ['2 כוסות של אורז', 'בשר טחון - 1 קילו', 'חצי כוס סוכר', 'מלח לפי הטעם', 'טונה 2 קופסאות'].map((l) => { const r = parseIngLine(l); return r.n + '=' + r.q; }));
-  assert(JSON.stringify(parsed) === JSON.stringify(['אורז=2 כוסות', 'בשר טחון=1 קילו', 'סוכר=½ כוס', 'מלח=לפי הטעם', 'טונה=2 קופסאות']), 'פענוח שורות: ' + JSON.stringify(parsed));
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });

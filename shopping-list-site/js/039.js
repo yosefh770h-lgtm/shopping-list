@@ -61,7 +61,7 @@ window.boAfter&&window.boAfter('guests',async main=>{if(!main||main.querySelecto
 try{const gb=$41('#boNav [data-s="guests"]');if(gb)gb.textContent='👀 מבקרים — מי ומאיפה';}catch(e){}
 
 /* ---------- 3. 👮 הרשאות לכל איש צוות (רק הבעלים) ---------- */
-const MODTABS41=['pending','recipes','bot','chains','prices','reporters','posts','torah','reviews','products','clothing','guests'];
+const MODTABS41=['pending','bot','chains','prices','reporters','posts','torah','reviews','products','clothing','guests'];
 const PERM41=[['visitors','👀 לראות מי נכנס ומאיפה (שמות, מקור, קישור)'],['notify','🛎️ לקבל התראות על כניסות והרשמות'],['emails','✉️ לראות מיילים של משתמשים'],['delete_users','🗑️ למחוק משתמשים']];
 /* מה שרק "מנהל" יכול: אם מסמנים אחד מאלה לצוות פיקוח — הוא עובר אוטומטית לתפקיד מנהל (עם רק מה שסומן) */
 const ADMONLY41=k=>k==='delete_users'||(k!=='visitors'&&k!=='notify'&&k!=='emails'&&!MODTABS41.includes(k));

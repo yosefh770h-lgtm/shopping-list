@@ -1,6 +1,6 @@
 
 /* ================= גרסה 10: התראות גם כשהאתר סגור, דיווח וחסימה על שפה, הבית שלי כמו חנות אונליין (תמונות ועריכה),
-   מתכונים (תמונה, דירוג באימוג'י, מעקב, ממתכון של יאמי), צ'אט עסקי, השוואת מחירים לפי עיר, דיווחים ישנים בסוף ================= */
+   צ'אט עסקי, השוואת מחירים לפי עיר, דיווחים ישנים בסוף ================= */
 const $10=s=>document.querySelector(s);
 const PUSH_SUPPORTED='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
 
@@ -27,11 +27,9 @@ document.querySelector('#meOverlay').addEventListener('click',e=>{const a=e.targ
   const h=state.history[+a.dataset.puradd];if(!h)return;
   pickItemsSheet('🔁 '+T('מה להוסיף מהקנייה הזו?','What to add from this purchase?'),h.items.map(x=>({n:x.n,q:x.q})),esc(fmtDate(new Date(h.ts)))+(h.store?' · 🏪 '+esc(h.store):'')+' — '+T('מסמנים מה צריך שוב, ורק אז זה נכנס לרשימה.','tick what you need again.'));},true);
 
-/* ---------- ניווט מהתראה (#chat, #recipe-...) ---------- */
+/* ---------- ניווט מהתראה (#chat) ---------- */
 function routeHash(){const h=location.hash||'';
-  if(h==='#chat'){history.replaceState(null,'',location.pathname);setTimeout(()=>openChat(),300);}
-  else if(/^#recipe-[0-9a-f-]{36}(-s\d{1,3})?$/.test(h)){const id=h.slice(8,44),sv=parseInt(h.slice(46))||0;history.replaceState(null,'',location.pathname);setTimeout(()=>openRecipes({id,serves:sv>0&&sv<=200?sv:0}),600);}
-  else if(h==='#recipes'){history.replaceState(null,'',location.pathname);setTimeout(()=>openRecipes(),300);}}
+  if(h==='#chat'){history.replaceState(null,'',location.pathname);setTimeout(()=>openChat(),300);}}
 addEventListener('hashchange',routeHash);
 
 /* ---------- התראות לטלפון ולמחשב גם כשהאתר סגור (Web Push) ---------- */
@@ -57,7 +55,7 @@ async function pushEnable(){
 async function pushDisable(){const r=await pushReg();const sub=r&&await r.pushManager.getSubscription();
   if(sub){try{if(sb&&authUser)await sb.from('push_subs').delete().eq('endpoint',sub.endpoint);}catch(e){}try{await sub.unsubscribe();}catch(e){}}
   await pushRefresh();flash('🔕 '+T('ההתראות לטלפון/מחשב כובו','Push notifications off'));}
-const PUSH_KINDS=[['chat','💬',T('תשובות מצוות האתר','Replies from the site team')],['deal','🏷️',T('מבצעים בחנויות שאני עוקב/ת','Deals at stores I follow')],].concat(RECIPES_OFF?[]:[['recipe','🍲',T('מתכונים (שלי ושל קטגוריות שאני עוקב/ת)','Recipes')]]).concat([['store','🏪',T('תשובות מחנויות','Replies from stores')],['info','🔔',T('תזכורות מהאתר','Reminders')]]);
+const PUSH_KINDS=[['chat','💬',T('תשובות מצוות האתר','Replies from the site team')],['deal','🏷️',T('מבצעים בחנויות שאני עוקב/ת','Deals at stores I follow')],['store','🏪',T('תשובות מחנויות','Replies from stores')],['info','🔔',T('תזכורות מהאתר','Reminders')]];
 function pushCardHtml(){
   const on=!!pushState.sub;const pr=pushState.prefs||{max_per_day:6,quiet:false,shabbat:true,kinds:{}};const kinds=pr.kinds||{};
   return '<div class="mecard pushcard"><h4>📲 '+T('התראות לטלפון ולמחשב — גם כשהאתר סגור','Phone & computer notifications — even when closed')+'</h4>'+
@@ -225,166 +223,6 @@ function openDealReport(chain){
     if(error){flash('⚠️ '+error.message);return;}closeSheet();flash('📢 '+T('תודה! המבצע נשלח לאישור ויפורסם בקרוב 💚','Thanks! Sent for approval 💚'));};
 }
 
-/* ---------- מתכונים: ספר מתכונים יפה, תמונה, דירוג באימוג'י, מעקב אחרי קטגוריות ---------- */
-const RCATS=['שבת וחג','בשרי','עוף','דגים','חלבי','פרווה','סלטים','מרקים','תוספות','אפייה ועוגות','קינוחים','ילדים','מהיר וקל','בריא','אחר'];
-let recipeCfg={emojis:['😋','❤️','👍','🔥','🤤']};
-/* כמויות וסועדים: כל מצרך נשמר עם כמות (qty[i] מקביל ל-req[i]) והמתכון יודע לכמה סועדים הוא (serves) — כך אפשר להכפיל לכל מספר סועדים */
-const ING_UNITS=['קילו','ק"ג','ק״ג','קג','גרם','גר\'','גר','ג\'','מ"ל','מ״ל','מל','ליטר','ליטרים','כוסות','כוס','כפות','כף','כפיות','כפית','יחידות','יחידה','חבילות','חבילה','קופסאות','קופסה','קופסת','פחיות','פחית','שקיות','שקית','שקיק','שיני','שן','ראשי','ראש','צרורות','צרור','פרוסות','פרוסה','ענפים','ענף','חופן','קורט','בקבוק','בקבוקים','מגש','מגשים','גביע','גביעים','שקדי'].sort((a,b)=>b.length-a.length);
-const ING_WORDS={'חצי':.5,'רבע':.25,'שליש':1/3,'אחד':1,'אחת':1,'שתיים':2,'שניים':2,'שני':2,'שתי':2,'שלוש':3,'שלושה':3,'ארבע':4,'ארבעה':4,'חמש':5,'חמישה':5,'שש':6,'שישה':6,'שבע':7,'שבעה':7,'שמונה':8,'תשע':9,'תשעה':9,'עשר':10,'עשרה':10};
-const ING_FRAC={'½':.5,'¼':.25,'¾':.75,'⅓':1/3,'⅔':2/3,'⅛':.125};
-/* "1 1/2", "1½", "0.5", "3/4", "חצי" → מספר; מחזיר [מספר, אורך הטקסט שנקרא] */
-function readAmount(t){let m=t.match(/^(\d+)\s+(\d+)\/(\d+)/);if(m&&+m[3])return [+m[1]+m[2]/m[3],m[0].length];
-  m=t.match(/^(\d+)\/(\d+)/);if(m&&+m[2])return [m[1]/m[2],m[0].length];
-  m=t.match(/^(\d*(?:[.,]\d+)?)\s*([½¼¾⅓⅔⅛])/);if(m&&(m[1]||m[2]))return [(parseFloat((m[1]||'0').replace(',','.'))||0)+ING_FRAC[m[2]],m[0].length];
-  m=t.match(/^\d+(?:[.,]\d+)?/);if(m)return [parseFloat(m[0].replace(',','.')),m[0].length];
-  m=t.match(/^([^\s\d]+)(?=\s|$)/);if(m&&ING_WORDS[m[1]]!=null)return [ING_WORDS[m[1]],m[0].length];
-  return null;}
-function readQty(t){t=t.trim();const a=readAmount(t);if(!a)return null;let rest=t.slice(a[1]).trim(),unit='';
-  const u=ING_UNITS.find(x=>rest===x||rest.startsWith(x+' '));if(u){unit=u;rest=rest.slice(u.length).trim();}
-  return {num:a[0],unit,rest};}
-/* שורת מצרך → {n: שם, q: כמות}. מבין "500 גרם בשר טחון", "2 כוסות קמח", "קמח - 2 כוסות", "בשר טחון 500 גרם", "מלח לפי הטעם" */
-function parseIngLine(line){line=String(line||'').replace(/^[\s•\-*]+/,'').replace(/^\d+[.)]\s+/,'').trim();if(!line)return null;
-  const front=readQty(line);
-  if(front&&front.rest)return {n:front.rest.replace(/^(של|מ)\s+/,'').trim(),q:fmtQty(front.num,front.unit)};
-  const dash=line.match(/^(.+?)\s*[-–—:]\s*(.+)$/);if(dash){const b=readQty(dash[2]);if(b&&!b.rest)return {n:dash[1].trim(),q:fmtQty(b.num,b.unit)};}
-  const tail=line.match(/^(.+?)\s+(\d[\d\s./,½¼¾⅓⅔⅛]*(?:\s*\S+)?)$/);if(tail){const b=readQty(tail[2]);if(b&&!b.rest)return {n:tail[1].trim(),q:fmtQty(b.num,b.unit)};}
-  const taste=line.match(/^(.+?)\s+(לפי הטעם|כרצונך|לקישוט|קורט)$/);if(taste)return {n:taste[1].trim(),q:taste[2]};
-  return {n:line,q:''};}
-function fmtNum(x){if(x>=10)return String(Math.round(x));const w=Math.floor(x),f=x-w;
-  const fr=[[0,''],[.25,'¼'],[1/3,'⅓'],[.5,'½'],[2/3,'⅔'],[.75,'¾'],[1,'']].reduce((a,c)=>Math.abs(c[0]-f)<Math.abs(a[0]-f)?c:a);
-  const ww=fr[0]===1?w+1:w;return fr[1]?(ww?ww+fr[1]:fr[1]):String(ww);}
-const UNIT_PL={'כוס':'כוסות','כף':'כפות','כפית':'כפיות','קופסה':'קופסאות','קופסת':'קופסאות','חבילה':'חבילות','יחידה':'יחידות','פחית':'פחיות','שקית':'שקיות','פרוסה':'פרוסות','שן':'שיני','צרור':'צרורות','ענף':'ענפים','בקבוק':'בקבוקים','מגש':'מגשים','גביע':'גביעים','ראש':'ראשי'};
-const UNIT_SG=Object.fromEntries(Object.entries(UNIT_PL).filter(([k])=>k!=='קופסת').map(([k,v])=>[v,k]));
-function fmtQty(num,unit){
-  if(/^(גרם|גר'?|ג')$/.test(unit)&&num>=1000){num/=1000;unit='ק"ג';}else if(/^(מ"ל|מ״ל|מל)$/.test(unit)&&num>=1000){num/=1000;unit='ליטר';}
-  if(unit&&num>1&&UNIT_PL[unit])unit=UNIT_PL[unit];else if(unit&&num>0&&num<=1&&UNIT_SG[unit])unit=UNIT_SG[unit];
-  return (num>0?fmtNum(num):'')+(unit?' '+unit:'');}
-const ROUND_UNITS=/^(גרם|גר'?|ג'|מ"ל|מ״ל|מל)$/;
-/* מכפיל כמות לפי מספר הסועדים. "לפי הטעם" ודומיו נשארים כמו שהם */
-function scaleQty(q,factor){q=String(q||'').trim();if(!q||factor===1)return q;const r=readQty(q);if(!r||r.rest)return q;
-  let v=r.num*factor;if(ROUND_UNITS.test(r.unit))v=v>=100?Math.round(v/10)*10:Math.round(v);
-  return fmtQty(v,r.unit);}
-/* לרשימת הקניות: יחידות שלמות (אי אפשר לקנות חצי ביצה או ⅔ קופסה), ומידות מטבח (כוס, כף, שן) לא נכנסות ככמות */
-function shopQty(q){const r=readQty(String(q||''));if(!r||r.rest)return '';
-  if(!r.unit||/^(יחידות|יחידה|חבילות|חבילה|קופסאות|קופסה|קופסת|פחיות|פחית|שקיות|שקית|ראשי|ראש|צרורות|צרור|בקבוק|בקבוקים|מגש|מגשים|גביע|גביעים)$/.test(r.unit))return fmtQty(Math.max(1,Math.ceil(r.num-1e-9)),r.unit);
-  if(/^(כוסות|כוס|כפות|כף|כפיות|כפית|שיני|שן|קורט|חופן|ענפים|ענף|פרוסות|פרוסה|שקדי)$/.test(r.unit))return '';
-  return q;}
-const recQty=(r,i)=>((r.qty||[])[i]||'');
-function recScaled(r,n){const f=r.serves&&n?n/r.serves:1;return (r.req||[]).map((x,i)=>({n:x,q:scaleQty(recQty(r,i),f),have:pantryHas(x)}));}
-function recShareText(r,n){const ings=recScaled(r,n);
-  return (r.emoji||'🍽️')+' '+r.name+(r.serves?' — '+T('ל-'+n+' סועדים','for '+n):'')+'\n\n🧺 '+T('מצרכים','Ingredients')+':\n'+ings.map(x=>'• '+(!x.q?x.n:readQty(x.q)?x.q+' '+x.n:x.n+' — '+x.q)).join('\n')+'\n\n👩‍🍳 '+T('אופן ההכנה','Method')+':\n'+String(r.steps||'').slice(0,1500);}
-/* העמודות החדשות (serves, qty) נוספות ב-SQL — עד שמריצים אותו, האתר ממשיך לעבוד בלעדיהן */
-let recNewCols=true;
-const _v10ApplyConfig=applyConfig;
-applyConfig=function(k,v){_v10ApplyConfig(k,v);if(k==='recipes'&&v&&Array.isArray(v.emojis)&&v.emojis.length)recipeCfg=Object.assign({},recipeCfg,v);};
-let recMeta=[],recReacts={},recMine={},recFollows=new Set(),recImgs={},recView={cat:'',q:'',id:null,serves:{}};
-async function loadRecipeMeta(){if(!sb)return;
-  await cachedLoad('recipes',30*60000,async()=>{const base='id,name,emoji,req,opt,steps,author_id,category,source,emojis,status,created_at';const q=c=>sb.from('recipes').select(c).order('created_at',{ascending:false}).limit(2000);
-    let {data,error}=await q(recNewCols?base+',serves,qty':base);if(error&&recNewCols){recNewCols=false;({data,error}=await q(base));}return error?null:(data||[]);},
-    data=>{recMeta=data;publicRecipes=recMeta.filter(r=>r.status==='approved').map(r=>({id:r.id,n:r.name,e:r.emoji||'🍽️',req:r.req||[],opt:r.opt||[],steps:r.steps,by:'',cat:r.category,src:r.source,serves:r.serves||null,qty:r.qty||[]}));});}
-async function loadRecipeSocial(){if(!sb||!authUser)return;
-  try{const [{data:rx},{data:fl}]=await Promise.all([sb.from('recipe_reactions').select('recipe_id,user_id,emoji').limit(20000),sb.from('recipe_follows').select('category').eq('user_id',authUser.id)]);
-    recReacts={};recMine={};(rx||[]).forEach(r=>{const m=recReacts[r.recipe_id]=recReacts[r.recipe_id]||{};m[r.emoji]=(m[r.emoji]||0)+1;if(r.user_id===authUser.id)recMine[r.recipe_id]=r.emoji;});
-    recFollows=new Set((fl||[]).map(f=>f.category));}catch(e){}}
-async function loadRecipeImages(ids){ids=ids.filter(id=>!(id in recImgs));if(!ids.length||!sb)return;ids.forEach(id=>recImgs[id]='');
-  try{const {data}=await sb.from('recipes').select('id,image').in('id',ids);(data||[]).forEach(r=>{recImgs[r.id]=r.image||'';const el=document.querySelector('[data-rimg="'+r.id+'"]');if(el&&safeImg(r.image))el.innerHTML='<img src="'+esc(safeImg(r.image))+'" alt="" loading="lazy">';});}catch(e){}}
-const _v10LoadPublic=loadPublicData;
-loadPublicData=async function(){await Promise.all([_v10LoadPublic(),loadRecipeMeta()]);};
-const recEmojis=r=>(r&&Array.isArray(r.emojis)&&r.emojis.length?r.emojis:recipeCfg.emojis).slice(0,8);
-function reactBar(r){const c=recReacts[r.id]||{};const mine=recMine[r.id];
-  return '<div class="rreact" role="group" aria-label="'+T('דירוג המתכון','Rate this recipe')+'">'+recEmojis(r).map(em=>'<button class="rx'+(mine===em?' on':'')+'" data-rx="'+r.id+'|'+esc(em)+'" aria-pressed="'+(mine===em)+'">'+esc(em)+(c[em]?' <b>'+c[em]+'</b>':'')+'</button>').join('')+'</div>';}
-const recBy=r=>r.source==='ai'?'🤖 '+T('נוצר ע״י יאמי (בינה מלאכותית)','Created by Yami (AI)')+crSlot('recipes',r.id,{p:' · '+T('נשלח ע״י ','sent by ')}):crSlot('recipes',r.id,{p:'👩‍🍳 '+T('מאת ','by ')});
-function openRecipes(opt){opt=opt||{};recView.id=null;if(opt.id)recView.id=opt.id;if(opt.id&&opt.serves)recView.serves[opt.id]=opt.serves;if(opt.cat!==undefined)recView.cat=opt.cat;
-  const b=openSheet('📖 '+T('ספר המתכונים','Recipe book'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');b.onclick=null;b.onchange=null;b.oninput=null;
-  Promise.all([recMeta.length?null:loadRecipeMeta(),loadRecipeSocial()]).then(()=>drawRecipes(b));}
-function drawRecipes(b){
-  const me=authUser&&authUser.id;
-  if(recView.id){const r=recMeta.find(x=>x.id===recView.id);if(!r){recView.id=null;return drawRecipes(b);}
-    const n=r.serves?(recView.serves[r.id]||r.serves):0;const ings=recScaled(r,n);const miss=ings.filter(x=>!x.have);
-    b.innerHTML='<button class="mini" data-rback="1">→ '+T('לכל המתכונים','All recipes')+'</button>'+
-      '<div class="rhero" data-rimg="'+r.id+'">'+(safeImg(recImgs[r.id])?'<img src="'+esc(safeImg(recImgs[r.id]))+'" alt="">':'<span>'+esc(r.emoji||'🍽️')+'</span>')+'</div>'+
-      '<h2 class="rtitle">'+esc(r.emoji||'')+' '+esc(r.name)+'</h2><div class="rmeta">'+(r.category?'<span class="rcat">'+esc(r.category)+'</span>':'')+'<span>'+recBy(r)+'</span>'+(r.status!=='approved'?'<span class="rcat warn">'+(r.status==='pending'?'⏳ '+T('ממתין לאישור','pending'):'🙈 '+T('לא פורסם','not published'))+'</span>':'')+'</div>'+
-      (r.status==='approved'?reactBar(r):'')+
-      '<div class="mecard"><h4>🧺 '+T('מצרכים','Ingredients')+'</h4>'+
-      (r.serves?'<div class="rserves"><b>👥 '+T('לכמה סועדים?','How many diners?')+'</b><span class="rsv"><button data-rsv="-1" aria-label="'+T('פחות סועדים','Fewer')+'">−</button><output aria-live="polite">'+n+'</output><button data-rsv="1" aria-label="'+T('יותר סועדים','More')+'">+</button></span>'+(n!==r.serves?'<button class="mini" data-rsv="0">↺ '+T('כמו במתכון','Reset')+'</button>':'')+'<small>'+T('המתכון המקורי ל-'+r.serves+' סועדים — הכמויות מחושבות אוטומטית','Original recipe serves '+r.serves+' — amounts are scaled automatically')+'</small></div>':'')+
-      '<ul class="ring">'+ings.map(x=>'<li>'+(x.have?'✅ ':'▫️ ')+(!x.q?esc(x.n):readQty(x.q)?'<span class="rq">'+esc(x.q)+'</span> '+esc(x.n):esc(x.n)+' — <span class="rq">'+esc(x.q)+'</span>')+'</li>').join('')+(r.opt||[]).map(x=>'<li class="opt">'+esc(x)+' <small>('+T('לא חובה','optional')+')</small></li>').join('')+'</ul>'+
-      '<button class="mini pri" data-raddmiss="'+r.id+'">🛒 '+(n?T('להוסיף את המצרכים לרשימה (ל-'+n+' סועדים)','Add ingredients to my list (for '+n+')'):T('להוסיף את המצרכים לרשימה','Add ingredients to my list'))+'</button>'+
-      (miss.length?'':'<p class="muted-note">✅ '+T('יש הכל בבית!','You have everything!')+'</p>')+'</div>'+
-      '<div class="mecard"><h4>👩‍🍳 '+T('אופן ההכנה','Method')+'</h4><div class="rsteps">'+esc(r.steps).replace(/\n/g,'<br>')+'</div></div>'+
-      '<div class="row2"><button class="btn sec" data-rshare="'+r.id+'">🔗 '+T('שיתוף','Share')+'</button></div>';
-    loadRecipeImages([r.id]);return;}
-  const q=norm(recView.q||'');
-  const list=recMeta.filter(r=>r.status==='approved'&&(!recView.cat||r.category===recView.cat)&&(!q||norm(r.name+' '+(r.req||[]).join(' ')).includes(q)));
-  const mine=me?recMeta.filter(r=>r.author_id===me):[];
-  const fkey=recView.cat||'*';const following=recFollows.has(fkey);
-  b.innerHTML='<div class="rtop"><input id="recQ" placeholder="🔍 '+T('חיפוש מתכון או מצרך...','Search a recipe or ingredient...')+'" value="'+esc(recView.q||'')+'"><button id="recAdd">➕ '+T('להעלות מתכון','Add a recipe')+'</button></div>'+
-    '<div class="rchips"><button class="chip'+(!recView.cat?' on':'')+'" data-rcat="">'+T('הכל','All')+'</button>'+RCATS.map(c=>'<button class="chip'+(recView.cat===c?' on':'')+'" data-rcat="'+esc(c)+'">'+esc(c)+(recFollows.has(c)?' 🔔':'')+'</button>').join('')+'</div>'+
-    (authUser?'<button class="mini'+(following?' pri':'')+'" data-rfollow="'+esc(fkey)+'">'+(following?'🔔 '+T('את/ה עוקב/ת אחרי ','Following ')+(recView.cat?esc(recView.cat):T('כל המתכונים החדשים','all new recipes'))+' — '+T('ביטול','unfollow'):'🔕 '+T('לקבל התראה כשעולה מתכון חדש ב','Notify me about new recipes in ')+(recView.cat?esc(recView.cat):T('כל הקטגוריות','all categories')))+'</button>':'')+
-    (list.length?'<div class="rgrid">'+list.slice(0,60).map(r=>{const c=recReacts[r.id]||{};const tot=Object.values(c).reduce((a,x)=>a+x,0);const top=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([e,n])=>esc(e)+n).join(' ');
-      return '<button class="rcard" data-ropen="'+r.id+'"><div class="rimg" data-rimg="'+r.id+'">'+(safeImg(recImgs[r.id])?'<img src="'+esc(safeImg(recImgs[r.id]))+'" alt="" loading="lazy">':'<span>'+esc(r.emoji||'🍽️')+'</span>')+'</div><b>'+esc(r.name)+'</b><small>'+(r.category?esc(r.category)+' · ':'')+(r.source==='ai'?'🤖 '+T('יאמי','Yami'):crSlot('recipes',r.id,{t:1}))+'</small>'+(tot?'<small class="rtop3">'+top+'</small>':'')+'</button>';}).join('')+'</div>'
-      :'<div class="empty">'+T('עוד אין מתכונים כאן — '+(recView.cat?'אולי תהיו הראשונים להעלות ב'+esc(recView.cat)+'? 👩‍🍳':'העלו את הראשון! 👩‍🍳'),'No recipes yet 👩‍🍳')+'</div>')+
-    (mine.length?'<div class="mecard"><h4>📝 '+T('המתכונים ששלחתי','My recipes')+' ('+mine.length+')</h4>'+mine.map(r=>'<div class="merow" data-ropen="'+r.id+'" style="cursor:pointer"><span>'+esc(r.emoji||'🍽️')+'</span><span class="grow"><b>'+esc(r.name)+'</b><small>'+(r.status==='approved'?'✅ '+T('פורסם','published'):r.status==='pending'?'⏳ '+T('ממתין לאישור — תקבל/י התראה כשיפורסם','pending — you will be notified'):'🙈 '+T('לא פורסם','not published'))+'</small></span></div>').join('')+'</div>':'');
-  loadRecipeImages(list.slice(0,24).map(r=>r.id));
-}
-document.querySelector('#v8SheetBody').addEventListener('click',async e=>{
-  const b=$10('#v8SheetBody');
-  const o=e.target.closest('[data-ropen]');if(o){recView.id=o.dataset.ropen;drawRecipes(b);b.scrollTop=0;return;}
-  if(e.target.closest('[data-rback]')){recView.id=null;drawRecipes(b);return;}
-  const c=e.target.closest('[data-rcat]');if(c){recView.cat=c.dataset.rcat;drawRecipes(b);return;}
-  if(e.target.closest('#recAdd')){openRecipeForm();return;}
-  const f=e.target.closest('[data-rfollow]');if(f){if(!sb||!authUser)return;const k=f.dataset.rfollow;
-    if(recFollows.has(k)){await sb.from('recipe_follows').delete().eq('user_id',authUser.id).eq('category',k);recFollows.delete(k);flash('🔕 '+T('בוטל','Unfollowed'));}
-    else{const {error}=await sb.from('recipe_follows').insert({user_id:authUser.id,category:k});if(error){flash('⚠️ '+error.message);return;}recFollows.add(k);flash('🔔 '+T('מעולה! תקבל/י התראה על כל מתכון חדש','Great! You will be notified'));if(!pushState.sub&&PUSH_SUPPORTED)setTimeout(async ()=>{if((await uiConfirm(T('להפעיל גם התראות לטלפון/מחשב כשהאתר סגור?','Also enable phone/computer notifications?'))))pushEnable();},400);}
-    drawRecipes(b);return;}
-  const x=e.target.closest('[data-rx]');if(x){if(!sb||!authUser){flash(T('צריך להיות מחוברים 🙂','Sign in first 🙂'));return;}const [id,em]=x.dataset.rx.split('|');const cur=recMine[id];const m=recReacts[id]=recReacts[id]||{};
-    if(cur===em){const {error}=await sb.from('recipe_reactions').delete().eq('recipe_id',id).eq('user_id',authUser.id);if(error){flash('⚠️ '+error.message);return;}m[em]=Math.max(0,(m[em]||1)-1);delete recMine[id];}
-    else{const {error}=await sb.from('recipe_reactions').upsert({recipe_id:id,user_id:authUser.id,emoji:em},{onConflict:'recipe_id,user_id'});if(error){flash('⚠️ '+error.message);return;}if(cur)m[cur]=Math.max(0,(m[cur]||1)-1);m[em]=(m[em]||0)+1;recMine[id]=em;flash(em+' '+T('תודה על הדירוג!','Thanks for rating!'));}
-    const bar=x.closest('.rreact');const r=recMeta.find(y=>y.id===id);if(bar&&r)bar.outerHTML=reactBar(r);return;}
-  const sv=e.target.closest('[data-rsv]');if(sv&&recView.id){const r=recMeta.find(y=>y.id===recView.id);if(!r||!r.serves)return;const d=+sv.dataset.rsv;
-    recView.serves[r.id]=d?Math.max(1,Math.min(200,(recView.serves[r.id]||r.serves)+d)):r.serves;const st=b.scrollTop;drawRecipes(b);b.scrollTop=st;return;}
-  const am=e.target.closest('[data-raddmiss]');if(am){const r=recMeta.find(y=>y.id===am.dataset.raddmiss);if(!r)return;const n=r.serves?(recView.serves[r.id]||r.serves):0;
-    const ings=recScaled(r,n).map(x=>({n:x.n,q:shopQty(x.q),off:x.have})).concat((r.opt||[]).map(x=>({n:x,q:'',off:true})));
-    pickItemsSheet('🛒 '+T('מה להוסיף לרשימה?','What to add?'),ings,'🍲 '+esc(r.name)+(n?' · 👥 '+T(n+' סועדים',n+' diners'):'')+' — '+T('מה שכבר יש בבית לא מסומן','items you have at home are unticked'));return;}
-  const sh=e.target.closest('[data-rshare]');if(sh){const r=recMeta.find(y=>y.id===sh.dataset.rshare);const n=r.serves?(recView.serves[r.id]||r.serves):0;const url=location.origin+location.pathname+'#recipe-'+r.id+(n&&n!==r.serves?'-s'+n:'');const txt=recShareText(r,n)+'\n\n'+T('מתכון מ"רשימת קניות"','A recipe from Shopping List');
-    if(navigator.share)navigator.share({title:r.name,text:txt,url}).catch(()=>{});else window.open('https://wa.me/?text='+encodeURIComponent(txt+'\n'+url),'_blank','noopener');}
-});
-document.querySelector('#v8SheetBody').addEventListener('input',e=>{if(e.target.id!=='recQ')return;recView.q=e.target.value;const pos=e.target.selectionStart;drawRecipes($10('#v8SheetBody'));const n=$10('#recQ');if(n){n.focus();n.setSelectionRange(pos,pos);}});
-function openRecipeForm(pre){if(RECIPES_OFF)return;pre=pre||{};let img='';
-  const b=openSheet((pre.source==='ai'?'🤖 ':'➕ ')+T('העלאת מתכון לאתר','Add a recipe'),
-    (pre.source==='ai'?'<p class="muted-note" style="background:var(--chipbg);border-radius:10px;padding:8px 10px">🤖 '+T('המתכון נוצר ע״י יאמי (בינה מלאכותית) ויסומן כך באתר. אפשר לערוך לפני השליחה.','This recipe was created by Yami (AI) and will be labeled so.')+'</p>':'')+
-    '<label class="il" for="r10Name">'+T('שם המתכון','Recipe name')+'</label><input id="r10Name" maxlength="80" value="'+esc(pre.name||'')+'">'+
-    '<div class="grid2"><div><label class="il" for="r10Cat">'+T('קטגוריה','Category')+'</label><select id="r10Cat">'+RCATS.map(c=>'<option'+(c===pre.category?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select></div><div><label class="il">'+T('אייקון','Icon')+'</label>'+icField('id="r10Emoji" maxlength="8"',pre.emoji||'🍽️')+'</div></div>'+
-    '<label class="il" for="r10Serves">👥 '+T('לכמה סועדים המתכון?','How many diners does it serve?')+'</label><input id="r10Serves" type="number" inputmode="numeric" min="1" max="100" value="'+(+pre.serves||4)+'" style="max-width:110px">'+
-    '<label class="il" for="r10Req">'+T('מצרכים — כל מצרך בשורה, עם הכמות','Ingredients — one per line, with the amount')+'</label><textarea id="r10Req" style="min-height:110px" placeholder="'+T('500 גרם בשר טחון&#10;2 כוסות אורז&#10;3 ביצים&#10;מלח לפי הטעם','500 g minced meat&#10;2 cups rice&#10;3 eggs')+'">'+esc((pre.req||[]).map((x,i)=>((pre.qty||[])[i]?pre.qty[i]+' ':'')+x).join('\n'))+'</textarea>'+
-    '<p class="muted-note" style="margin-top:2px">💡 '+T('עם הכמויות ומספר הסועדים — כל אחד יוכל לבחור לכמה אנשים הוא מבשל, והכמויות יחושבו לבד.','With amounts and diners, anyone can cook it for any number of people.')+'</p>'+
-    '<label class="il" for="r10Steps">'+T('אופן ההכנה','Method')+'</label><textarea id="r10Steps" maxlength="8000" style="min-height:140px">'+esc(pre.steps||'')+'</textarea>'+
-    '<label class="btn sec" style="display:block;text-align:center;cursor:pointer;margin-top:8px">📷 '+T('תמונה של המנה (אחת, לא חובה)','A photo of the dish (one, optional)')+'<input type="file" id="r10Img" accept="image/*" hidden></label><div id="r10Prev"></div>'+
-    '<button id="r10Send" style="width:100%;margin-top:10px">📨 '+T('שליחה לאישור','Send for approval')+'</button><p class="muted-note">🔔 '+T('אחרי שהמנהל מאשר — המתכון מתפרסם עם השם שלך, ותקבל/י התראה. גם כשמישהו מדרג אותו.','You will be notified when it is published and rated.')+'</p>');
-  b.oninput=null;
-  b.onchange=async e=>{if(e.target.id!=='r10Img')return;const f=e.target.files[0];if(!f)return;try{img=await fileToImage(f,900,390000);$10('#r10Prev').innerHTML='<img src="'+esc(safeImg(img))+'" alt="" style="max-width:100%;border-radius:12px;margin-top:8px">';}catch(err){flash('⚠️');}};
-  b.onclick=async e=>{if(!e.target.closest('#r10Send'))return;if(!sb||!authUser){flash(T('צריך להיות מחוברים 🙂','Sign in first 🙂'));return;}
-    const name=$10('#r10Name').value.trim(),steps=$10('#r10Steps').value.trim();const ings=$10('#r10Req').value.split(/\n|,(?!\d)/).map(parseIngLine).filter(x=>x&&x.n).slice(0,60);const req=ings.map(x=>x.n.slice(0,80)),qty=ings.map(x=>x.q.slice(0,30));
-    const serves=Math.max(1,Math.min(100,parseInt($10('#r10Serves').value)||4));
-    if(!name||!steps){flash(T('צריך שם ואופן הכנה','Name and method needed'));return;}
-    if([name,steps].concat(req).some(hasProfanity)){reportAbuse(name+' '+steps.slice(0,200),'recipe');flash('🙏 '+T('יש במתכון מילים לא יפות','Please keep it clean'));return;}
-    $10('#r10Send').disabled=true;
-    const row={name:name.slice(0,80),emoji:$10('#r10Emoji').value.trim().slice(0,8)||'🍽️',req,opt:[],steps:steps.slice(0,8000),category:$10('#r10Cat').value,source:pre.source==='ai'?'ai':'user',image:img,author_id:authUser.id};
-    let {error}=await sb.from('recipes').insert(recNewCols?Object.assign({serves,qty},row):row);
-    if(error&&recNewCols&&/serves|qty|column/i.test(error.message||'')){recNewCols=false;({error}=await sb.from('recipes').insert(row));}
-    if(error){$10('#r10Send').disabled=false;flash('⚠️ '+error.message);return;}
-    await loadRecipeMeta();closeSheet();
-    openSheet('🎉 '+T('המתכון נשלח!','Recipe sent!'),'<p>'+T('תודה! המתכון "'+esc(name)+'" נשלח לאישור המנהל. ברגע שיפורסם — תקבל/י הודעה, וגם כשאנשים ידרגו אותו 😋❤️','Thanks! You will be notified when it is published.')+'</p>'+(!pushState.sub&&PUSH_SUPPORTED?'<button id="r10Push" style="width:100%">📲 '+T('לקבל את ההודעה גם בטלפון/מחשב','Get it on my phone/computer')+'</button>':'')).onclick=ev=>{if(ev.target.closest('#r10Push'))pushEnable().then(()=>closeSheet());};};
-}
-/* מתכון שיאמי (הבינה המלאכותית) כתבה — שומרים רק כשהמשתמש מבקש */
-const _v10AskAI=askAI;
-askAI=async function(){const n0=state.bot.length;const r=await _v10AskAI();for(let i=n0;i<state.bot.length;i++)if(state.bot[i].who==='bot')state.bot[i].ai=true;save();return r;};
-function parseAiRecipe(txt){const lines=txt.split('\n').map(l=>l.replace(/[*#_]+/g,'').trim());
-  const name=(lines.find(l=>l&&!/^(בטח|הנה|בשמחה|כמובן|אשמח)/.test(l))||'').replace(/^[^\p{L}\d]+/u,'').replace(/[:：]$/,'').slice(0,80);
-  let i=lines.findIndex(l=>/^(מצרכים|רכיבים|חומרים)/.test(l));let j=lines.findIndex(l=>/^(אופן ההכנה|אופן הכנה|הוראות|הכנה|שלבי הכנה)/.test(l));
-  const req=i>=0?lines.slice(i+1,j>i?j:undefined).map(l=>l.replace(/^[\s•\-*\d.)]+/,'').trim()).filter(Boolean).slice(0,40):[];
-  const steps=(j>=0?lines.slice(j+1):lines.slice(1)).join('\n').trim();
-  return {name,req,steps:steps||txt,source:'ai',emoji:'🍽️'};}
-
 /* ---------- צ'אט עם האתר — עסקי ומסודר ---------- */
 const SUP_TOPICS=[['שאלה כללית','❓'],['תקלה באתר','🛠️'],['מחירים ומבצעים','💰'],['הצעה לשיפור','💡'],['עסקים ושיתופי פעולה','🏪'],['חשבון וכניסה','🔐'],['אחר','💬']];
 let supStatus=null,supTopic='';
@@ -516,12 +354,6 @@ async function v10BotPre(raw){
     let prod=m[1].trim(),city=(m[2]||'').trim();const c2=findCityIn(' '+t+' ');if(!city&&c2&&prod.endsWith(c2)){city=c2;prod=prod.slice(0,-c2.length).replace(/\s+(ב|באזור)$/,'').trim();}
     if(city){const cc=findCityIn(' '+city+' ');if(cc)city=cc;else{prod=prod+' ב'+city;city='';}}if(!city)city=state.city||'';
     if(prod){await cityPriceCompare(prod,city);return true;}}
-  if(/(ספר המתכונים|ספר מתכונים|כל המתכונים|מתכונים באתר|לראות מתכונים|דירוג מתכונים)/.test(t)){openRecipes();botSay('📖 '+T('פתחתי את ספר המתכונים — אפשר לדרג, לעקוב ולהעלות','Opened the recipe book'));return true;}
-  if(/(להעלות מתכון|לשתף מתכון שלי|להוסיף מתכון משלי)/.test(t)){openRecipeForm();botSay('➕ '+T('פתחתי טופס להעלאת מתכון','Opened the recipe form'));return true;}
-  if(/(שמור|שמרי|תשמרי|לשמור|תוסיפי|הוסיפי|להוסיף|תעלי|להעלות|תפרסמי|לפרסם).*(המתכון|את המתכון|מתכון זה|מתכון הזה)/.test(t)||/^(שמרי|תשמרי|תעלי|תפרסמי) (אותו|את זה) (לאתר|למתכונים)/.test(t)){
-    const last=[...state.bot].reverse().find(x=>x.who==='bot'&&x.ai&&x.txt.length>80);
-    if(!last){botSay(T('לא מצאתי מתכון שכתבתי לאחרונה 🤔 בקשו ממני מתכון (למשל "בינה: מתכון לעוגת שוקולד") ואז "שמרי את המתכון לאתר".','I did not find a recipe I wrote recently 🤔'));return true;}
-    openRecipeForm(parseAiRecipe(last.txt));botSay('🤖 '+T('פתחתי את המתכון לבדיקה — הוא יסומן "נוצר ע״י יאמי" ויישלח לאישור המנהל.','Opened for review — it will be labeled as AI-made and sent for approval.'));return true;}
   if(/(לדווח על מבצע|דיווח על מבצע|ראיתי מבצע|מבצע חדש ב)/.test(t)||(/^(יש|יש עכשיו|גיליתי ש?יש)\s+מבצע\s+ב/.test(t)&&!/[?？]/.test(raw)&&!YAMI_ASK.test(t))){const ch=findChainIn(t);openDealReport(ch||'');botSay('📢 '+T('פתחתי דיווח מבצע — תודה שאת/ה עוזר/ת לכולם!','Opened deal report'));return true;}
   if(/(להעלות מוצרים|העלאת מוצרים|תמונות של מוצרים|קובץ מוצרים|תמונה למוצר)/.test(t)){openProductUpload();botSay('📤 '+T('פתחתי העלאת מוצרים — תמונות או קובץ, ואני מזהה','Opened product upload'));return true;}
   if(/(התראות לטלפון|התראות למחשב|התראות כשהאתר סגור|(^|\s)פוש(\s|$)|להפעיל התראות)/.test(t)){openNotif();botSay('📲 '+T('פתחתי את ההתראות — לוחצים "להפעיל התראות במכשיר הזה"','Opened notifications'));return true;}
@@ -530,10 +362,10 @@ async function v10BotPre(raw){
 yamiStep(v10BotPre);
 
 /* ---------- תפריט ---------- */
-(function(){const m=$10('#hMenu');const after=$10('#miInv')||$10('#miNotif');after.insertAdjacentHTML('afterend','<button id="miRecipes">📖<span>'+T('ספר המתכונים','Recipe book')+'</span></button><button id="miDeal">📢<span>'+T('דיווח על מבצע','Report a deal')+'</span></button><button id="miProdUp">📤<span>'+T('העלאת מוצרים ותמונות','Upload products')+'</span></button>');
-  $10('#miRecipes').onclick=()=>{m.classList.remove('open');openRecipes();};$10('#miDeal').onclick=()=>{m.classList.remove('open');openDealReport();};$10('#miProdUp').onclick=()=>{m.classList.remove('open');openProductUpload();};})();
+(function(){const m=$10('#hMenu');const after=$10('#miInv')||$10('#miNotif');after.insertAdjacentHTML('afterend','<button id="miDeal">📢<span>'+T('דיווח על מבצע','Report a deal')+'</span></button><button id="miProdUp">📤<span>'+T('העלאת מוצרים ותמונות','Upload products')+'</span></button>');
+  $10('#miDeal').onclick=()=>{m.classList.remove('open');openDealReport();};$10('#miProdUp').onclick=()=>{m.classList.remove('open');openProductUpload();};})();
 
 const _v10SetTab=setTab;setTab=function(t){const r=_v10SetTab.apply(this,arguments);document.body.dataset.tab=tab;return r;};document.body.dataset.tab=typeof tab!=='undefined'?tab:'list';
-const _v10AfterEnter=afterEnter;afterEnter=function(){_v10AfterEnter();setTimeout(()=>{checkBan();loadMyProducts();pushRefresh();if(!recMeta.length)loadRecipeMeta();routeHash();},1500);};
+const _v10AfterEnter=afterEnter;afterEnter=function(){_v10AfterEnter();setTimeout(()=>{checkBan();loadMyProducts();pushRefresh();routeHash();},1500);};
 if(state.user&&authUser)setTimeout(()=>{checkBan();loadMyProducts();pushRefresh();routeHash();},1500);
 pushRefresh();

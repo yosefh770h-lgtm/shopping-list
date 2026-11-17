@@ -584,10 +584,10 @@ async function v7BotPre(raw){
   if(state.pending&&state.pending.qty&&/^(כן|בסדר|סבבה|אישור|רוצה|בצע|טוב|מצוין|אוקיי|אוקי|יאללה|בטח|בשמחה|כמובן)(\s|$)|^(תוסיף|תוסיפי|הוסיפי|הוסף|תוסיפו)(\s|$)/.test(t)){
     const pd=state.pending;state.pending=null;const n=addMany(pd.items.map(x=>({n:x,q:pd.qty[x]||''})));
     botSay(T('הוספתי לרשימה ✅','Added ✅')+' ('+n+')\n'+pd.items.map(x=>'• '+x+(pd.qty[x]?' ×'+pd.qty[x]:'')).join('\n'));return true;}
-  /* שיחה באמצע (מתכון, דבר תורה, בחירת סניף, שאלת כן/לא) — מעבירים ליאמי הרגילה */
-  if(state.addRecipeFlow||state.dtFlow)return false;
+  /* שיחה באמצע (דבר תורה, בחירת סניף, שאלת כן/לא) — מעבירים ליאמי הרגילה */
+  if(state.dtFlow)return false;
   if(state.pendingNav&&/^\d{1,2}$/.test(t))return false;
-  if((state.pendingCholent||state.pending||state.pendingRecipe)&&(/^(כן|בסדר|סבבה|אישור|רוצה|בצע|טוב|מצוין|אוקיי|אוקי|יאללה|בטח|בשמחה|כמובן)(\s|$)|^(תוסיף|תוסיפי|הוסיפי|הוסף|תוסיפו)(\s|$)/.test(t)||/^(לא|בטל|אין|לא עכשיו|לא צריך|לא תודה|אין צורך)(\s|$)/.test(t)))return false;
+  if(state.pending&&(/^(כן|בסדר|סבבה|אישור|רוצה|בצע|טוב|מצוין|אוקיי|אוקי|יאללה|בטח|בשמחה|כמובן)(\s|$)|^(תוסיף|תוסיפי|הוסיפי|הוסף|תוסיפו)(\s|$)/.test(t)||/^(לא|בטל|אין|לא עכשיו|לא צריך|לא תודה|אין צורך)(\s|$)/.test(t)))return false;
   /* סיום קנייה — רק מה שסומן, ואז "איפה קנית?" */
   if(/(סיימתי (את )?(ה)?קני|סיימתי לקנות|גמרתי (את )?(ה)?קני|גמרתי לקנות|סגרי (את )?(ה)?קנייה|סיום קנייה|קנינו הכל|קניתי הכל)/.test(t)){
     const l=curList();const partial=l.items.some(i=>i.done)&&l.items.some(i=>!i.done);
@@ -600,12 +600,12 @@ async function v7BotPre(raw){
     const last=lastShopping();if(!last){botSay(T('עוד אין קנייה קודמת 🙂 אחרי שתסיימו קנייה — אזכור אותה.','No previous shopping yet 🙂'));return true;}
     const l=curList();const missing=last.items.filter(i=>!l.items.some(x=>x.n===i.n&&!x.done));
     if(!missing.length){botSay(T('כל מה שקנית בפעם הקודמת כבר ברשימה ✔','Everything from last time is already on the list ✔'));return true;}
-    state.pendingCholent=false;pendingDtAsk=false;state.pending={items:missing.map(i=>i.n),qty:Object.fromEntries(missing.map(i=>[i.n,i.q||'']))};save();
+    pendingDtAsk=false;state.pending={items:missing.map(i=>i.n),qty:Object.fromEntries(missing.map(i=>[i.n,i.q||'']))};save();
     botSay('🔁 '+T('בפעם הקודמת ('+fmtDate(new Date(last.ts))+(last.stores.length?' · '+last.stores.join(', '):'')+') קנית:','Last time you bought:')+'\n'+missing.map(i=>'• '+(i.e||emojiOf(i.n))+' '+i.n+(i.q?' ×'+i.q:'')).join('\n')+'\n\n'+T('להוסיף הכל לרשימה? (כן/לא)','Add all to the list? (yes/no)'));return true;
   }
   if(/(מה (כנראה )?נגמר|הצעות לקנייה|מה בדרך כלל אני קונה|מה אני קונה בדרך כלל)/.test(t)||/(מה כדאי (לקנות|להוסיף)|תציעי לי)(\s+(לי|לנו|מה לקנות|מה להוסיף|מוצרים|היום|השבוע|בסופר|לרשימה))*[?？!.]*$/.test(t)){
     const due=dueItems();if(!due.length){const top=habits().prods.slice(0,8);botSay(top.length?T('לפי ההרגלים שלך, לא נראה שמשהו נגמר עכשיו 🙂\nהמוצרים שאת/ה הכי קונה: ','Nothing seems to be running out 🙂 Your top products: ')+top.map(p=>p.n).join(', '):T('עוד אין לי מספיק היסטוריה 🙂','Not enough history yet 🙂'));return true;}
-    state.pendingCholent=false;pendingDtAsk=false;state.pending={items:due.map(p=>p.n)};save();
+    pendingDtAsk=false;state.pending={items:due.map(p=>p.n)};save();
     botSay('⏰ '+T('לפי ההרגלים שלך, כנראה הגיע הזמן לקנות:','Based on your habits, probably time to buy:')+'\n'+due.map(p=>'• '+p.e+' '+p.n+' ('+T('כל ~'+p.every+' ימים, לאחרונה '+ago(p.last),'every ~'+p.every+' days')+')').join('\n')+'\n\n'+T('להוסיף לרשימה? (כן/לא)','Add to the list? (yes/no)'));return true;
   }
   const whereP=t.match(/^איפה (?:אני קונה|אני קונה את|קניתי|קנינו|קונים אצלנו) (?:את )?(?:ה)?(.+?)\??$/);
@@ -660,7 +660,7 @@ aiContext=function(){
 /* הצעות יזומות כשפותחים את יאמי — פעם ביום לכל סוג */
 function v7Offers(){
   if(!state.user)return;
-  const asked=()=>state.pendingCholent||state.pending||pendingDtAsk||state.dtFlow||state.addRecipeFlow;
+  const asked=()=>state.pending||pendingDtAsk||state.dtFlow;
   const dt=dtReminderToday();
   if(dt&&botCfg.dtReminder!==false&&!offeredToday('dtask')){
     markOffered('dtask');

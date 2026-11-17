@@ -18,7 +18,7 @@
   const hasMe=msgs=>(msgs||[]).some(m=>m&&m.who==='me');
   /* מה שמגיע מהשרת — רק השדות שאנחנו מכירים, באורך מוגבל */
   function cleanMsg(m){if(!m||typeof m!=='object'||(m.who!=='me'&&m.who!=='bot')||typeof m.txt!=='string')return null;
-    const ts=Number(m.ts);if(!isFinite(ts)||ts<=0)return null;const o={who:m.who,txt:m.txt.slice(0,6000),ts:Math.min(ts,Date.now()+864e5)};if(m.ai===true)o.ai=true;return o;}
+    const ts=Number(m.ts);if(!isFinite(ts)||ts<=0)return null;const o={who:m.who,txt:m.txt.slice(0,6000),ts:Math.min(ts,Date.now()+864e5)};return o;}
   function cleanChat(c){if(!c||typeof c!=='object'||typeof c.id!=='string'||!/^[\w-]{1,40}$/.test(c.id)||!Array.isArray(c.msgs))return null;
     const msgs=c.msgs.slice(-MAXM).map(cleanMsg).filter(Boolean);if(!hasMe(msgs))return null;return mk(c.id,msgs);}
   function cleanTomb(t){const o={},lim=Date.now()-TOMB_MS;if(t&&typeof t==='object')Object.keys(t).slice(0,500).forEach(k=>{const v=Number(t[k]);if(/^[\w-]{1,40}$/.test(k)&&isFinite(v)&&v>=lim)o[k]=v;});return o;}
@@ -31,7 +31,7 @@
     if(hasMe(state.bot)){const id=curId();const i=out.findIndex(c=>c.id===id);const c=mk(id,state.bot);if(i>=0)out[i]=mk(id,mergeMsgs(state.bot,out[i].msgs));else out.push(c);}
     return out;}
   function payload(){const tomb=cleanTomb(state.chatTomb);let chats=localChats().filter(c=>!(tomb[c.id]>=c.ts)).sort((a,b)=>b.ts-a.ts).slice(0,MAXC+1)
-      .map(c=>({id:c.id,ts:c.ts,msgs:c.msgs.map(m=>{const o={who:m.who,txt:String(m.txt).slice(0,6000),ts:m.ts};if(m.ai)o.ai=true;return o;})}));
+      .map(c=>({id:c.id,ts:c.ts,msgs:c.msgs.map(m=>{const o={who:m.who,txt:String(m.txt).slice(0,6000),ts:m.ts};return o;})}));
     let p={v:1,cur:curId(),chats,tomb};while(chats.length>1&&JSON.stringify(p).length>MAXB){chats.pop();p.chats=chats;}return p;}
   const sigOf=p=>(p.chats||[]).map(c=>c.id+':'+c.ts+':'+(c.msgs||[]).length).sort().join(',')+'#'+Object.keys(p.tomb||{}).sort().join(',');
   const localSig=()=>{const b=state.bot||[],l=b[b.length-1];return [state.botId,b.length,l&&l.ts,(state.botChats||[]).map(c=>c.id+':'+(c.msgs||[]).length).join(','),Object.keys(state.chatTomb||{}).length].join('|');};
