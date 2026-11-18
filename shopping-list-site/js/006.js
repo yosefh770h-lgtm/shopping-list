@@ -1126,7 +1126,7 @@ const dt=d=>new Date(d).toLocaleString(prefs.lang==='en'?'en-GB':'he-IL',{dateSt
 function renderPrices(){
   const p=document.querySelector('#panePrices');if(!p)return;
   const chains=allChains();
-  let html='<div class="price-note">'+T('💡 המחירים כאן ציבוריים — כל דיווח ואישור נראה לכל המשתמשים 🌍 מחיר עם ✔ הגיע ישירות מהסופר.','💡 Prices here are public — every report is visible to all users 🌍 A ✔ price came directly from the store.')+'</div>'+(sb&&authUser?'<div id="chainRank">'+(typeof rankHtml==='function'&&rankCache?rankHtml(rankCache):'')+'</div>':'');
+  let html='<div class="price-note">'+T('💡 המחירים כאן ציבוריים — כל דיווח ואישור נראה לכל המשתמשים 🌍 מחיר עם ✔ הגיע ישירות מהסופר.','💡 Prices here are public — every report is visible to all users 🌍 A ✔ price came directly from the store.')+'</div>';
   html+=tools18Html();
   if(myStore){
     html+='<div class="grp mystore"><h3>🏪 '+T('הסופר שלי','My store')+': '+esc(myStore.chain)+(myStore.branch?' — '+esc(myStore.branch):'')+' <small>('+(myStore.title==='owner'?T('בעל הסופר','owner'):T('אחראי','manager'))+(myStore.auto_approve?T(' · עולה מיד',' · published instantly'):T(' · באישור מנהל',' · needs approval'))+')</small></h3>'+
@@ -1155,7 +1155,6 @@ function renderPrices(){
   html+='<p class="muted-note">📍 '+T('חנויות, סניפים, ניווט ומבצעים — בלשונית "🏪 חנויות"','Stores, branches, Waze and deals — in the "🏪 Stores" tab')+'</p>';
   p.innerHTML=html;
   bindTools18(p);
-  if(typeof fillRanking==='function')fillRanking();
   loadLatest();
   renderPriceResults();renderBranchList();updateBranchOptions();
   if(myStore)bulkUI(document.querySelector('#msBulk'),{chain:myStore.chain,branch:myStore.branch});
