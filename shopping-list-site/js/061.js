@@ -144,6 +144,10 @@
      1 כללי, 2 נחסם, 4 קובץ פגום, 5 חתימה אחרת, 6 אין מקום, 7 לא מתאים לטלפון. install_ex = שגיאה בפתיחת ההתקנה עצמה */
   const WHY61=e=>{e=String(e||'');
     if(/^http_(418|403|451)|^bad_redirect|^bad_file/.test(e))return['🛡️ סינון עצר את ההורדה','הקובץ לא ירד: סינון האינטרנט (נטפרי וכו\') חסם אותו או החזיר דף חסימה במקומו. בדרך כלל זה עובר אחרי שהסינון מאשר את הקובץ החדש.'];
+    /* "Invalid install mode: -1" — אנדרואיד דחה את בקשת ההתקנה עוד לפני שהתחילה, כאילו לא נאמר לו איזה סוג התקנה.
+       האפליקציה שולחת תמיד "התקנה מלאה", אז משהו בטלפון משבש את הבקשה בדרך. נמצא ב-Samsung Galaxy S22 עם סינון הדרן
+       (סינון שמנהל את הטלפון ומריץ אפליקציות בסביבה מוגבלת). מגרסה 2.2 האפליקציה פותחת במקרה כזה את מסך ההתקנה הרגיל של אנדרואיד */
+    if(/Invalid install mode/i.test(e))return['🛡️ הטלפון לא נתן לפתוח את ההתקנה','הקובץ ירד במלואו ועבר בדיקה, אבל כשהאפליקציה ביקשה מאנדרואיד להתקין, הבקשה הגיעה משובשת ("Invalid install mode: -1"). האפליקציה שולחת תמיד בקשה תקינה, אז משהו בטלפון משבש אותה בדרך. כמעט תמיד זה סינון שמנהל את הטלפון (למשל הדרן). מה עושים עכשיו: להוריד את הגרסה החדשה מ-yamshopping.com בדפדפן ולהתקין ידנית, או לבקש מהסינון לאשר את העדכון. מגרסה 2.2 האפליקציה תעקוף את זה לבד ותפתח את מסך ההתקנה הרגיל של אנדרואיד.'];
     if(/^install_/.test(e)){
       if(/^install_2\b|restrict|block|polic|not allowed|DISALLOW|Security|permission/i.test(e))return['🛡️ הטלפון חסם את ההתקנה','הקובץ ירד במלואו ועבר בדיקה, אבל אנדרואיד סירב להתקין. זה קורה כשסינון שמנהל את הטלפון (הדרן וכדומה) מאשר כל אפליקציה וכל גרסה בנפרד, או כש"חוסם אוטומטי" של סמסונג דלוק. הפתרון: שהסינון יאשר את הגרסה החדשה.'];
       if(/^install_5\b/.test(e))return['📦 הותקנה ממקור אחר','האפליקציה בטלפון חתומה בחתימה אחרת (למשל הותקנה מחנות של הסינון), ולכן אנדרואיד לא מרשה לעדכן אותה מהאתר. מעדכנים מאותו מקום שממנו הותקנה.'];
@@ -157,11 +161,19 @@
   const ERR61=e=>WHY61(e)[0];
   /* דגם הטלפון בשם מוכר (סמסונג גלקסי S), למשל SM-S901B ← Galaxy S22 */
   const PH61=d=>{const m=String(d||'').match(/SM-S9(0[168]|1[168]|2[168]|3[168])/);if(!m)return '';const g={0:'22',1:'23',2:'24',3:'25'}[m[1][0]],k={1:'',6:'+',8:' Ultra'}[m[1][1]];return 'Samsung Galaxy S'+g+k;};
+  /* בלוח הראשי של הבק אופיס: אם השבוע נכשלו עדכונים — שורה בולטת עם קפיצה לפרטים */
+  window.boAfter&&window.boAfter('dash',async main=>{if(!main||main.querySelector('#upf61d0'))return;
+    const {data,error}=await sb.rpc('staff_app_update_errors',{p_days:7});if(error||!Array.isArray(data)||!data.length)return;
+    main.insertAdjacentHTML('afterbegin','<div class="card" id="upf61d0" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-color:#d68a45"><b>⚠️</b><span style="flex:1">'+
+      esc('השבוע נכשלו '+data.length+' עדכוני אפליקציה'+(data[0]?' · האחרון: '+WHY61(data[0].err)[0]+(PH61(data[0].device)?' ב-'+PH61(data[0].device):''):''))+'</span><button class="btn sec" id="upf61go">לפרטים</button></div>');
+    main.querySelector('#upf61go').onclick=()=>{const b=document.querySelector('#boNav [data-s="guests"]');if(b)b.click();
+      let n=0;const t=setInterval(()=>{const c=document.querySelector('#upf61');if(c||++n>40){clearInterval(t);if(c)c.scrollIntoView({behavior:'smooth',block:'start'});}},150);};});
   window.boAfter&&window.boAfter('guests',async main=>{if(!main||main.querySelector('#upf61'))return;
     const card=document.createElement('div');card.className='card';card.id='upf61';
     card.innerHTML='<h2>⚠️ עדכוני אפליקציה שנכשלו</h2><p class="muted">כל פעם שמישהו לחץ "לעדכן" באפליקציה וזה לא הצליח: מתי, מי, מאיזו גרסה לאיזו, סוג החיבור (wifi / סלולרי), הטלפון, והשגיאה המדויקת.</p>'+
       '<div class="row" style="gap:6px;margin-bottom:6px"><select id="upf61d" style="max-width:150px"><option value="1">היום</option><option value="7" selected>7 ימים</option><option value="30">30 יום</option><option value="90">90 יום</option></select></div><div id="upf61b" class="muted">טוען...</div>';
-    main.appendChild(card);
+    /* למעלה בלשונית, ולא בסוף העמוד — שיראו מיד */
+    main.prepend(card);
     const load=async()=>{const b=card.querySelector('#upf61b');const {data,error}=await sb.rpc('staff_app_update_errors',{p_days:+card.querySelector('#upf61d').value||7});
       if(error){b.textContent='⚠️ '+(/forbidden|42501/.test(error.message)?'אין לך הרשאה':'צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)');return;}
       const L=data||[];if(!L.length){b.textContent='אין עדכונים שנכשלו בטווח הזה 🙂';return;}

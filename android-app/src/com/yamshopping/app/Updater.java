@@ -76,7 +76,14 @@ final class Updater {
                     return;
                 }
                 cb.on("install", 100, apk.versionName == null ? "" : apk.versionName);
-                install(c, f);
+                try {
+                    install(c, f);
+                } catch (Exception e) {
+                    // יש טלפונים (למשל Galaxy S22 עם סינון הדרן) שדוחים את PackageInstaller עוד לפני שההתקנה מתחילה
+                    // ("Invalid install mode: -1"). אז פותחים את מסך ההתקנה הרגיל של אנדרואיד עם הקובץ שכבר ירד
+                    if (!openInstaller(c)) throw e;
+                    cb.on("confirm", 100, "fallback");
+                }
             } catch (Exception e) {
                 f.delete();
                 cb.on("error", 0, e.getMessage() == null ? "error" : e.getMessage());
@@ -125,6 +132,20 @@ final class Updater {
             con.disconnect();
         }
         if (got < 10000) throw new Exception("bad_file");
+    }
+
+    /** מסך ההתקנה הרגיל של אנדרואיד, עם הקובץ שירד (דרך CaptureProvider, רק לקריאה ורק למי שמקבל את ההרשאה) */
+    static boolean openInstaller(Context c) {
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(CaptureProvider.UPDATE_URI, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            AppActivity a = AppActivity.current;
+            if (a != null && !a.isFinishing()) a.startActivity(i); else c.startActivity(i);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     static void install(Context c, File f) throws Exception {
