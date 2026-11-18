@@ -1891,6 +1891,12 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
     for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
     res.url = calls[0] && calls[0].receiptUrl; res.read = calls[1] && calls[1].vision; res.txt = calls[1] && calls[1].text;
     res.rows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length;
+    // שומרים — בפעם הבאה מאותו אתר שם החנות מתמלא לבד (גם כשהקריאה טעתה בשם)
+    document.querySelector('#urStore').value = 'אושר עד'; document.querySelector('#urPub').checked = false; document.querySelector('#urStock').checked = false;
+    await confirmUpload(); res.closed = !document.querySelector('#v8Sheet.open');
+    RC.store = 'אושר-עד בעמ'; openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/zzz'; document.querySelector('#upUrlGo').click();
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.store2 = document.querySelector('#urStore') && document.querySelector('#urStore').value;
     // שיתוף הודעת SMS עם קישור לקבלה אל האפליקציה — נפתחת העלאת קבלה והקישור נקרא לבד
     closeSheet(); calls.length = 0;
     paste20('תודה שקנית באושר עד! לצפייה בקבלה:\nhttps://receipts.example.co.il/r/xyz');
@@ -1905,6 +1911,7 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
   assert(r.url === 'https://receipts.example.co.il/r/abc123', 'הקישור: ' + r.url);
   assert(r.read === 'receipt' && /חלב/.test(r.txt || '') && r.rows === 1, 'קריאה מהקישור: ' + JSON.stringify(r));
   assert(r.shared === 'https://receipts.example.co.il/r/xyz' && r.sharedRows === 1, 'שיתוף מה-SMS: ' + JSON.stringify(r));
+  assert(r.closed && r.store2 === 'אושר עד', 'שם החנות לפי האתר: ' + JSON.stringify(r));
   assert(r.listAdded === 3, 'רשימה עם קישור: ' + r.listAdded);
   if (SHOTS) { await page.evaluate(() => { document.querySelector('#v8SheetBody').scrollTop = 0; }); await page.screenshot({ path: SHOTS + '/2-קבלה-נקראה-מהקישור.png' }); }
   if (SHOTS) { await page.evaluate(() => { closeSheet(); openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/abc123'; }); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + '/1-העלאת-קבלה-צילום-וקישור.png' }); }

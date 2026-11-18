@@ -111,7 +111,10 @@ function rcRemove(g){const grp=rcGroups().find(x=>x.g===g);if(!grp)return;for(le
 const rcFileKey=(f,enh)=>[f.name,f.size,f.lastModified,enh?1:0].join('|');
 /* מביאים את הקבלה מהקישור דרך השרת (הדפדפן לא יכול לפתוח אתר אחר ישירות), ומיד קוראים אותה */
 const rcB64=b=>{const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;};
-let rcLinking=false;
+let rcLinking=false,rcLinkHost='';
+/* 🏪 איזו רשת שולחת קבלות מאיזה אתר — נלמד מהקבלות שאישרתם, וממלא את שם החנות לבד בפעם הבאה */
+const rcHostKey='yam_rc_hosts';
+const rcHosts=()=>{try{return JSON.parse(localStorage.getItem(rcHostKey)||'{}')||{};}catch(e){return {};}};
 async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrlSt');if(!inp||!st)return;
   /* מדביקים לפעמים את כל ההודעה ("הקבלה שלך: https://...") — לוקחים ממנה את הקישור */
   const m=String(inp.value||'').match(/https?:\/\/[^\s<>"']+/i);
@@ -129,6 +132,7 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
     if(!f){st.innerHTML='<p class="muted-note">⚠️ '+esc((r.data&&r.data.text)||(r.data&&r.data.disabled?T('קריאת קבלות צריכה את הבינה המלאכותית — היא עוד לא מופעלת באתר.','Reading needs the AI.'):T('לא הצלחתי לפתוח את הקישור 🙁','Could not open the link 🙁')))+'</p>';
       try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r.data&&r.data.error)||r.code||'error')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}
       return;}
+    rcLinkHost=String(f.host||'').toLowerCase().replace(/^www\./,'');
     if(f.kind==='text'){const t=$r('#upText');if(t)t.value=String(f.text||'');
       st.innerHTML='<p class="rclok">✅ '+T('הקבלה מהקישור נקלטה','The receipt was fetched')+' <small dir="ltr">'+esc(f.host||'')+'</small> <button type="button" class="mini" id="upUrlX" aria-label="'+T('ביטול הקבלה מהקישור','Remove the linked receipt')+'">✕</button></p>';}
     else{const room=rcMaxParts()-upImgs.length;if(room<=0){st.innerHTML='<p class="muted-note">⚠️ '+T('אין מקום לעוד חלקים בקבלה הזו — מוחקים תמונה ומנסים שוב','No room — remove a photo and try again')+'</p>';return;}
@@ -145,7 +149,7 @@ const _open=openUpload;
 openUpload=function(){
   /* פתיחה חדשה של החלון (לא מעבר בין "קבלה" ל"רשימה" בתוך החלון) — מתחילים נקי, בלי תמונות שנשארו מניסיון קודם */
   /* גם מעבר בין "קבלה" ל"רשימה" מנקה: תמונות של קבלה (שנחתכות לחלקים) לא נשלחות כרשימת קניות, ולהפך */
-  const sh=document.getElementById('v8Sheet'),nm=arguments[0]||upMode;if(!(sh&&sh.classList.contains('open')&&$r('#upThumbs'))||nm!==upMode){upImgs.length=0;rcGrp.clear();}
+  const sh=document.getElementById('v8Sheet'),nm=arguments[0]||upMode;if(!(sh&&sh.classList.contains('open')&&$r('#upThumbs'))||nm!==upMode){upImgs.length=0;rcGrp.clear();rcLinkHost='';}
   const res=_open.apply(this,arguments);if(upMode!=='receipt')return res;
   const inp=$r('#upFiles'),b=$r('#v8SheetBody');if(!inp||!b)return res;
   const camL=($r('#upCam')||inp).closest('label');
@@ -280,4 +284,13 @@ showUploadReview=function(){if(upMode!=='receipt'||!upResult||!upResult.receipt)
 /* שמירה כשהסכום עדיין לא מסתדר — שואלים לפני שמפרסמים מחירים לכולם */
 const _confirm=confirmUpload;
 confirmUpload=async function(){if(upMode==='receipt'){const st=$r('#rcStatus'),pub=$r('#urPub');if(st&&st.dataset.state==='warn'&&pub&&pub.checked&&!(await uiConfirm(T('הסכום עדיין לא תואם לסה״כ בקבלה — ייתכן שיש מחיר לא נכון. לפרסם את המחירים לכולם בכל זאת?','The sum still does not match the receipt total. Publish the prices anyway?'))))return;}return _confirm.apply(this,arguments);};
+/* קבלה מקישור: אם כבר אישרתם קבלה מאותו אתר — שם החנות שבחרתם אז */
+const _showH=showUploadReview;
+showUploadReview=function(){const r=_showH.apply(this,arguments);try{if(upMode==='receipt'&&rcLinkHost){const known=rcHosts()[rcLinkHost],inp=$r('#urStore');if(known&&inp&&inp.value.trim()!==known){inp.value=known;inp.title=T('לפי קבלות קודמות מאותו קישור','From earlier receipts from this link');}}}catch(e){}return r;};
+const _confirmH=confirmUpload;
+confirmUpload=async function(){let host='',store='';try{if(upMode==='receipt'&&rcLinkHost){host=rcLinkHost;store=(($r('#urStore')||{}).value||'').trim().slice(0,40);}}catch(e){}
+  const r=await _confirmH.apply(this,arguments);
+  /* נשמר רק אחרי שהשמירה עברה (החלון נסגר) */
+  try{if(host&&store&&!$r('#v8Sheet.open')){const m=rcHosts();m[host]=store;const ks=Object.keys(m);if(ks.length>30)delete m[ks[0]];localStorage.setItem(rcHostKey,JSON.stringify(m));}}catch(e){}
+  return r;};
 })();
