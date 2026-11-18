@@ -199,9 +199,28 @@ export const ACTIONS = {
   suggest: [{ icon: 'check', label: 'ראיתי' }, { icon: 'hide', label: 'הסתרה' }],
   feedback: [{ icon: 'check', label: 'נקרא' }, { icon: 'trash', label: 'מחיקה' }],
   chat: [DONE], message: [DONE], abuse: [DONE], error: [DONE],
+  bizreq: [{ icon: 'check', label: 'קראתי' }], scrape: [{ icon: 'check', label: 'קראתי' }],
 };
+// "קראתי" לסוגים שאין להם אישור/דחייה בשרת — רשימה אחת משותפת עם האתר (הגדרות האתר: pend_seen)
+export const SEEN_KINDS = ['bizreq', 'scrape'];
+export async function getSeen() {
+  try { const r = await rest('site_config?select=value&key=eq.pend_seen'); return (r && r[0] && r[0].value) || {}; } catch (e) { return {}; }
+}
+async function markSeen(key) {
+  const cut = Date.now() - 31 * 864e5, o = {};
+  Object.entries(await getSeen()).forEach(([k, t]) => { if (t > cut) o[k] = t; });
+  o[key] = Date.now();
+  const s = await refresh(false);
+  const res = await fetch(SB_URL + '/rest/v1/site_config?on_conflict=key', {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + s.access_token, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: 'pend_seen', value: o, updated_at: new Date().toISOString() }),
+  });
+  if (!res.ok) { const d = await res.json().catch(() => null); throw new ApiError((d && d.message) || ('HTTP ' + res.status), res.status); }
+  return 'ok';
+}
 export async function decide(kind, ref, ok) {
-  const r = await rpc('staff_decide', { p_kind: kind, p_ref: String(ref), p_ok: !!ok });
+  const r = SEEN_KINDS.includes(kind) ? await markSeen(kind + ':' + ref) : await rpc('staff_decide', { p_kind: kind, p_ref: String(ref), p_ok: !!ok });
   // מסמנים אצלנו שהדבר טופל, כדי שייעלם מהרשימות מיד
   const st = await chrome.storage.local.get(['events', 'alertQueue']);
   const k = kind + ':' + ref;

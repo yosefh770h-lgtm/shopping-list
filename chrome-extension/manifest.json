@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Yam shopping — מרכז הצוות",
   "short_name": "Yam צוות",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "התראות ואישורים לצוות של Yam shopping: לאשר או לדחות ישר מכאן, ולחפש מוצרים ומחירים. לצוות ולמנהלים בלבד.",
   "homepage_url": "https://yamshopping.com",
   "minimum_chrome_version": "116",
