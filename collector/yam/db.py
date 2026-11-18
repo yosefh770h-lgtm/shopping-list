@@ -60,6 +60,7 @@ create table if not exists prices(
 create index if not exists prices_item on prices(item);
 create table if not exists price_history(store integer, item integer, price real, at integer);
 create index if not exists price_history_at on price_history(at);
+create index if not exists price_history_item on price_history(item, at);  -- גרף מחיר למוצר (/history)
 create table if not exists promos(
   store integer not null,
   promo_id text not null,

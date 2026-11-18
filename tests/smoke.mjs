@@ -2151,6 +2151,31 @@ await test('✅ ממתין לאישור: רואים בדיוק מה ממתין (
   await ctx.close();
 });
 
+await test('📈 גרף מחיר למוצר: "היה זול יותר בשבוע שעבר?" (/history)', async () => {
+  const asked = [];
+  const days = Array.from({ length: 14 }, (_, i) => ({ day: '2026-11-' + String(5 + i).padStart(2, '0'), n: 40, min: i < 9 ? 7.9 : 6.9, median: 8.5, max: 9.9, min_chain: i < 9 ? 'שופרסל' : 'רמי לוי' }));
+  days[3] = { day: '2026-11-08', n: 0 }; // יום בלי נתונים — חור בקו, לא אפס
+  const priceApi = (r) => { const u = new URL(r.request().url()); const p = u.pathname.replace('/api/prices', ''); asked.push(p + '?' + u.searchParams.toString());
+    const json = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
+    if (p === '/history') return json({ code: '7290004131074', name: 'חלב תנובה 3% 1 ליטר', days });
+    if (p === '/products') return json([{ code: '7290004131074', name: 'חלב תנובה 3% 1 ליטר', manufacturer: 'תנובה', stores: 40, chains: 5, min: 6.9, median: 8.5, max: 9.9 }]);
+    return json([]); };
+  const { ctx, page, errors } = await newPage({ priceApi });
+  await page.evaluate(() => { authUser = { id: 'me', email: 'x@y.z' }; applyConfig('collector', { public: true }); curList().items = []; addItem('חלב', '');
+    const it = curList().items[0]; Object.assign(it, { bc: '7290004131074', bn: 'חלב תנובה 3% 1 ליטר', bq: it.n }); save(); render(); pkOpen53(it.id); });
+  await page.waitForSelector('#v8SheetBody [data-pkhist]'); await page.click('#v8SheetBody [data-pkhist]');
+  await page.waitForSelector('#v8SheetBody svg.ph70');
+  assert(asked.some((q) => q.startsWith('/history') && /code=7290004131074/.test(q)), 'לא ביקשנו היסטוריה: ' + asked.join(' , '));
+  const t = await page.locator('#v8SheetBody').innerText();
+  assert(/הוזל/.test(t) && /לפני שבוע/.test(t), 'אין סיכום "הוזל מלפני שבוע": ' + t);
+  assert(await page.locator('#v8SheetBody svg.ph70 path.ph70lo').getAttribute('d').then((d) => (d.match(/M/g) || []).length === 2), 'יום בלי נתונים צריך להיות חור בקו');
+  const box = await page.locator('#v8SheetBody svg.ph70').boundingBox();
+  await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2);
+  assert(await page.locator('#v8SheetBody .ph70tip').isVisible(), 'אין תווית בריחוף על הגרף');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
 const failed = results.filter((r) => r[0] === '❌').length;
