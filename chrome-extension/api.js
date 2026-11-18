@@ -39,10 +39,11 @@ export async function getSettings() {
 }
 export async function saveSettings(s) { await chrome.storage.local.set({ settings: s }); }
 
-export function siteUrl(settings, section) {
+// item = { kind, ref } — פותח את הבק אופיס ישר על הפריט עצמו (גולל אליו ומדגיש אותו)
+export function siteUrl(settings, section, item) {
   let base = (settings.site || DEFAULT_SITE).trim().replace(/\/+$/, '');
   if (!/^https:\/\//.test(base)) base = DEFAULT_SITE;
-  return base + '/#admin' + (section ? '-' + section : '');
+  return base + '/#admin' + (section ? '-' + section : '') + (item && item.kind && item.ref ? '&item=' + item.kind + ':' + encodeURIComponent(item.ref) : '');
 }
 
 export class ApiError extends Error { constructor(msg, code) { super(msg); this.code = code; } }
