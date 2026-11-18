@@ -329,6 +329,15 @@ set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a
 do $$ begin for g in 1..50 loop perform public.log_client_error(repeat('x', 5000), repeat('y', 5000), '', ''); end loop; end $$;
 reset role;
 select tst.ok((select count(*) from public.client_errors) = 80 and (select max(char_length(msg)) from public.client_errors) = 500, '14 per-user cap 20/min, message truncated');
+-- app version, phone model and the anonymous device id are stored cleaned (and the old 4-argument call still works)
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000b');
+select public.log_client_error('crash14', 'x.js:1', 'ua', '9', '2.1<b>', 'SM-S901B · Android 14<script>"', 'not-a-uuid');
+select public.log_client_error('crash14b', 'x.js:1', 'ua', '9', '2.2', 'Pixel 8', '33333333-3333-4333-8333-333333333333');
+select tst.ok((select count(*) from public.client_errors) = 0, '14 a regular user cannot read the error log');
+reset role;
+select tst.ok((select app_ver = '2.1' and device = 'SM-S901B · Android 14script' and dev = '' from public.client_errors where msg = 'crash14'), '14 app version / model cleaned, bad device id dropped');
+select tst.ok((select app_ver = '2.2' and dev = '33333333-3333-4333-8333-333333333333' from public.client_errors where msg = 'crash14b'), '14 valid device id kept');
+select tst.ok(not exists (select 1 from pg_proc where proname = 'log_client_error' and pronargs = 4), '14 old 4-argument log_client_error removed (no ambiguous calls)');
 
 -- ======== 15. ad_event ========
 insert into public.ads(id, title) values ('22222222-2222-2222-2222-222222222222','ad');
@@ -623,16 +632,31 @@ select tst.ok(exists (select 1 from public.push_queue where tag = 'alert:stuffin
 insert into public.auth_events(kind, email, ip) select 'login_fail', 'spray' || g || '@x.com', '6.6.6.6' from generate_series(1, 15) g;
 select tst.ok(public.admin_alerts_check() = 1, '21 one IP on 15 emails -> spray alert (count)');
 select tst.ok(exists (select 1 from public.push_queue where tag = 'alert:spray' and body like '%6.6.6.6%'), '21 one IP on 15 emails -> spray alert');
+-- the same error on 3 different devices within 24 hours -> its own alert, with app version and phone model
+insert into public.client_errors(msg, src, dev, app_ver, device) values
+  ('TypeError: x is null', 'a.js:1', '11111111-1111-4111-8111-111111111111', '2.1', 'SM-S901B · Android 14'),
+  ('TypeError: x is null', 'a.js:1', '11111111-1111-4111-8111-111111111111', '2.1', 'SM-S901B · Android 14');
+select tst.ok(public.admin_alerts_check() = 0, '21 same error twice on one device -> no spread alert');
+insert into public.client_errors(msg, src, dev, app_ver, device, created_at) values
+  ('TypeError: x is null', 'a.js:1', '22222222-2222-4222-8222-222222222222', '2.1', 'SM-A525F · Android 13', now() - interval '20 hours'),
+  ('TypeError: x is null', 'a.js:1', '', '2.0', '', now() - interval '30 hours');
+select tst.ok(public.admin_alerts_check() = 0, '21 two devices in 24h (third is older) -> no spread alert');
+insert into public.client_errors(user_id, msg, src, app_ver, device) values ('00000000-0000-0000-0000-00000000000a', 'TypeError: x is null', 'a.js:1', '2.1', 'SM-S901B · Android 14');
+select tst.ok(public.admin_alerts_check() = 1, '21 same error on 3 devices -> spread alert (count)');
+select tst.ok(exists (select 1 from public.push_queue where tag like 'alert:err:%' and title like '%3 מכשירים%' and body like '%אפליקציה 2.1%'
+                      and body like '%SM-S901B%' and url = '/#admin-errors' and user_id = '00000000-0000-0000-0000-000000000001'), '21 spread alert names the app version and phone model');
+insert into public.client_errors(msg, src, dev) values ('TypeError: x is null', 'a.js:1', '44444444-4444-4444-8444-444444444444');
+select tst.ok(public.admin_alerts_check() = 0, '21 spread alert for the same error not repeated within 3 days');
 select tst.ok(public.admin_alerts_check() = 0, '21 nothing new -> nothing sent');
 -- thresholds from site_config 'security'
 delete from public.admin_alerts_sent;
 update public.site_config set value = value || '{"alerts_off":true}' where key = 'security';
 select tst.ok(public.admin_alerts_check() = 0, '21 alerts_off=true silences everything');
-update public.site_config set value = value - 'alerts_off' || '{"alert_login_fail":0,"alert_signup_blocked":0,"alert_stuffing_ips":0,"alert_spray_emails":0,"alert_errors":1000}' where key = 'security';
+update public.site_config set value = value - 'alerts_off' || '{"alert_login_fail":0,"alert_signup_blocked":0,"alert_stuffing_ips":0,"alert_spray_emails":0,"alert_errors":1000,"alert_error_devices":0}' where key = 'security';
 select tst.ok(public.admin_alerts_check() = 0, '21 threshold 0 disables a check; higher threshold respected');
 update public.site_config set value = value || '{"alert_errors":"oops"}' where key = 'security';
 select tst.ok(public.admin_alerts_check() = 1, '21 invalid threshold falls back to the default');
-update public.site_config set value = value - 'alert_login_fail' - 'alert_signup_blocked' - 'alert_stuffing_ips' - 'alert_spray_emails' - 'alert_errors' where key = 'security';
+update public.site_config set value = value - 'alert_login_fail' - 'alert_signup_blocked' - 'alert_stuffing_ips' - 'alert_spray_emails' - 'alert_errors' - 'alert_error_devices' where key = 'security';
 delete from public.push_subs where endpoint in ('https://fcm.googleapis.com/fcm/send/owner21', 'https://fcm.googleapis.com/fcm/send/alice21');
 
 -- ======== v23: credits (who reported) ========
