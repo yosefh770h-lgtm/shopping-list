@@ -8,17 +8,20 @@
     GET /compare?items=&city=        השוואת רשימה בין כל הסניפים בעיר (או stores=..., או lat=&lng= לקרובים)
     GET /products?q=חלב תנובה        המוצרים שמתאימים לטקסט, לבחירת מוצר מדויק לפני ההשוואה
     GET /deals?stores=k1,k2&per=12   המבצעים הפעילים בסניפים (לכל הלקוחות, לא רק מועדון), הכי משתלמים קודם
+    GET /history?code=7290004131074  איך המחיר של מוצר השתנה בימים האחרונים (הכי זול וחציון בכל יום), לגרף מחיר
 
 items: מוצרים מופרדים ב-| (או בשורה חדשה). כמות: "חלב*2". ברקוד: מספר של 7 ספרות ומעלה.
 מוצר שנבחר מדויק: "חלב תנובה#7290004131074" — משווים רק את הברקוד, והשם שלפני ה-# הוא מה שמוצג.
 CORS רק ל-yamshopping.com, הגבלת קצב לכל כתובת IP (פנייה ישירה לשרת, לא דרך האתר, מוגבלת יותר וגם ביום),
 חסימת כתובות מהבק אופיס, וניטור העתקה (watch.py). תשובות נשמרות בדפדפן 5 דקות.
 """
+import datetime as dt
 import math
 import os
 import re
 import threading
 import time
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -724,3 +727,54 @@ def products(q: str = Query(..., min_length=2, max_length=80), limit: int = Quer
                     "stores": len(rows), "chains": len({r["chain"] for r in rows}),
                     "min": prices[0], "median": prices[len(prices) // 2], "max": prices[-1]})
     return out
+
+
+HISTORY_SHOW_DAYS = 14  # כמו HISTORY_DAYS באוסף: היסטוריה ישנה יותר כבר נמחקה
+
+
+@app.get("/history")
+def history(code: str = Query(..., pattern=r"^\d{5,14}$"), days: int = Query(HISTORY_SHOW_DAYS, ge=2, le=HISTORY_SHOW_DAYS),
+            exclude: str = Query("", max_length=1000)):
+    """גרף מחיר למוצר אחד ("האם היה זול יותר בשבוע שעבר?"): לכל יום — המחיר הכי זול, החציון והיקר בכל הסניפים, בסוף היום.
+    המחיר של סניף ביום מסוים משוחזר מ-price_history (שבה נשמר המחיר הקודם ברגע שהשתנה): השינוי הראשון אחרי סוף היום
+    אומר מה היה המחיר אז; אם אין שינוי כזה — המחיר הנוכחי, אבל רק אם הוא כבר היה בתוקף (מוצר שנוסף לסניף אחר כך לא נספר)."""
+    c = con()
+    skip = excluded(exclude)
+    items = [r for r in c.execute("select id, chain, name from items where code = ?", (code,)).fetchall() if r["chain"] not in skip]
+    if not items:
+        raise HTTPException(404, "המוצר לא נמצא")
+    chain_of = {r["id"]: r["chain"] for r in items}
+    ids = list(chain_of)
+    qi = ",".join("?" * len(ids))
+    cur = c.execute(f"select store, item, price, updated_at from prices where item in ({qi})", ids).fetchall()
+    tz = ZoneInfo("Asia/Jerusalem")
+    today = dt.datetime.now(tz).date()
+    ends = []  # סוף כל יום (חצות), והיום — עכשיו
+    for n in range(days - 1, -1, -1):
+        d = today - dt.timedelta(days=n)
+        end = dt.datetime.combine(d + dt.timedelta(days=1), dt.time(), tz).timestamp()
+        ends.append((d, min(end, time.time())))
+    since = ends[0][1] - 86400
+    hist = {}
+    for r in c.execute(f"select store, item, price, at from price_history where item in ({qi}) and at > ? order by at", (*ids, since)):
+        hist.setdefault((r["store"], r["item"]), []).append((r["at"], r["price"]))
+    names = {}
+    for r in items:
+        names[r["name"]] = names.get(r["name"], 0) + 1
+    out = []
+    for d, t in ends:
+        vals = []
+        for r in cur:
+            later = next((p for at, p in hist.get((r["store"], r["item"]), ()) if at > t), None)
+            if later is not None:
+                vals.append((later, chain_of[r["item"]]))
+            elif r["updated_at"] <= t:
+                vals.append((r["price"], chain_of[r["item"]]))
+        if not vals:
+            out.append({"day": d.isoformat(), "n": 0})
+            continue
+        vals.sort()
+        ps = [v for v, _ in vals]
+        out.append({"day": d.isoformat(), "n": len(ps), "min": ps[0], "median": ps[len(ps) // 2], "max": ps[-1],
+                    "min_chain": C.hebrew(vals[0][1])})
+    return {"code": code, "name": max(names, key=names.get), "days": out}
