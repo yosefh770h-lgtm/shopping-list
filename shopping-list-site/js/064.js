@@ -125,7 +125,7 @@ function openNatUpd66(){
   const b=openSheet('🔄 '+T('עדכון האפליקציה','Update the app'),'<div class="nu66 apks53"><div id="nuInfo66"></div>'+
     '<p class="muted-note">📱 '+T('הגרסה שלך: ','Your version: ')+'<b>'+esc(n.ver||'')+'</b></p>'+
     '<button type="button" class="go66" id="nuGo66">⬇️ '+T('לעדכן עכשיו','Update now')+'</button>'+
-    '<div class="bar66" hidden><i></i></div><p class="st66" id="nuSt66" role="status" aria-live="polite"></p>'+
+    '<div class="bar66" hidden><i></i></div><p class="st66" id="nuSt66" role="status" aria-live="polite"></p><p class="muted-note" id="nuDet66" dir="ltr" hidden></p>'+
     '<p class="muted-note">'+T('הכל קורה בתוך האפליקציה. הרשימות והחשבון נשארים כמו שהם.','Everything happens inside the app. Your lists and account stay.')+'</p></div>');
   if(window.apkInfo57)apkInfo57(b.querySelector('#nuInfo66'),true);
   b.querySelector('#nuGo66').onclick=e=>{e.currentTarget.disabled=true;b.querySelector('.bar66').hidden=false;$66('#nuSt66').textContent=ST.start;try{YamApp.installUpdate();}catch(x){$66('#nuSt66').textContent=ST.error;e.currentTarget.disabled=false;}};
@@ -137,7 +137,11 @@ window.yamNat66=function(kind,a,b,c){
   /* 🔋 2.1: חזרו מחלון "חיסכון סוללה" */
   if(kind==='battery'){if(a==='ok')flash('✅ '+T('מעולה! ההתראות יגיעו גם כשהאפליקציה סגורה','Great! Notifications will arrive even when the app is closed'));try{renderNotif();}catch(e){}return;}
   if(kind==='release'){if(typeof window.__rel69==='function')window.__rel69(a);return;}
-  if(kind!=='update')return;const st=$66('#nuSt66'),bar=document.querySelector('.nu66 .bar66 i'),go=$66('#nuGo66');
+  if(kind!=='update')return;const st=$66('#nuSt66'),bar=document.querySelector('.nu66 .bar66 i'),go=$66('#nuGo66'),det=$66('#nuDet66');
+  /* שגיאה אחרי "מתקינים…" בלי קוד install_ = ההתקנה עצמה לא נפתחה (למשל הטלפון לא מרשה) — מסמנים, כדי שלא ייראה כמו בעיית אינטרנט */
+  if(a==='error'&&/^(install|confirm)$/.test(window.__updSt66||'')&&!/^install_/.test(String(c||'')))c='install_ex: '+(c||'error');
+  window.__updSt66=a;
+  if(det){const n=nat()||{};det.hidden=a!=='error';det.textContent=a==='error'?String(c||'error').slice(0,120)+(n.model?' · '+n.model:'')+(n.ver?' · '+n.ver:''):'';}
   let txt=a==='error'?(filterErr66(c)?ST.filter:instErr66(c)||ST.error):(ST[a]||'');if(a==='error'&&window.updFail61)updFail61(c);if(a==='download'&&b>=0)txt+=' · '+b+'%';if(a==='latest'&&c)txt+=' ('+c+')';
   if(st)st.textContent=txt;else if(txt&&/^(done|error|latest|cancel|confirm|perm)$/.test(a))flash(txt);
   if(bar){bar.style.width=(a==='download'?Math.max(3,b):/^(verify|install|confirm|done)$/.test(a)?100:a==='start'?3:0)+'%';}
