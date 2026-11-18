@@ -301,6 +301,8 @@ if(state.user)setTimeout(()=>{expCheck45();shbCheck45();},8000);
 /* ---------- 🛠️ בבק אופיס: 🥇 הכשרים (רשימה + הכשר לכל מוצר + העלאת קובץ) · 🕯️ ערב שבת (רשימת ברירת המחדל) ---------- */
 async function cfg45(key){const {data}=await sb.from('site_config').select('value').eq('key',key).maybeSingle();return (data&&data.value)||{};}
 async function setCfg45(key,value,msg){const {error}=await sb.from('site_config').upsert({key,value,updated_at:new Date().toISOString()});if(error){flash('⚠️ '+error.message);return false;}flash(msg||'✔️ נשמר — מתעדכן אצל כל המשתמשים');return true;}
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=$45('#boNav');if(nav){
   if(!nav.querySelector('[data-s="kashrut"]')){const b=document.createElement('button');b.dataset.s='kashrut';b.textContent='🥇 הכשרים';const a=nav.querySelector('[data-s="products"]');if(a)a.after(b);else nav.appendChild(b);}
   if(!nav.querySelector('[data-s="shabbat45"]')){const b=document.createElement('button');b.dataset.s='shabbat45';b.textContent='🕯️ מצב ערב שבת';const a=nav.querySelector('[data-s="kashrut"]');if(a)a.after(b);else nav.appendChild(b);}}
@@ -360,3 +362,4 @@ try{const nav=$45('#boNav');if(nav){
     draw();});
   const g=[...document.querySelectorAll('#boNav .bogrp')].find(x=>x.querySelector('[data-s="products"]'));const kb=$45('#boNav [data-s="kashrut"]');if(g&&kb&&kb.parentNode!==g)g.querySelector('[data-s="products"]').after(kb);
 }catch(e){console.warn('bo v45',e);}
+});

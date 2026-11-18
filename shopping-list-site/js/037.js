@@ -25,6 +25,8 @@ yamiStep(async raw=>{if(sb&&authUser&&/^(מה חדש|מה חדש באתר|עדכ
 const DRAFT29T='חדש באתר רשימת קניות';
 const DRAFT29=['🔢 כמויות לבד לפי מספר הנפשות בבית','🛍️ מצב קנייה, מסך נוח לקנייה בחנות לפי מחלקות','🏪 הרשימה מתחלקת לפי חנויות, ירקן, אטליז וסופר','📅 תזכורת מיאמי יום לפני הקנייה','💰 כמה חסכתם החודש','🛒 באיזו חנות הקנייה הקבועה שלכם הכי זולה השבוע','🔔 התראה כשמוצר שאתם מחכים לו יורד במחיר','🧮 כמה לקנות לשבת ולאירועים לפי מספר האורחים','📋 רשימות מוכנות לברית, בר מצווה, שבע ברכות וקידוש','⚠️ אזהרה על אלרגיות כשסורקים ברקוד','⌨️ הצעות כבר מהאות הראשונה שמקלידים','🏆 טבלת המדווחים של החודש','💌 קישור אישי לכל אחד, רואים כמה נרשמו דרככם ומקבלים תג שגריר'];
 const N29=Math.max(5,DRAFT29.length);
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=$29('#boNav');if(nav&&!nav.querySelector('[data-s="announce"]')){const b=document.createElement('button');b.dataset.s='announce';b.textContent='📢 פרסום עדכון';const g=[...nav.querySelectorAll('.bogrp')].find(x=>x.querySelector('[data-s="updates"]'));const ref=nav.querySelector('[data-s="updates"]');if(ref)ref.before(b);else (g||nav).appendChild(b);}
   window.boView&&window.boView('announce',async function(){const m=$29('#boMain');let mode='news';
     const draw=()=>{const lines=[...m.querySelectorAll('[data-l29]')].map(i=>i.value);
@@ -62,3 +64,4 @@ try{const nav=$29('#boNav');if(nav&&!nav.querySelector('[data-s="announce"]')){c
         flash('🆕 פורסם! כל משתמש יראה את זה פעם אחת בכניסה הבאה');window.boShow('updates');}};
     draw();});
 }catch(e){console.warn('bo announce',e);}
+});

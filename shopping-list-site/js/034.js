@@ -288,6 +288,8 @@ function scanOk20(code,name){const w=document.querySelector('#scanOverlay .scanw
   '.scanwrap.ok20 .scanframe{border-color:#3ddc97}';document.head.appendChild(st);})();
 
 /* בבק אופיס (מנהלים): 💌 מי נרשם דרך מי */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data-s="referrals"]')){const after=nav.querySelector('[data-s="reporters"]');const b=document.createElement('button');b.dataset.s='referrals';b.textContent='💌 הזמנות חברים';if(after)after.after(b);else nav.appendChild(b);}
   window.boView&&window.boView('referrals',async function(){const m=document.querySelector('#boMain');
     const {data,error}=await sb.rpc('admin_referrals');if(error){m.innerHTML='<div class="card">⚠️ '+esc(error.message)+' — צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)</div>';return;}
@@ -303,6 +305,7 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
       :'<div class="card muted">עוד אף אחד לא נרשם דרך קישור הזמנה.</div>');});
   const g=[...document.querySelectorAll('#boNav .bogrp')].find(x=>x.querySelector('[data-s="reporters"]'));const rb=document.querySelector('#boNav [data-s="referrals"]');if(g&&rb&&rb.parentNode!==g)g.querySelector('[data-s="reporters"]').after(rb);
 }catch(e){console.warn('bo referrals',e);}
+});
 /* באזור האישי: כמה נרשמו דרכי */
 const _v26RenderMe=renderMe;
 renderMe=function(){const r=_v26RenderMe.apply(this,arguments);try{if(meTab==='info'&&sb&&authUser){const b=document.querySelector('#meBody');

@@ -20,6 +20,8 @@ async function guestConvert27(){let id='';try{id=localStorage.getItem('yam_guest
 const _v27After=afterEnter;afterEnter=function(){const r=_v27After.apply(this,arguments);guestPing27();return r;};
 const _v27Signed=onSignedIn;onSignedIn=async function(){const wasGuest=!!(state.user&&state.user.guest);const r=await _v27Signed.apply(this,arguments);if(wasGuest||localStorage.getItem('yam_guest_id'))setTimeout(guestConvert27,1500);return r;};
 /* בבק אופיס: 👀 ניסיון בלי הרשמה */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=$27('#boNav');if(nav&&!nav.querySelector('[data-s="guests"]')){const b=document.createElement('button');b.dataset.s='guests';b.textContent='👀 ניסיון בלי הרשמה';const after=nav.querySelector('[data-s="referrals"]')||nav.querySelector('[data-s="users"]');if(after)after.after(b);else nav.appendChild(b);}
   window.boView&&window.boView('guests',async function(){const m=$27('#boMain');const {data,error}=await sb.rpc('admin_guest_stats');
     if(error||!data){m.innerHTML='<div class="card">⚠️ '+esc(error?error.message:'')+' — צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)</div>';return;}
@@ -31,6 +33,7 @@ try{const nav=$27('#boNav');if(nav&&!nav.querySelector('[data-s="guests"]')){con
         data.list.map(r=>'<tr><td><b>'+esc(r.name||'—')+'</b><br><small class="muted" dir="ltr">'+esc(r.email)+'</small></td><td>'+when(r.first_at)+'</td><td>'+when(r.converted_at)+'</td><td>'+(r.visits||1)+'</td></tr>').join('')+'</tbody></table></div></div>':'<div class="card muted">עוד אף אחד לא נרשם אחרי ניסיון.</div>');});
   const g=[...document.querySelectorAll('#boNav .bogrp')].find(x=>x.querySelector('[data-s="users"]'));const gb=$27('#boNav [data-s="guests"]');const ref=g&&(g.querySelector('[data-s="referrals"]')||g.querySelector('[data-s="users"]'));if(ref&&gb&&gb.parentNode!==g)ref.after(gb);
 }catch(e){console.warn('bo guests',e);}
+});
 /* ---------- 📣 מאיפה הגיעו המבקרים: ?src= בקישור, או האתר שממנו הגיעו (גוגל, פייסבוק...). כל מכשיר נספר פעם אחת, בלי שום פרט מזהה ---------- */
 /* מאיזו אפליקציה/פלטפורמה הגיעו: אנדרואיד מוסר "android-app://<האפליקציה>", ודפדפנים בתוך אפליקציות מסמנים את עצמם */
 function appSrc41(){try{const r=(window.__yamRef||document.referrer||'').toLowerCase(),ua=navigator.userAgent||'';const m=r.match(/^android-app:\/\/([a-z0-9_.]+)/);

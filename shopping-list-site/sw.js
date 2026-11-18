@@ -20,7 +20,9 @@ const CDN = [
    כתובת עם ?v= לא משתנה לעולם — אז נשמרת לתמיד ונטענת מהשמור בלי לשאול את השרת.
    חשוב: העמוד הראשי נשמר רק יחד עם כל קבצי ה-js שלו, כדי שבלי אינטרנט תמיד תהיה גרסה שלמה ותואמת */
 const isJs = (url) => url.origin === self.location.origin && /^\/js\/[^/]+\.js$/.test(url.pathname);
-const jsOf = (html) => [...html.matchAll(/<script\b[^>]*\ssrc="(\/js\/[^"]+)"/g)].map((m) => new URL(m[1], self.location).href);
+/* lazy=false: רק מה שנטען בכל פתיחה. קבצים עם data-lazy (הבק אופיס, ראו js/lazy.js) לא יורדים מראש — רוב המשתמשים לא צריכים אותם,
+   והם נשמרים כשמישהו נכנס אליהם בפעם הראשונה */
+const jsOf = (html, lazy) => [...html.matchAll(/<script\b([^>]*)\ssrc="(\/js\/[^"]+)"/g)].filter((m) => lazy || !/\sdata-lazy=/.test(m[1])).map((m) => new URL(m[2], self.location).href);
 async function storeHome(res) {
   const html = await res.clone().text();
   const c = await caches.open(CACHE);
@@ -31,7 +33,7 @@ async function storeHome(res) {
   await Promise.all(missing.map((u) => fetch(u).then((r) => (r.ok ? c.put(u, r) : null)).catch(() => null)));
   await c.put('./index.html', res);
   /* קבצי js של גרסאות קודמות — כבר לא צריך */
-  const keep = new Set(want);
+  const keep = new Set(jsOf(html, true));
   const keys = await c.keys();
   /* נובמבר 2026: גרסה קודמת של קובץ נמחקת רק כשהגרסה החדשה שלו כבר שמורה. קודם היא נמחקה מיד — ואם הקובץ החדש
      לא ירד (קליטה חלשה / סינון), בפתיחה הבאה בלי קליטה לא היה שום עותק שלו, והאתר נפתח "שבור" (יומן התקלות: עשר תקלות

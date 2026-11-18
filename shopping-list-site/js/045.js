@@ -32,6 +32,8 @@ const SH44_PL={group:'קבוצה',status:'סטטוס',private:'אדם אחד',fa
 function shPlace44(r){const s=String(r.place||''),i=s.indexOf(': '),key=i<0?s:s.slice(0,i),nm=i<0?'':s.slice(i+2);
   const base=r.channel==='copy'&&key?(key==='group'?'קבוצת וואטסאפ':key==='status'?'סטטוס':(SH44_PL[key]||key))+' (העתקה)':(SH44_NET[r.channel]||r.channel)+(key?' · '+(SH44_PL[key]||key):'');
   return {base,nm};}
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=$44('#boNav');if(nav&&!nav.querySelector('[data-s="shares"]')){const b=document.createElement('button');b.dataset.s='shares';b.textContent='📤 קישורי שיתוף';
     const after=nav.querySelector('[data-s="referrals"]')||nav.querySelector('[data-s="users"]');if(after)after.after(b);else nav.appendChild(b);}
   window.boView&&window.boView('shares',async function(){const m=$44('#boMain');m.innerHTML='<div class="card muted">טוען...</div>';
@@ -58,6 +60,7 @@ try{const nav=$44('#boNav');if(nav&&!nav.querySelector('[data-s="shares"]')){con
     draw();});
   const g=[...document.querySelectorAll('#boNav .bogrp')].find(x=>x.querySelector('[data-s="referrals"]'));const sb44=$44('#boNav [data-s="shares"]');if(g&&sb44&&sb44.parentNode!==g)g.querySelector('[data-s="referrals"]').after(sb44);
 }catch(e){console.warn('bo shares',e);}
+});
 /* ---------- 👥 באזור האישי ובהזמנת חברים: מי הצטרף דרך הקישור שלי — רק השם, בלי מייל ---------- */
 function sharePeople44(box){if(!box||!sb||!authUser)return;
   sb.rpc('my_share_people').then(({data,error})=>{if(error||!Array.isArray(data)||!box.isConnected)return;

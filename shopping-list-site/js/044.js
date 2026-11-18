@@ -168,6 +168,8 @@ routeHash=function(){const m=(location.hash||'').match(/^#clist=([0-9a-f-]{36})$
 if(/^#clist=/.test(location.hash))setTimeout(routeHash,2600);
 
 /* בבק אופיס: 🛒 רשימות מהקהילה — הכל במקום אחד: ממתינות, מפורסמות, רשימת השבוע, הוספה ועריכה */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data-s="commlists"]')){const b=document.createElement('button');b.dataset.s='commlists';b.textContent='🛒 רשימות מהקהילה';
     const after=nav.querySelector('[data-s="reviews"]');if(after)after.after(b);else nav.appendChild(b);}
   window.boView&&window.boView('commlists',async function(){const m=document.querySelector('#boMain');
@@ -182,3 +184,4 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
     m.onclick=e=>act27(e,m,async()=>{window.boShow('commlists');});});
   const g=[...document.querySelectorAll('#boNav .bogrp')].find(x=>x.querySelector('[data-s="reviews"]'));const cb=document.querySelector('#boNav [data-s="commlists"]');if(g&&cb&&cb.parentNode!==g)g.querySelector('[data-s="reviews"]').after(cb);
 }catch(e){console.warn('bo commlists',e);}
+});
