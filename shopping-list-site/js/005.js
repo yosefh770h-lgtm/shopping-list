@@ -329,7 +329,11 @@ function doodleBg(el){
   for(let i=0;i<22;i++){const s=document.createElement('span');s.textContent=em[i%em.length];
     s.style.cssText='position:absolute;opacity:.10;right:'+(Math.random()*90)+'%;top:'+(Math.random()*95)+'%;font-size:'+(16+Math.random()*20)+'px';d.appendChild(s);}
 }
+/* 🚀 בזמן שהדף עוד נקרא כל קובץ קורא ל-render() שוב (היו כ-8 ציורים מלאים בכל פתיחה) — מציירים פעם אחת, כשהדף מוכן.
+   render בתוך המאזין הוא השם הגלובלי, כלומר הגרסה המלאה עם כל התוספות של הקבצים האחרים */
+let renderQ=0;const paneStale={hist:1,home:1};
 function render(){
+  if(document.readyState==='loading'){if(!renderQ){renderQ=1;document.addEventListener('DOMContentLoaded',()=>{renderQ=0;render();},{once:true});}return;}
   document.querySelector('#chips').innerHTML=state.lists.map(l=>'<button class="chip'+(l.id===state.active?' on':'')+'" data-id="'+esc(l.id)+'">'+esc(l.name)+(l.id===state.active?'<span class="x dup" data-dup="'+esc(l.id)+'" title="'+T('שכפול הרשימה','Duplicate list')+'" aria-label="'+T('שכפול הרשימה','Duplicate list')+'">⧉ '+T('שכפול','Copy')+'</span>':'')+(l.id===state.active&&state.lists.length>1?'<span class="x" data-del="'+esc(l.id)+'">✕</span>':'')+'</button>').join('')+'<button class="chip" data-new="1" aria-label="'+T('רשימה חדשה','New list')+'">'+T('+ רשימה','+ List')+'</button>';
   const favHidden=new Set(state.favHidden||[]);
   const favs=Object.entries(state.stats).filter(f=>!favHidden.has(f[0])).sort((a,b)=>b[1]-a[1]).slice(0,6);
@@ -342,7 +346,10 @@ function render(){
     b.classList.add('open');
     b.innerHTML='<span>📋 תוכנית להיום: <b>'+plan.map(esc).join(', ')+'</b></span>'+(missing.length?'<button data-planadd="1">הוסף לרשימה ('+missing.length+')</button>':'<span style="color:var(--muted)">הכל כבר ברשימה ✔</span>');
   }else b.classList.remove('open');
-  renderList();renderHist();renderHome();renderBot();bindShare();
+  renderList();renderBot();bindShare();
+  /* 🚀 היסטוריה ו"הבית שלי" מצוירים רק כשהלשונית שלהם פתוחה; אחרת מסומנים לציור כשיפתחו אותה (setTab) */
+  if(typeof tab!=='undefined'&&tab==='hist')renderHist();else paneStale.hist=1;
+  if(typeof tab!=='undefined'&&tab==='home')renderHome();else paneStale.home=1;
 }
 /* 💰 איפה הכי זול — כרטיס קבוע בראש הרשימה (כשהשוואת הסניפים מוצגת: לכולם, או רק למנהל במצב בדיקה).
    כל הרשימה (כשיש בה מוצרים) + חיפוש של מוצר אחד בכל הסניפים */

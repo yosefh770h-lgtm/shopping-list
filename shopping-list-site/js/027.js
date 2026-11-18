@@ -44,13 +44,18 @@
 
   /* 3. שם נגיש תואם לטקסט שרואים על הכפתור (WCAG 2.5.3) */
   const EMO=/[\p{Extended_Pictographic}️‍]/gu;
-  let lt=0;function fixLabels(){lt=0;document.querySelectorAll('button[aria-label],a[aria-label],[role=button][aria-label]').forEach(el=>{
-    const vis=(el.innerText||'').replace(EMO,'').replace(/\s+/g,' ').trim();if(!vis||vis.length>60)return;
+  /* 🚀 קודם קוראים את כל הטקסטים ורק אחר כך כותבים — קריאה של innerText אחרי כל כתיבה חישבה מחדש את כל הדף (היה כ-12% מזמן הפתיחה).
+     בפתיחה זה רץ כשהדפדפן פנוי, אחרי שהרשימה כבר מוצגת */
+  let lt=0;function fixLabels(){lt=0;
+    const todo=[];document.querySelectorAll('button[aria-label],a[aria-label],[role=button][aria-label]').forEach(el=>todo.push([el,el.innerText||'']));
+    todo.forEach(([el,txt])=>{
+    const vis=txt.replace(EMO,'').replace(/\s+/g,' ').trim();if(!vis||vis.length>60)return;
     /* השם המקורי נשמר בצד, כך שמספר שמתחלף (למשל בפעמון) לא נערם שוב ושוב */
     const cur=el.getAttribute('aria-label')||'';if(el.dataset.l18==null||(cur!==el.dataset.l18v))el.dataset.l18=cur;
     const orig=el.dataset.l18;let want=orig.replace(/\s+/g,' ').includes(vis)?orig:vis+' — '+orig;
     if(cur!==want)el.setAttribute('aria-label',want);el.dataset.l18v=want;});}
-  fixLabels();new MutationObserver(()=>{if(!lt)lt=setTimeout(fixLabels,120);}).observe(document.body,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+  const idle=window.requestIdleCallback||(f=>setTimeout(f,300));
+  lt=1;idle(fixLabels,{timeout:2500});new MutationObserver(()=>{if(!lt)lt=setTimeout(fixLabels,120);}).observe(document.body,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['hidden']});
   /* 4. כפתורי בחירה (מצב כהה, תצוגה וכו') — מסומנים לקוראי מסך */
   document.addEventListener('click',()=>setTimeout(()=>{document.querySelectorAll('.seg button,.clseg button,.wedtabs button,.tchip,.catbar .cb').forEach(b=>b.setAttribute('aria-pressed',String(b.classList.contains('on'))));},0),true);
 })();
