@@ -134,10 +134,29 @@
      http_418 / http_403 / bad_redirect / bad_file = כמעט תמיד סינון (נטפרי וכו') שעצר את הקובץ. ביטול של המשתמש לא נשלח */
   window.updFail61=async function(err){if(!inApp||!sb)return;
     try{const c=navigator.connection||{},t=String(c.type||''),net=/^(wifi|cellular|ethernet|none)$/.test(t)?t:(t?'other':'');
-      let target='';try{const v=window.apkVer57&&await apkVer57();target=(v&&v.version)||'';}catch(e){}
-      await sb.rpc('app_update_fail',{p_dev:dev(),p_ver:(ua.match(/YamShoppingApp\/([0-9.]+)/)||[])[1]||'',p_target:target,p_err:String(err||'error').slice(0,120),p_net:net,p_device:dv()});}catch(e){}};
+      /* הגרסה החדשה — לכל היותר 3 שניות, כדי שהדיווח לא יחכה (ולא ילך לאיבוד אם סוגרים את החלון) */
+      let target='';try{const v=window.apkVer57&&await Promise.race([apkVer57(),new Promise(r=>setTimeout(()=>r(null),3000))]);target=(v&&v.version)||'';}catch(e){}
+      /* גם גרסת האנדרואיד (למשל Android 14), כדי לדעת בדיוק איזה טלפון */
+      const av=(ua.match(/Android ([0-9.]+)/)||[])[1]||'',device=av?dv().replace(/\bAndroid\b/,'Android '+av):dv();
+      await sb.rpc('app_update_fail',{p_dev:dev(),p_ver:(ua.match(/YamShoppingApp\/([0-9.]+)/)||[])[1]||'',p_target:target,p_err:String(err||'error').slice(0,120),p_net:net,p_device:device});}catch(e){}};
   /* בבק אופיס ← 👀 מבקרים: מי לא הצליח לעדכן את האפליקציה ולמה */
-  const ERR61=e=>/^http_(418|403|451)|^bad_redirect|^bad_file/.test(e)?'🛡️ כנראה סינון (נטפרי וכו\') עצר את הקובץ':/^install_/.test(e)?'📦 ההתקנה בטלפון נכשלה (למשל חסימת התקנות)':/^too_big/.test(e)?'📏 הקובץ גדול מדי':/timeout|Unable to resolve|Failed to connect|reset|SSL|http_5/i.test(e)?'📶 בעיית חיבור / שרת':/^no_settings/.test(e)?'⚙️ אין מסך הרשאה להתקנה בטלפון':'❓ אחר';
+  /* [כותרת, הסבר מלא]. install_<מספר> = הקובץ ירד ונבדק, ואנדרואיד (PackageInstaller) סירב להתקין:
+     1 כללי, 2 נחסם, 4 קובץ פגום, 5 חתימה אחרת, 6 אין מקום, 7 לא מתאים לטלפון. install_ex = שגיאה בפתיחת ההתקנה עצמה */
+  const WHY61=e=>{e=String(e||'');
+    if(/^http_(418|403|451)|^bad_redirect|^bad_file/.test(e))return['🛡️ סינון עצר את ההורדה','הקובץ לא ירד: סינון האינטרנט (נטפרי וכו\') חסם אותו או החזיר דף חסימה במקומו. בדרך כלל זה עובר אחרי שהסינון מאשר את הקובץ החדש.'];
+    if(/^install_/.test(e)){
+      if(/^install_2\b|restrict|block|polic|not allowed|DISALLOW|Security|permission/i.test(e))return['🛡️ הטלפון חסם את ההתקנה','הקובץ ירד במלואו ועבר בדיקה, אבל אנדרואיד סירב להתקין. זה קורה כשסינון שמנהל את הטלפון (הדרן וכדומה) מאשר כל אפליקציה וכל גרסה בנפרד, או כש"חוסם אוטומטי" של סמסונג דלוק. הפתרון: שהסינון יאשר את הגרסה החדשה.'];
+      if(/^install_5\b/.test(e))return['📦 הותקנה ממקור אחר','האפליקציה בטלפון חתומה בחתימה אחרת (למשל הותקנה מחנות של הסינון), ולכן אנדרואיד לא מרשה לעדכן אותה מהאתר. מעדכנים מאותו מקום שממנו הותקנה.'];
+      if(/^install_6\b/.test(e))return['💾 אין מקום בטלפון','הקובץ ירד, אבל אין בטלפון מספיק מקום פנוי כדי להתקין.'];
+      if(/^install_(4|7)\b/.test(e))return['📦 הקובץ לא מתאים לטלפון','אנדרואיד אמר שהקובץ פגום או לא מתאים לגרסת האנדרואיד של הטלפון.'];
+      return['📦 ההתקנה נכשלה','הקובץ ירד, אבל אנדרואיד לא הצליח להתקין. הקוד המדויק מופיע למטה.'];}
+    if(/^too_big/.test(e))return['📏 הקובץ גדול מדי','הקובץ שהשרת שלח גדול מהמותר (מעל 60MB).'];
+    if(/timeout|timed out|Unable to resolve|Failed to connect|reset|SSL|end of stream|http_5/i.test(e))return['📶 בעיית חיבור / שרת','ההורדה נקטעה באמצע: אינטרנט חלש, או שהשרת לא ענה.'];
+    if(/^no_settings/.test(e))return['⚙️ אין מסך הרשאה להתקנה','בטלפון הזה אין את המסך "לאפשר התקנה ממקור זה" (כנראה הוסר או נחסם).'];
+    return['❓ אחר','שגיאה לא מוכרת. הקוד המדויק מופיע למטה.'];};
+  const ERR61=e=>WHY61(e)[0];
+  /* דגם הטלפון בשם מוכר (סמסונג גלקסי S), למשל SM-S901B ← Galaxy S22 */
+  const PH61=d=>{const m=String(d||'').match(/SM-S9(0[168]|1[168]|2[168]|3[168])/);if(!m)return '';const g={0:'22',1:'23',2:'24',3:'25'}[m[1][0]],k={1:'',6:'+',8:' Ultra'}[m[1][1]];return 'Samsung Galaxy S'+g+k;};
   window.boAfter&&window.boAfter('guests',async main=>{if(!main||main.querySelector('#upf61'))return;
     const card=document.createElement('div');card.className='card';card.id='upf61';
     card.innerHTML='<h2>⚠️ עדכוני אפליקציה שנכשלו</h2><p class="muted">כל פעם שמישהו לחץ "לעדכן" באפליקציה וזה לא הצליח: מתי, מי, מאיזו גרסה לאיזו, סוג החיבור (wifi / סלולרי), הטלפון, והשגיאה המדויקת.</p>'+
@@ -151,7 +170,7 @@
         '<div class="tw" tabindex="0" role="region" aria-label="עדכונים שנכשלו"><table><thead><tr><th>מתי</th><th>מי</th><th>גרסה</th><th>חיבור</th><th>מכשיר</th><th>מה קרה</th></tr></thead><tbody>'+
         L.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+'</td><td>'+(r.user_id?'<b>'+esc(r.name||'משתמש/ת')+'</b>'+(r.email?'<br><small class="muted" dir="ltr">'+esc(r.email)+'</small>':''):'<span class="muted">אורח/ת</span>')+(r.ip?'<br><small dir="ltr">'+esc(r.ip)+'</small>':'')+'</td>'+
           '<td data-l="גרסה" dir="ltr">'+esc(r.app_ver||'?')+' → '+esc(r.target_ver||'?')+'</td><td data-l="חיבור">'+({wifi:'📶 Wi-Fi',cellular:'📱 סלולרי',ethernet:'🔌 כבל',none:'אין'}[r.net]||'<span class="muted">לא ידוע</span>')+'</td>'+
-          '<td data-l="מכשיר"><small>'+esc(r.device||'')+'</small></td><td data-l="מה קרה">'+esc(ERR61(r.err))+'<br><small class="muted" dir="ltr">'+esc(r.err)+'</small></td></tr>').join('')+'</tbody></table></div>';};
+          '<td data-l="מכשיר">'+(PH61(r.device)?'<b>'+esc(PH61(r.device))+'</b><br>':'')+'<small>'+esc(r.device||'')+'</small></td><td data-l="מה קרה"><b>'+esc(WHY61(r.err)[0])+'</b><br><small>'+esc(WHY61(r.err)[1])+'</small><br><small class="muted" dir="ltr">'+esc(r.err)+'</small></td></tr>').join('')+'</tbody></table></div>';};
     card.querySelector('#upf61d').onchange=load;await load();});
 })();
 
