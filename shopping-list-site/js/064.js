@@ -114,6 +114,9 @@ const filterErr66=m=>/^(http_(418|403|451)|bad_redirect|bad_file)\b/.test(String
    install_<מספר> מגיע מ-PackageInstaller: 2 = נחסם (סינון כמו הדרן שמנהל את הטלפון, או "חוסם אוטומטי" של סמסונג), 5 = האפליקציה הותקנה ממקור אחר (חתימה אחרת), 6 = אין מקום.
    גם שגיאה בפתיחת ההתקנה עצמה (SecurityException / restriction) = הטלפון לא מרשה להתקין */
 const instErr66=m=>{m=String(m||'');
+  /* הבקשה לאנדרואיד הגיעה משובשת (נמצא ב-S22 עם סינון הדרן). מגרסה 2.2 האפליקציה פותחת לבד את מסך ההתקנה הרגיל */
+  if(/Invalid install mode/i.test(m))return T('🛡️ הקובץ ירד, אבל הטלפון לא נתן לאפליקציה לפתוח את ההתקנה (כנראה בגלל הסינון שמנהל את הטלפון). אפשר להוריד את הגרסה החדשה מ-yamshopping.com בדפדפן ולהתקין, או לבקש מהסינון לאשר את העדכון. האפליקציה הנוכחית ממשיכה לעבוד כרגיל',
+    '🛡️ Downloaded, but the phone did not let the app start the install (probably the filter that manages the phone). Download the new version from yamshopping.com in the browser, or ask the filter to approve it. The current app keeps working');
   if(/^install_2\b|restrict|block|polic|not allowed|DISALLOW|Security|permission/i.test(m))return T('🛡️ הקובץ ירד, אבל הטלפון לא מרשה להתקין אותו. זה קורה כשיש סינון שמנהל את הטלפון (למשל הדרן) — הוא מאשר כל אפליקציה וכל גרסה בנפרד — או כש"חוסם אוטומטי" של סמסונג דלוק. מבקשים מהסינון לאשר את הגרסה החדשה של "רשימת קניות" ומנסים שוב. האפליקציה הנוכחית ממשיכה לעבוד כרגיל',
     '🛡️ The file downloaded, but the phone does not allow installing it. A filter that manages the phone (or Samsung Auto Blocker) is blocking it. Ask the filter to approve the new version and try again. The current app keeps working');
   if(/^install_5\b/.test(m))return T('📦 האפליקציה שבטלפון הותקנה ממקור אחר (למשל חנות של הסינון), ולכן אי אפשר לעדכן אותה מכאן. מעדכנים מאותו מקום שממנו הותקנה','📦 This app was installed from another source (e.g. the filter\'s store), so update it from there');
