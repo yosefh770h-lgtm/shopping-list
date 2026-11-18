@@ -1349,7 +1349,11 @@ VIEWS.clothing=async function(){
 
 /* ---------- ✅ ממתין לאישור — הכל במקום אחד ---------- */
 if(!MOD_TABS.includes('pending'))MOD_TABS.push('pending');
-const PK={bot:'🤖 לימוד לבוט',review:'⭐ חוות דעת על האתר',chain:'🏪 חנות חדשה',branch:'📍 סניף חדש',price:'💰 מחיר',post:'📣 מבצע של חנות',flag:'⚠️ מחיר שסומן "לא נכון"',feedback:'💌 הערה',chat:'💬 הודעה בצ׳אט',message:'📨 פנייה לחנות',abuse:'🚫 שפה לא נקייה',tip:'💰 טיפ לחיסכון',suggest:'💡 הצעה חדשה בלוח (✔ = ראיתי · ✖ = הסתרה)'};
+const PK={bot:'🤖 לימוד לבוט',review:'⭐ חוות דעת על האתר',chain:'🏪 חנות חדשה',branch:'📍 סניף חדש',price:'💰 מחיר',post:'📣 מבצע של חנות',flag:'⚠️ מחיר שסומן "לא נכון"',feedback:'💌 הערה',chat:'💬 הודעה בצ׳אט',message:'📨 פנייה לחנות',bizreq:'🏢 בקשת הצטרפות של עסק',abuse:'🚫 שפה לא נקייה',tip:'💰 טיפ לחיסכון',suggest:'💡 הצעה חדשה בלוח (✔ = ראיתי · ✖ = הסתרה)',torah:'📜 דבר תורה',recipe:'🍲 מתכון',error:'🐞 תקלה באתר',scrape:'🕵️ מישהו מעתיק מחירים'};
+/* לאן כל סוג נפתח בבק אופיס (לחיצה על פריט = קפיצה ישר אליו) */
+const PSEC={bot:'bot',review:'reviews',chain:'chains',branch:'chains',price:'prices',post:'posts',flag:'prices',feedback:'feedback',chat:'support',message:'messages',bizreq:'bizreq',abuse:'abuse',tip:'community',suggest:'community',error:'errors',scrape:'scrapers'};
+/* סוגים שאפשר לאשר/לדחות בשרת (staff_decide). השאר — פותחים ומטפלים במקום */
+const DECIDE_KINDS=['bot','review','chain','branch','price','post','flag','feedback','chat','message','abuse','tip','suggest','torah','recipe','error'];
 const READ_ONLY_KINDS=['chat','message','abuse'];
 const PCR23={bot:'kb',review:'reviews',price:'prices',flag:'prices',post:'posts',chain:'chains',branch:'branches'};
 async function pendingData(){
@@ -1369,21 +1373,62 @@ function loadServerCode(){if(!document.getElementById('srvCode')){const box=docu
   return Promise.resolve(true);}
 const _v18OpenBO=window.openBO;window.openBO=async function(){const args=arguments;if(sb&&isStaff()){const okc=await loadServerCode();if(!okc)flash('⚠️ חלק מהבק אופיס (קוד ההגדרה) לא נטען — בודקים את החיבור');}
   const r=_v18OpenBO.apply(this,args);if(sb&&isStaff())updatePendBadge();return r;};
+/* 👁️ קפיצה לפריט מסוים: פותח את המסך שלו, מחכה שייטען, גולל אליו ומדגיש אותו */
+function boJump(sec,ref,hint,prep){if(!allowed(sec)){flash('אין הרשאה למסך הזה');return;}
+  if(prep)prep();show(sec);const t0=Date.now();hint=String(hint||'').replace(/\s+/g,' ').trim().slice(0,40);
+  const find=()=>{const m=$('#boMain');if(!m||cur!==sec)return null;
+    if(ref&&String(ref).length>=8){const r=String(ref);for(const el of m.querySelectorAll('*'))for(const a of el.attributes)if(a.name.startsWith('data-')&&a.value===r)return el.closest('.item,tr,.c44,article,li,.card')||el;}
+    if(hint.length>=3){let best=null;m.querySelectorAll('.item,tr,.c44,article,li,details').forEach(el=>{if(el.textContent.replace(/\s+/g,' ').includes(hint)&&(!best||best.contains(el)))best=el;});return best;}
+    return null;};
+  const tick=()=>{if(cur!==sec)return;const el=find();
+    if(el){let d=el.closest('details');while(d){d.open=true;d=d.parentElement&&d.parentElement.closest('details');}
+      el.classList.remove('bojump');void el.offsetWidth;el.classList.add('bojump');el.scrollIntoView({behavior:'smooth',block:'center'});return;}
+    if(Date.now()-t0<6000)setTimeout(tick,150);else flash('הפריט כבר לא ממתין, או שהוא נמצא למטה ברשימה');};
+  setTimeout(tick,150);}
+(function(){const st=document.createElement('style');st.textContent='@keyframes bojump{0%,60%{box-shadow:0 0 0 3px #e0b100;background:rgba(224,177,0,.16)}100%{box-shadow:0 0 0 0 transparent}}.bojump{animation:bojump 3s ease-out;border-radius:10px}'+
+  '.pdgo{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box}.pdgo:hover b,.pdgo:focus-visible b{text-decoration:underline}.pdgo:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px;border-radius:6px}.pdgo .pdsee{display:inline-block;margin-top:4px;font-size:13px;font-weight:700;color:var(--accent,#2563eb)}'+
+  '.pdsum{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pdsum button{all:unset;cursor:pointer;padding:5px 11px;border-radius:999px;border:1px solid var(--line,#ccc);font-size:14px}.pdsum button:focus-visible{outline:2px solid var(--accent,#2563eb)}';document.head.appendChild(st);})();
+/* כל פריט ממתין בתבנית אחת: [מסך, מזהה, טקסט לחיפוש, הכנה לפני הפתיחה] */
+function pendTarget(x){if(x.c){return ['clothing',x.id,x.title,()=>{VIEWS.clothing.tab='pending';}];}
+  const sec=PSEC[x.kind];if(!sec)return null;
+  return [sec,x.kind==='scrape'?'':x.ref,x.kind==='scrape'?String(x.ref||'').split(' ').pop():x.kind==='error'?x.title:(x.detail||x.title),x.kind==='tip'?()=>{window.__bo44tab='tips';}:null];}
+function pendGoAttr(x){const t=pendTarget(x);return t?' data-pjump="'+esc(JSON.stringify([x.c?'c':x.kind,x.c?x.id:x.ref]))+'"':'';}
+function pendRow(x,inner,btns){const t=pendTarget(x);
+  return '<div class="item">'+(t?'<button class="pdgo"'+pendGoAttr(x)+'>'+inner+'<span class="pdsee">👁️ לפתוח ולראות ←</span></button>':inner)+'<div class="row" style="margin-top:6px">'+btns+'</div></div>';}
 VIEWS.pending=async function(){
-  const d=await pendingData();const groups={};d.items.forEach(x=>{(groups[x.kind]=groups[x.kind]||[]).push(x);});
+  const d=await pendingData();if(cur!=='pending')return;const groups={};d.items.forEach(x=>{(groups[x.kind]=groups[x.kind]||[]).push(x);});
   const n=d.items.length+d.cloth.length;const b=$('#boPendN');if(b){b.hidden=!n;b.textContent=n;}
-  let h='<div class="card"><h2>✅ ממתין לאישור ('+n+')</h2><p class="muted">כל מה שמחכה לך — מחירים, חנויות, חוות דעת, ביגוד ודיווחים — במקום אחד. ✔ מאשר, ✖ דוחה.</p>'+(d.err?'<p class="muted">⚠️ '+esc(d.err.message)+' — צריך להריץ שוב את קוד ה-SQL.</p>':'')+(n?'':'<p style="font-size:18px;margin-top:10px">🎉 הכל מטופל!</p>')+'</div>';
-  Object.keys(PK).filter(k=>groups[k]).forEach(k=>{h+='<div class="card"><h2>'+PK[k]+' ('+groups[k].length+')</h2>'+groups[k].map(x=>'<div class="item"><b>'+esc(x.title||'')+'</b>'+(x.detail?'<div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(String(x.detail).slice(0,400))+'</div>':'')+'<div class="muted">'+(PCR23[k]?crSlot(PCR23[k],x.ref,{f:x.who||''}):esc(x.who||''))+' · '+esc(fmt(x.created_at))+'</div><div class="row" style="margin-top:6px">'+
-    (READ_ONLY_KINDS.includes(k)?'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ טופל</button>':'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ אישור</button><button class="btn sm bad" data-pd="'+esc(k)+'|'+esc(x.ref)+'|0">✖ דחייה</button>')+'</div></div>').join('')+'</div>';});
-  if(d.cloth.length)h+='<div class="card"><h2>👗 ביגוד וחתונה ('+d.cloth.length+')</h2>'+d.cloth.map(x=>'<div class="item"><b>'+esc(x.title)+'</b>'+(x.detail?'<div>'+esc(x.detail)+'</div>':'')+'<div class="muted">'+(x.crk?crSlot(x.crk,x.id):esc(x.who||''))+' · '+esc(fmt(x.at))+'</div><div class="row" style="margin-top:6px">'+
-    (x.c==='shop'?'<button class="btn sm" data-pc="shop|'+x.id+'|1">✔ אישור</button><button class="btn sm bad" data-pc="shop|'+x.id+'|0">✖ דחייה</button>':x.c==='rec'?'<button class="btn sm" data-pc="rec|'+x.id+'|1">✔ אישור</button><button class="btn sm bad" data-pc="rec|'+x.id+'|0">✖ דחייה</button>':'<button class="btn sm sec" data-pgo="1">לטיפול ← 👗 ביגוד והמלצות</button>')+'</div></div>').join('')+'</div>';
-  $('#boMain').innerHTML=h;
+  const kinds=Object.keys(PK).filter(k=>groups[k]).concat(Object.keys(groups).filter(k=>!PK[k]));
+  const label=k=>PK[k]||('📌 '+k);
+  let h='<div class="card"><h2>✅ ממתין לאישור ('+n+')</h2><p class="muted">כל מה שמחכה לך במקום אחד. לחיצה על פריט פותחת אותו ישר במקום שלו בבק אופיס. ✔ מאשר, ✖ דוחה.</p>'+(d.err?'<p class="muted">⚠️ '+esc(d.err.message)+' — צריך להריץ שוב את קוד ה-SQL.</p>':'')+
+    (n?'<div class="pdsum">'+kinds.map(k=>'<button data-pgrp="'+esc(k)+'">'+esc(label(k))+' · <b>'+groups[k].length+'</b></button>').join('')+(d.cloth.length?'<button data-pgrp="cloth">👗 ביגוד וחתונה · <b>'+d.cloth.length+'</b></button>':'')+'</div>':'<p style="font-size:18px;margin-top:10px">🎉 הכל מטופל!</p>')+'</div>';
+  kinds.forEach(k=>{const dec=DECIDE_KINDS.includes(k),ro=READ_ONLY_KINDS.includes(k)||k==='error';
+    h+='<div class="card" id="pg-'+esc(k)+'"><h2>'+esc(label(k))+' ('+groups[k].length+')</h2>'+groups[k].map(x=>pendRow(x,
+      '<b>'+esc(x.title||'')+'</b>'+(x.detail?'<div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(String(x.detail).slice(0,400))+'</div>':'')+'<div class="muted">'+(PCR23[k]?crSlot(PCR23[k],x.ref,{f:x.who||''}):esc(x.who||''))+' · '+esc(fmt(x.created_at))+'</div>',
+      !dec?'':ro?'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ טופל</button>':'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ אישור</button><button class="btn sm bad" data-pd="'+esc(k)+'|'+esc(x.ref)+'|0">✖ דחייה</button>')).join('')+'</div>';});
+  if(d.cloth.length)h+='<div class="card" id="pg-cloth"><h2>👗 ביגוד וחתונה ('+d.cloth.length+')</h2>'+d.cloth.map(x=>pendRow(x,
+    '<b>'+esc(x.title)+'</b>'+(x.detail?'<div>'+esc(x.detail)+'</div>':'')+'<div class="muted">'+(x.crk?crSlot(x.crk,x.id):esc(x.who||''))+' · '+esc(fmt(x.at))+'</div>',
+    x.c==='shop'?'<button class="btn sm" data-pc="shop|'+x.id+'|1">✔ אישור</button><button class="btn sm bad" data-pc="shop|'+x.id+'|0">✖ דחייה</button>':x.c==='rec'?'<button class="btn sm" data-pc="rec|'+x.id+'|1">✔ אישור</button><button class="btn sm bad" data-pc="rec|'+x.id+'|0">✖ דחייה</button>':'')).join('')+'</div>';
+  $('#boMain').innerHTML=h;VIEWS.pending.data=d;
   $('#boMain').onclick=async e=>{const t=e.target.closest('button');if(!t)return;
-    if(t.dataset.pgo){VIEWS.clothing.tab='pending';show('clothing');return;}
+    if(t.dataset.pgrp){const g=$('#pg-'+t.dataset.pgrp);if(g)g.scrollIntoView({behavior:'smooth',block:'start'});return;}
+    if(t.dataset.pjump){pendOpen(JSON.parse(t.dataset.pjump),VIEWS.pending.data);return;}
     if(t.dataset.pd){const [k,ref,ok1]=t.dataset.pd.split('|');t.disabled=true;const {error}=await sb.rpc('staff_decide',{p_kind:k,p_ref:ref,p_ok:ok1==='1'});if(error){flash('⚠️ '+error.message);t.disabled=false;return;}flash(ok1==='1'?'✔️ בוצע':'✖ נדחה');t.closest('.item').remove();updatePendBadge();return;}
     if(t.dataset.pc){const [c,id,ok1]=t.dataset.pc.split('|');const tb=c==='shop'?'clothing_shops':'store_recs';t.disabled=true;
       if(await ok(ok1==='1'?sb.from(tb).update({status:'approved'}).eq('id',id):sb.from(tb).delete().eq('id',id),ok1==='1'?'✔️ אושר':'✖ נדחה')){t.closest('.item').remove();updatePendBadge();}else t.disabled=false;}};
 };
+function pendOpen([k,ref],d){const x=k==='c'?(d.cloth||[]).find(y=>y.id===ref):(d.items||[]).find(y=>y.kind===k&&y.ref===ref);if(!x)return;const t=pendTarget(x);if(t)boJump(t[0],t[1],t[2],t[3]);}
+/* 📊 סקירה: מה בדיוק ממתין — כל פריט לחיץ וקופץ ישר אליו */
+const _pdDash=VIEWS.dash;
+VIEWS.dash=async function(){await _pdDash.apply(this,arguments);if(cur!=='dash'||!allowed('pending'))return;
+  let d;try{d=await pendingData();}catch(e){return;}if(cur!=='dash')return;
+  const all=d.items.map(x=>Object.assign({at:x.created_at,lbl:PK[x.kind]||x.kind},x)).concat(d.cloth.map(x=>Object.assign({lbl:'👗 ביגוד וחתונה'},x))).sort((a,b)=>new Date(b.at)-new Date(a.at));
+  const m=$('#boMain');if(!m)return;const top=all.slice(0,8);
+  m.insertAdjacentHTML('afterbegin','<div class="card" id="pdDash" style="border-color:#e0b100;margin-bottom:14px"><h2>⏳ ממתין לאישור ('+all.length+')</h2>'+
+    (all.length?'<p class="muted">לחיצה על פריט פותחת אותו ישר במקום שלו.</p>'+top.map(x=>'<div class="item"><button class="pdgo"'+pendGoAttr(x)+'><span class="muted">'+esc(String(x.lbl).split(' (')[0])+'</span><br><b>'+esc(x.title||'')+'</b><span class="pdsee" style="display:block">👁️ לפתוח ולראות ←</span></button></div>').join('')+
+      '<button class="btn sec" data-pdall="1" style="margin-top:8px">'+(all.length>top.length?'לכל '+all.length+' הפריטים ←':'לרשימה המלאה ←')+'</button>':'<p class="muted">🎉 אין כלום שממתין</p>')+'</div>');
+  m.querySelector('#pdDash').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;e.stopPropagation();
+    if(t.dataset.pdall){show('pending');return;}if(t.dataset.pjump)pendOpen(JSON.parse(t.dataset.pjump),d);});};
 
 /* ---------- ✏️ גרסה 18.3: עריכה בכל מקום — בעלי סופרים, צוות, עדכונים לאתר, מקורות מחירים ---------- */
 /* בעלי סופרים: ✏️ ממלא את הטופס למעלה, ו"שמירה" מעדכנת (אותו מייל = אותו אדם) */
@@ -1413,14 +1458,7 @@ VIEWS.updates=async function(){await _e18Updates.apply(this,arguments);if(cur!==
 const _e18Sources=VIEWS.sources;
 VIEWS.sources=async function(){await _e18Sources.apply(this,arguments);if(cur!=='sources')return;
   document.querySelectorAll('#boMain tr[data-id] td:last-child').forEach(td=>{if(!td.querySelector('[data-e18src]'))td.insertAdjacentHTML('afterbegin','<button class="btn sm sec" data-e18src="1">✏️</button> ');});};
-/* ✅ ממתין לאישור: "✏️ לעריכה" — קופץ למקום שבו עורכים את הפריט, כדי לתקן לפני שמאשרים */
-const EDIT_SEC18={bot:'bot',review:'reviews',chain:'chains',branch:'chains',price:'prices',post:'posts',flag:'prices',tip:'community',suggest:'community'};
-const _e18Pending=VIEWS.pending;
-VIEWS.pending=async function(){await _e18Pending.apply(this,arguments);if(cur!=='pending')return;
-  document.querySelectorAll('#boMain [data-pd]').forEach(b=>{const k=b.dataset.pd.split('|')[0];const row=b.parentNode;if(!EDIT_SEC18[k]||row.querySelector('[data-e18go]'))return;
-    row.insertAdjacentHTML('beforeend','<button class="btn sm sec" data-e18go="'+EDIT_SEC18[k]+'">✏️ לעריכה ←</button>');});};
 $('#boMain').addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;const d=t.dataset;
-  if(d.e18go){e.stopPropagation();show(d.e18go);return;}
   if(d.e18sm){e.stopPropagation();const x=(VIEWS.stores.list||[]).find(y=>y.user_id===d.e18sm);if(!x)return;
     $('#smEmail').value=x.email||'';$('#smChain').value=x.chain||'';$('#smBranch').value=x.branch||'';$('#smTitle').value=x.title==='owner'?'owner':'manager';$('#smAuto').checked=!!x.auto_approve;
     const h=$('#boMain .card h2');if(h)h.textContent='✏️ עריכת '+(x.name||x.email);$('#smAdd').textContent='💾 שמירת השינויים';$('#smCancel').hidden=false;h&&h.scrollIntoView({behavior:'smooth'});$('#smChain').focus();return;}

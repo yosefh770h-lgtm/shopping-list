@@ -2058,6 +2058,33 @@ await test('🛟 מקום מלא במכשיר: הפרופיל והחנויות �
   await ctx.close();
 });
 
+await test('✅ ממתין לאישור: רואים בדיוק מה ממתין (כל הסוגים), ולחיצה קופצת ישר לפריט', async () => {
+  const { ctx, page, errors } = await newPage({ viewport: { width: 1280, height: 900 } });
+  const P = 'aaaaaaaa-1111-2222-3333-444444444444', R = 'bbbbbbbb-1111-2222-3333-444444444444', B = 'cccccccc-1111-2222-3333-444444444444';
+  const D = {
+    'rpc:staff_pending_items': [
+      { kind: 'price', ref: P, title: 'חלב 3% — 6.90 ₪', detail: 'שופרסל · רמות', who: 'משה', created_at: '2026-11-17T09:00:00Z', pending: true },
+      { kind: 'review', ref: R, title: '⭐⭐⭐⭐⭐ שרה', detail: 'אתר מצוין', who: 'שרה', created_at: '2026-11-17T08:00:00Z', pending: true },
+      { kind: 'bizreq', ref: B, title: 'בקשת הצטרפות: מכולת דוד', detail: 'דוד · 050', who: 'דוד', created_at: '2026-11-17T07:00:00Z', pending: true }],
+    prices: [{ id: P, product: 'חלב 3%', chain: 'שופרסל', branch: 'רמות', price: 6.9, currency: 'ILS', confirms: 0, wrong: 0, status: 'pending', created_at: '2026-11-17T09:00:00Z' }],
+    site_reviews: [{ id: R, stars: 5, body: 'אתר מצוין', status: 'pending', created_at: '2026-11-17T08:00:00Z' }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('pending'); }, D);
+  await page.waitForTimeout(600);
+  const bo = await page.$eval('#boMain', (e) => e.textContent);
+  assert(bo.includes('חלב 3%') && bo.includes('מכולת דוד') && bo.includes('בקשת הצטרפות של עסק') && /ממתין לאישור \(3\)/.test(bo), 'לא רואים את כל מה שממתין: ' + bo.slice(0, 300));
+  await page.click('#boMain [data-pjump*="price"]'); await page.waitForTimeout(900);
+  const j = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
+  assert(j.cur === 'prices' && j.id === P, 'לחיצה על המחיר לא קפצה אליו: ' + JSON.stringify(j));
+  await page.click('#boNav [data-s="dash"]'); await page.waitForTimeout(700);
+  const dash = await page.$eval('#pdDash', (e) => e.textContent).catch(() => '');
+  assert(dash.includes('ממתין לאישור (3)') && dash.includes('חלב 3%') && dash.includes('שרה'), 'בסקירה לא רואים מה ממתין: ' + dash.slice(0, 200));
+  await page.click('#pdDash [data-pjump*="review"]'); await page.waitForTimeout(900);
+  const r = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
+  assert(r.cur === 'reviews' && r.id === R, 'מהסקירה לא קפץ לחוות הדעת: ' + JSON.stringify(r));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
 const failed = results.filter((r) => r[0] === '❌').length;
