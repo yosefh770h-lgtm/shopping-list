@@ -72,9 +72,12 @@ const _sIn=onSignedIn;onSignedIn=async function(user){const r=_sIn.apply(this,ar
 if(authUser)setTimeout(refresh,1500);
 
 /* 🛠️ בק אופיס (מנהלים): ⭐ מוניטין ופרו — התנאים, הנקודות לכל פעולה, ופרו ידני */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 const nav=document.querySelector('#boNav');
 if(nav&&!nav.querySelector('[data-s="pro2"]')){const bt=document.createElement('button');bt.dataset.s='pro2';bt.textContent='⭐ מוניטין ופרו';
   const after=nav.querySelector('[data-s="reporters"]');if(after)after.before(bt);else nav.appendChild(bt);}
+});
 {const h=document.querySelector('#bo .bohead b');if(h&&window.yamLogo2&&!h.parentNode.querySelector('.ylogo'))h.insertAdjacentHTML('beforebegin',yamLogo2());}
 let q='',flt='';
 window.boView&&window.boView('pro2',async function(){const m=document.querySelector('#boMain');

@@ -119,6 +119,8 @@ const _m20OnSignedIn=onSignedIn;
 onSignedIn=async function(){const r=await _m20OnSignedIn.apply(this,arguments);setTimeout(checkMergeLink20,1500);return r;};
 setTimeout(()=>{if(sb&&authUser){mergeFetch20();checkMergeLink20();}},1800);
 /* בבק אופיס (מנהלים): 🔗 מי איחד חשבונות עם מי, ואפשרות לבטל איחוד */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 (function(){const nav=document.querySelector('#boNav');if(!nav||nav.querySelector('[data-s="merges"]'))return;
   const b=document.createElement('button');b.dataset.s='merges';b.textContent='🔗 חשבונות מאוחדים';
   const after=nav.querySelector('[data-s="secondary"]');if(after)after.after(b);else nav.appendChild(b);
@@ -134,3 +136,4 @@ setTimeout(()=>{if(sb&&authUser){mergeFetch20();checkMergeLink20();}},1800);
       x.disabled=true;const {data:okd,error:er}=await sb.rpc('admin_merge_end',{p_guest:tr.dataset.g});flash(er||!okd?'⚠️ '+((er&&er.message)||'לא נמצא'):'✂️ האיחוד בוטל');window.boView&&document.querySelector('#boNav [data-s="merges"]').click();};});
   const g=[...document.querySelectorAll('#boNav .bogrp')].find(x=>x.querySelector('[data-s="secondary"]'));if(g&&b.parentNode!==g)g.querySelector('[data-s="secondary"]').after(b);
 })();
+});

@@ -58,7 +58,10 @@ window.boAfter&&window.boAfter('guests',async main=>{if(!main||main.querySelecto
     const ss=$41('#vis41s');if([...ss.options].some(o=>o.value===raw)){ss.value=raw;draw();card.scrollIntoView({behavior:'smooth',block:'start'});}});
   await load();});
 /* שם הלשונית: מבקרים ומקורות */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const gb=$41('#boNav [data-s="guests"]');if(gb)gb.textContent='👀 מבקרים — מי ומאיפה';}catch(e){}
+});
 
 /* ---------- 3. 👮 הרשאות לכל איש צוות (רק הבעלים) ---------- */
 const MODTABS41=['pending','bot','chains','prices','reporters','posts','reviews','products','clothing','guests'];
@@ -151,11 +154,17 @@ function staffBell41(){if(!sb||!isStaff()||!permOk('notify')){if(bell41){bell41.
   if(!poll41){bellPoll41(true);poll41=setInterval(()=>bellPoll41(false),60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)bellPoll41(false);});}}
 /* ---------- 5. 🕵️ פעולות הצוות — הבעלים רואה כל מה שכל איש צוות עשה ופתח ---------- */
 /* כל מסך בבק אופיס שאיש צוות פותח נרשם ביומן הפעולות */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{[...document.querySelectorAll('#boNav button[data-s]')].map(b=>b.dataset.s).concat(['staffact']).forEach(k=>window.boAfter&&window.boAfter(k,async()=>{if(isStaff()&&!isOwner()&&typeof logAct==='function')logAct('bo_view',k);}));}catch(e){}
+});
 const TBL41={site_config:'הגדרות האתר',recipes:'מתכונים',bot_knowledge:'לימודי בוט',chains:'חנויות',branches:'סניפים',prices:'מחירים',ads:'פרסומות',site_updates:'עדכונים לאתר',staff:'צוות',store_managers:'בעלי סופרים',feedback:'הערות',store_posts:'מבצעי חנויות',divrei_torah:'דברי תורה',site_reviews:'חוות דעת',products:'מוצרים',profiles:'פרטי משתמש',user_bans:'חסימות ואזהרות',support_messages:'צ׳אט עם משתמשים',abuse_reports:'דיווחי שפה',business_requests:'בקשות הצטרפות',store_messages:'פניות לחנויות',price_sources:'מקורות מחירים',clothing_shops:'חנויות ביגוד',store_recs:'המלצות',cloth_votes:'דיווחי ביגוד',yami_notes:'הודעות יאמי',store_inventory:'מלאי חנות',biz_machines:'מכונות',client_errors:'יומן תקלות',users:'משתמשים'};
 const OP41={INSERT:'➕ הוסיף',UPDATE:'✏️ שינה',DELETE:'🗑️ מחק',CONFIRM:'✅ אישר מייל'};
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=$41('#boNav');if(nav&&!nav.querySelector('[data-s="staffact"]')){const b=document.createElement('button');b.dataset.s='staffact';b.textContent='🕵️ פעולות הצוות';const st=nav.querySelector('[data-s="staff"]');if(st)st.after(b);else nav.appendChild(b);}}catch(e){}
 {const _o41=window.openBO;window.openBO=async function(){const r=await _o41.apply(this,arguments);const b=$41('#boNav [data-s="staffact"]');if(b&&!isOwner())b.hidden=true;return r;};}
+});
 window.boView&&window.boView('staffact',async function(){const m=$41('#boMain');if(!isOwner()){m.innerHTML='<div class="card">⛔ רק לבעל האתר</div>';return;}
   const {data:staff}=await sb.rpc('staff_list');
   m.innerHTML='<div class="card"><h2>🕵️ פעולות הצוות</h2><p class="muted">כל מה שאנשי הצוות עשו: כל שינוי (הוספה, עריכה, מחיקה, אישור, חסימה, תשובה בצ׳אט, מחיקת משתמש) וכל מסך שפתחו בבק אופיס. שינויים אפשר לשחזר מ"💾 גיבוי והיסטוריה". נשמר עד שנה (מסכים שנפתחו — חצי שנה).</p>'+
