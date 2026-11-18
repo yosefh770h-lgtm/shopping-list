@@ -1496,6 +1496,28 @@ await test('🏪 השוואת רשימה בין כל הסניפים בארץ (מ
   await ctx.close();
 });
 
+await test('✅ הכי זול לכל הרשימה: משווים רק מוצרים זהים שיש בכל החנויות', async () => {
+  const line = (q, code, cost) => ({ q, qty: 1, found: true, code, name: q, price: cost, cost, regular: cost });
+  const miss = (q) => ({ q, qty: 1, found: false });
+  const st = (store, chain_name, lines) => ({ store, chain: chain_name, chain_name, name: 'בני ברק', city: 'בני ברק', total: lines.reduce((a, l) => a + (l.cost || 0), 0), regular: 0, found: lines.filter((l) => l.found).length, lines });
+  const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }, { q: 'לחם', qty: 1 }, { q: 'ביצים', qty: 1 }, { q: 'קפה', qty: 1 }], missing: [], stores: [
+    // "זול" רק כי אין לו ביצים וקפה — בהשוואה הישנה הוא נראה הכי זול
+    st('1:1', 'רשת א', [line('חלב', '1', 6), line('לחם', '2', 8), line('ביצים', '3', 12), line('קפה', '4', 30)]),
+    st('2:2', 'רשת ב', [line('חלב', '1', 5), line('לחם', '2', 7), line('ביצים', '3', 13), miss('קפה')]),
+    st('3:3', 'רשת ג', [line('חלב', '1', 7), line('לחם', '9', 4), line('ביצים', '3', 11), line('קפה', '4', 28)])] }) });
+  const { ctx, page, errors } = await newPage({ priceApi });
+  await page.evaluate(() => { applyConfig('collector', { public: true }); curList().items = []; ['חלב', 'לחם', 'ביצים', 'קפה'].forEach((n) => addItem(n, '')); state.me = Object.assign(state.me || {}, { address: { city: 'בני ברק' } }); render(); openBasket(); });
+  await page.waitForSelector('#srvCmp .fair18');
+  const t = await page.locator('#srvCmp .fair18').innerText();
+  assert(/הושוו 3 מתוך 4/.test(t), 'צריך להשוות חלב, לחם וביצים (קפה חסר ברשת ב): ' + t);
+  assert(/הכי זול לכל הרשימה: רשת ב/.test(t), 'רשת ב הכי זולה על אותם 3 מוצרים (25 מול 26): ' + t);
+  assert(!/רשת ג/.test(t), 'ברשת ג הלחם הוא מוצר אחר — לא משווים אותה על הלחם: ' + t);
+  assert(/לא נכללו[^]*קפה/.test(t), 'צריך לכתוב מה לא נכלל: ' + t);
+  if (process.env.SHOTS) await page.locator('#basketOverlay').screenshot({ path: process.env.SHOTS + '/fair-phone.png' });
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('💰 כפתור "איפה הכי זול" ברשימה — נפתח בלשונית החנויות, והמנהל קובע אם ועד מתי', async () => {
   const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }], missing: [], stores: [{ store: '1:1', chain: 'RAMI_LEVY', chain_name: 'רמי לוי', name: 'בני ברק', city: 'בני ברק', total: 6.5, regular: 6.5, found: 1, lines: [{ q: 'חלב', qty: 1, found: true, name: 'חלב', cost: 6.5, regular: 6.5 }] }] }) });
   const { ctx, page, errors } = await newPage({ priceApi });
