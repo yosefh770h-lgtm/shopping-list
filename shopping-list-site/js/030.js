@@ -130,7 +130,7 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
     if($r('#upUrlSt')!==st||upMode!=='receipt')return;
     const f=r.data&&r.data.fetched;
     if(!f){st.innerHTML='<p class="muted-note">⚠️ '+esc((r.data&&r.data.text)||(r.data&&r.data.disabled?T('קריאת קבלות צריכה את הבינה המלאכותית — היא עוד לא מופעלת באתר.','Reading needs the AI.'):T('לא הצלחתי לפתוח את הקישור 🙁','Could not open the link 🙁')))+'</p>';
-      try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r.data&&r.data.error)||r.code||'error')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}
+      try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r.data&&r.data.error)||r.code||'error')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}
       return;}
     rcLinkHost=String(f.host||'').toLowerCase().replace(/^www\./,'');
     if(f.kind==='text'){const t=$r('#upText');if(t)t.value=String(f.text||'');

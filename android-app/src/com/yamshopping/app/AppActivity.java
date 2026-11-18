@@ -114,6 +114,7 @@ public class AppActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         current = this;
+        Crash.install(this); // 🐞 2.2: קריסה של האפליקציה נשמרת ונשלחת ליומן התקלות בפתיחה הבאה
         speech = new Speech(this);
         Notifier.channels(this);
         CheckJob.schedule(this);
@@ -514,6 +515,7 @@ public class AppActivity extends Activity {
         @Override
         public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
             if (view != web) { try { view.destroy(); } catch (RuntimeException e) { } return true; }
+            Crash.rendererGone(AppActivity.this, detail != null && detail.didCrash());
             String url = view.getUrl();
             recreateWebView(url != null && isOurPage(Uri.parse(url)) ? url : HOME);
             Toast.makeText(AppActivity.this, "האתר נטען מחדש", Toast.LENGTH_SHORT).show();
@@ -861,6 +863,12 @@ public class AppActivity extends Activity {
     // ---------- שמירת קבצים שהאתר מוריד ----------
 
     class Bridge {
+        /** 🐞 2.2: הקריסה האחרונה של האפליקציה (JSON) או "" — האתר שולח אותה ליומן התקלות (js/026.js) */
+        @JavascriptInterface
+        public String lastCrash() {
+            return Crash.take(getApplicationContext());
+        }
+
         /** 🎨 פרו: מחליף את האייקון במסך הבית לפי ערכת הצבעים (sea / sky / mint / lilac / night) */
         @JavascriptInterface
         public void setIcon(String theme) {

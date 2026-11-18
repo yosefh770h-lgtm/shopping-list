@@ -46,6 +46,7 @@ async function newPage(opts = {}) {
   }
   await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
   await ctx.addInitScript(STUB);
+  if (opts.init) await ctx.addInitScript(opts.init);
   if (opts.adblock) await ctx.addInitScript(() => { new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.id && /^yb(Side|Pop|Top)$/.test(n.id)) n.remove(); }))).observe(document, { childList: true, subtree: true }); });
   const page = await ctx.newPage();
   const errors = [];
@@ -799,6 +800,46 @@ await test('🐞 יומן תקלות: כל תקלה מוסברת בעברית �
   const src = await page.evaluate(async () => { const calls = []; sb = { rpc: (n, a) => { calls.push(a); return Promise.resolve({}); } };
     setTimeout(function brokenThing39() { null.x; }, 0); await new Promise((r) => setTimeout(r, 200)); return calls.map((c) => c.p_src).join('|'); });
   assert(/brokenThing39 · /.test(src), 'שם הפונקציה לא נרשם: ' + src);
+  await ctx.close();
+});
+
+await test('🐞 יומן תקלות לפי גרסה ודגם: האפליקציה שולחת גרסה ודגם, הבק אופיס מקבץ ומתריע בלוח הראשי', async () => {
+  const APP = 'Mozilla/5.0 (Linux; Android 14; SM-S901B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 YamShoppingApp/2.1';
+  const { ctx, page, errors } = await newPage({ userAgent: APP, viewport: { width: 1366, height: 900 } });
+  const sent = await page.evaluate(async () => { const calls = []; sb = { rpc: (n, a) => { calls.push(a); return Promise.resolve({}); } };
+    setTimeout(function appThing61() { null.y; }, 0); await new Promise((r) => setTimeout(r, 200)); return calls[0] || {}; });
+  assert(sent.p_app === '2.1' && sent.p_device === 'SM-S901B · Android 14' && /^[0-9a-f-]{36}$/.test(sent.p_dev || ''), 'לא נשלחו גרסה ודגם: ' + JSON.stringify(sent));
+  errors.length = 0; // התקלה שגרמנו בכוונה
+  const now = Date.now(), iso = (h) => new Date(now - h * 36e5).toISOString();
+  const D = { client_errors: [
+    { id: 1, msg: "Cannot read properties of null (reading 'qty')", src: 'renderList · /js/006.js:10:2', ua: APP, ver: '18', app_ver: '2.1', device: 'SM-S901B · Android 14', dev: 'd1', created_at: iso(1) },
+    { id: 2, msg: "Cannot read properties of null (reading 'qty')", src: 'renderList · /js/006.js:10:2', ua: APP, ver: '18', app_ver: '2.1', device: 'SM-A525F · Android 13', dev: 'd2', created_at: iso(2) },
+    { id: 3, msg: "Cannot read properties of null (reading 'qty')", src: 'renderList · /js/006.js:10:2', ua: APP, ver: '18', app_ver: '2.1', device: 'SM-S901B · Android 14', user_id: 'u3', created_at: iso(3) },
+    { id: 4, msg: '💥 האפליקציה נסגרה בגלל תקלה: NullPointerException', src: 'native · Updater.openInstaller:120 · thread main', ua: APP, ver: '18', app_ver: '2.0', device: 'SM-A525F · Android 13', dev: 'd2', created_at: iso(5) },
+    { id: 5, msg: 'ZXing is not defined', src: 'startScan · /:5000:3', ua: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36', ver: '18', app_ver: '', device: 'Android 10', dev: 'd9', created_at: iso(6) }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('errors'); }, D);
+  await page.waitForTimeout(400);
+  const bo = await page.evaluate(() => ({ n: document.querySelectorAll('#boMain .errx').length, t: document.querySelector('#boMain').innerText }));
+  assert(bo.n === 3 && /אפליקציה 2\.1/.test(bo.t) && /אתר \(דפדפן\)/.test(bo.t) && /Samsung Galaxy S22 \(SM-S901B\)/.test(bo.t) && /3 מכשירים/.test(bo.t), 'סיכום לפי גרסה ודגם: ' + bo.t.slice(0, 600));
+  assert(/הקוד של האפליקציה לאנדרואיד/.test(bo.t) && /NullPointerException/.test(bo.t), 'קריסה של האפליקציה לא מוסברת: ' + bo.t.slice(0, 900));
+  await page.click('#boMain [data-ef="site"]'); await page.waitForTimeout(300);
+  const site = await page.evaluate(() => document.querySelectorAll('#boMain .errx').length);
+  assert(site === 1, 'סינון "רק אתר": ' + site);
+  // בלוח הראשי: אותה תקלה ב-3 מכשירים השבוע — שורה בולטת
+  await page.evaluate(() => openBO('dash')); await page.waitForTimeout(600);
+  const dash = await page.evaluate(() => { const c = document.querySelector('#err61d0'); return c ? c.innerText : ''; });
+  assert(/3 מכשירים/.test(dash) && /2\.1/.test(dash) && /Galaxy S22/.test(dash), 'אין שורה בלוח הראשי: ' + dash);
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
+await test('💥 קריסה של האפליקציה (YamApp.lastCrash) נשלחת ליומן התקלות בפתיחה הבאה', async () => {
+  const APP = 'Mozilla/5.0 (Linux; Android 14; SM-S901B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 YamShoppingApp/2.2';
+  const { ctx, page } = await newPage({ userAgent: APP, init: () => { window.__crashCalls = []; window.YamApp = { lastCrash: () => JSON.stringify({ msg: '💥 האפליקציה נסגרה בגלל תקלה: IllegalStateException', where: 'Updater.run:42 · thread main', at: 1 }) }; } });
+  await page.evaluate(() => { sb = { rpc: (n, a) => { if (n === 'log_client_error') window.__crashCalls.push(a); return Promise.resolve({}); } }; });
+  await page.waitForTimeout(5000);
+  const c = await page.evaluate(() => window.__crashCalls.find((a) => /^native · /.test(a.p_src)) || null);
+  assert(c && /IllegalStateException/.test(c.p_msg) && c.p_app === '2.2' && /SM-S901B/.test(c.p_device), 'הקריסה לא נשלחה: ' + JSON.stringify(c));
   await ctx.close();
 });
 
