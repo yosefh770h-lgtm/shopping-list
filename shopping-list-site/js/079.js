@@ -82,15 +82,15 @@
   async function clearUserCache(){try{const db=await dcDb();if(!db)return;await new Promise(res=>{try{const tx=db.transaction('kv','readwrite'),st=tx.objectStore('kv'),q=st.getAllKeys();
     q.onsuccess=()=>{(q.result||[]).forEach(k=>{if(typeof k==='string'&&!/\|-$/.test(k))st.delete(k);});};tx.oncomplete=tx.onerror=tx.onabort=()=>res();}catch(e){res();}});}catch(e){}
     try{Object.keys(DC.boot).forEach(k=>{if(!/\|-$/.test(k))delete DC.boot[k];});}catch(e){}}
-  const _out=doLogout;doLogout=async function(){
-    if(authUser){
-      const unsent=(typeof offPending!=='undefined'&&offPending)||isDirty();
-      if(isOffline()&&unsent){if(!(await uiConfirm(T('אין עכשיו אינטרנט, ויש שינויים שעוד לא נשמרו בחשבון. אם תצאו עכשיו הם יימחקו מהמכשיר הזה. לצאת בכל זאת?','You are offline and some changes are not saved to your account yet. If you sign out now they will be removed from this device. Sign out anyway?'))))return;}
-      else if(!isOffline()){clearTimeout(timer);try{await Promise.race([sync(false),new Promise(r=>setTimeout(r,3000))]);}catch(e){}}}
-    clearTimeout(timer);
-    const r=await _out.apply(this,arguments);
+  /* לפני יציאה: בלי אינטרנט ועם שינויים שלא נשמרו — שואלים; עם אינטרנט — שולחים לחשבון (עד 3 שניות) */
+  onLogout('guard',async()=>{
+    if(!authUser)return;
+    const unsent=(typeof offPending!=='undefined'&&offPending)||isDirty();
+    if(isOffline()&&unsent)return !!(await uiConfirm(T('אין עכשיו אינטרנט, ויש שינויים שעוד לא נשמרו בחשבון. אם תצאו עכשיו הם יימחקו מהמכשיר הזה. לצאת בכל זאת?','You are offline and some changes are not saved to your account yet. If you sign out now they will be removed from this device. Sign out anyway?')));
+    if(!isOffline()){clearTimeout(timer);try{await Promise.race([sync(false),new Promise(r=>setTimeout(r,3000))]);}catch(e){}}});
+  onLogout('before',()=>clearTimeout(timer));
+  onLogout('after',async()=>{
     dirty(false);sigNow='';lastPull=0;
     try{localStorage.removeItem('yam_off_pending');offPending=0;offBar();}catch(e){}
-    await clearUserCache();
-    return r;};
+    await clearUserCache();});
 })();
