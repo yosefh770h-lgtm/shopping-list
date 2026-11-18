@@ -200,7 +200,7 @@ class Blocklist:
     השרת שלנו ("self" בקובץ) וכתובות פנימיות אף פעם לא נחסמים, גם אם מישהו הוסיף אותם לרשימה."""
 
     def __init__(self, path):
-        self.path, self.mtime, self.checked, self.nets, self.own = path, None, 0.0, [], set()
+        self.path, self.mtime, self.checked, self.nets, self.own = path, None, float("-inf"), [], set()  # לא 0: בשרת שעלה הרגע time.monotonic() קטן מ-30 והקובץ לא היה נטען
 
     def _load(self):
         now = time.monotonic()
