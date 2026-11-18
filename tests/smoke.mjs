@@ -2072,6 +2072,10 @@ await test('✅ ממתין לאישור: רואים בדיוק מה ממתין (
   await page.waitForTimeout(600);
   const bo = await page.$eval('#boMain', (e) => e.textContent);
   assert(bo.includes('חלב 3%') && bo.includes('מכולת דוד') && bo.includes('בקשת הצטרפות של עסק') && /ממתין לאישור \(3\)/.test(bo), 'לא רואים את כל מה שממתין: ' + bo.slice(0, 300));
+  // בקשת הצטרפות אין לה אישור/דחייה כאן — יש "✔ קראתי" שמעלים אותה
+  assert(await page.$('#boMain [data-pseen^="bizreq:"]'), 'אין "קראתי" לבקשת הצטרפות');
+  await page.click('#boMain [data-pseen^="bizreq:"]'); await page.waitForTimeout(300);
+  assert(!(await page.$eval('#boMain', (e) => e.textContent)).includes('מכולת דוד'), '"קראתי" לא העלים את הפריט');
   await page.click('#boMain [data-pjump*="price"]'); await page.waitForTimeout(900);
   const j = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
   assert(j.cur === 'prices' && j.id === P, 'לחיצה על המחיר לא קפצה אליו: ' + JSON.stringify(j));

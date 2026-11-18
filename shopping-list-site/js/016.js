@@ -1358,11 +1358,15 @@ const READ_ONLY_KINDS=['chat','message','abuse'];
 const PCR23={bot:'kb',review:'reviews',price:'prices',flag:'prices',post:'posts',chain:'chains',branch:'branches'};
 async function pendingData(){
   const [p,cs,cr,cv]=await Promise.all([sb.rpc('staff_pending_items'),sb.from('clothing_shops').select('id,name,city,created_at').eq('status','pending').limit(200),sb.from('store_recs').select('id,kind,shop,body,section,created_at').eq('status','pending').limit(300),sb.from('cloth_votes').select('id,target,reason,by_name,created_at').eq('vote',-1).eq('handled',false).limit(300)]);
-  const items=(p.data||[]).filter(x=>isAdmin()||!['feedback','chat','message','abuse'].includes(x.kind));
+  const seen=await pendSeen();
+  const items=(p.data||[]).filter(x=>(isAdmin()||!['feedback','chat','message','abuse'].includes(x.kind))&&!seen[x.kind+':'+x.ref]);
   const cloth=[].concat((cs.data||[]).map(x=>({c:'shop',id:x.id,title:'👗 חנות ביגוד: '+x.name,detail:x.city,crk:'shops',at:x.created_at})),
     (cr.data||[]).map(x=>({c:x.kind==='category'?'cat':'rec',id:x.id,title:(x.kind==='category'?'🗂️ בקשה לקטגוריה: ':x.kind==='item'?'💡 מוצר לחתונה: ':'⭐ המלצה: ')+(x.kind==='store'?x.shop:x.body),detail:x.kind==='store'?x.body:'',crk:'clothing',at:x.created_at})),
     (cv.data||[]).map(x=>({c:'report',id:x.id,title:'❌ דיווח "לא נכון" על '+(x.target==='shop'?'חנות ביגוד':'המלצה'),detail:x.reason,who:x.by_name,at:x.created_at})));
   return {items,cloth,err:p.error};}
+/* ✔ קראתי — לסוגים שאין להם אישור/דחייה בשרת (בקשות הצטרפות, מעתיקי מחירים): נשמר בהגדרות האתר, אז נעלם בכל המכשירים */
+async function pendSeen(){if(!isAdmin())return {};try{return await cfg('pend_seen');}catch(e){return {};}}
+async function markPendSeen(keys){const cut=Date.now()-31*864e5,o={};Object.entries(await pendSeen()).forEach(([k,t])=>{if(t>cut)o[k]=t;});keys.forEach(k=>{o[k]=Date.now();});return setCfg('pend_seen',o,keys.length>1?'✔️ סומן שקראת הכל':'✔️ סומן שקראת');}
 async function updatePendBadge(){try{const d=await pendingData();const n=d.items.length+d.cloth.length;const b=$('#boPendN');if(b){b.hidden=!n;b.textContent=n;}}catch(e){}}
 /* קוד השרת וה-SQL (כ-290KB) נטענים רק כשפותחים את הבק אופיס — לא אצל כל משתמש */
 /* קוד השרת וה-SQL כבר לא נמצאים באתר הציבורי (הם חשפו את כל מבנה המסד לכל אחד). פותחים אותם בגיטהאב — מאגר פרטי, רק לבעלים */
@@ -1405,13 +1409,14 @@ VIEWS.pending=async function(){
   kinds.forEach(k=>{const dec=DECIDE_KINDS.includes(k),ro=READ_ONLY_KINDS.includes(k)||k==='error';
     h+='<div class="card" id="pg-'+esc(k)+'"><h2>'+esc(label(k))+' ('+groups[k].length+')</h2>'+groups[k].map(x=>pendRow(x,
       '<b>'+esc(x.title||'')+'</b>'+(x.detail?'<div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(String(x.detail).slice(0,400))+'</div>':'')+'<div class="muted">'+(PCR23[k]?crSlot(PCR23[k],x.ref,{f:x.who||''}):esc(x.who||''))+' · '+esc(fmt(x.created_at))+'</div>',
-      !dec?'':ro?'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ טופל</button>':'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ אישור</button><button class="btn sm bad" data-pd="'+esc(k)+'|'+esc(x.ref)+'|0">✖ דחייה</button>')).join('')+'</div>';});
+      !dec?(isAdmin()?'<button class="btn sm" data-pseen="'+esc(k+':'+x.ref)+'">✔ קראתי</button>':''):ro?'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ טופל</button>':'<button class="btn sm" data-pd="'+esc(k)+'|'+esc(x.ref)+'|1">✔ אישור</button><button class="btn sm bad" data-pd="'+esc(k)+'|'+esc(x.ref)+'|0">✖ דחייה</button>')).join('')+'</div>';});
   if(d.cloth.length)h+='<div class="card" id="pg-cloth"><h2>👗 ביגוד וחתונה ('+d.cloth.length+')</h2>'+d.cloth.map(x=>pendRow(x,
     '<b>'+esc(x.title)+'</b>'+(x.detail?'<div>'+esc(x.detail)+'</div>':'')+'<div class="muted">'+(x.crk?crSlot(x.crk,x.id):esc(x.who||''))+' · '+esc(fmt(x.at))+'</div>',
     x.c==='shop'?'<button class="btn sm" data-pc="shop|'+x.id+'|1">✔ אישור</button><button class="btn sm bad" data-pc="shop|'+x.id+'|0">✖ דחייה</button>':x.c==='rec'?'<button class="btn sm" data-pc="rec|'+x.id+'|1">✔ אישור</button><button class="btn sm bad" data-pc="rec|'+x.id+'|0">✖ דחייה</button>':'')).join('')+'</div>';
   $('#boMain').innerHTML=h;VIEWS.pending.data=d;
   $('#boMain').onclick=async e=>{const t=e.target.closest('button');if(!t)return;
     if(t.dataset.pgrp){const g=$('#pg-'+t.dataset.pgrp);if(g)g.scrollIntoView({behavior:'smooth',block:'start'});return;}
+    if(t.dataset.pseen){t.disabled=true;if(await markPendSeen([t.dataset.pseen])){t.closest('.item').remove();updatePendBadge();}else t.disabled=false;return;}
     if(t.dataset.pjump){pendOpen(JSON.parse(t.dataset.pjump),VIEWS.pending.data);return;}
     if(t.dataset.pd){const [k,ref,ok1]=t.dataset.pd.split('|');t.disabled=true;const {error}=await sb.rpc('staff_decide',{p_kind:k,p_ref:ref,p_ok:ok1==='1'});if(error){flash('⚠️ '+error.message);t.disabled=false;return;}flash(ok1==='1'?'✔️ בוצע':'✖ נדחה');t.closest('.item').remove();updatePendBadge();return;}
     if(t.dataset.pc){const [c,id,ok1]=t.dataset.pc.split('|');const tb=c==='shop'?'clothing_shops':'store_recs';t.disabled=true;
