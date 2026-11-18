@@ -243,6 +243,10 @@ function run20(){if(!app20.a||$26('#login.open'))return; /* לא מחובר — 
     else if(a==='paste')paste20(t);}catch(e){}},600);}
 /* "תקנה בבקשה:\nחלב 3\nלחם\nביצים" ← חלב ×3, לחם, ביצים. שורת פתיחה שנגמרת בנקודתיים ושורות של קישורים לא נכנסות */
 function paste20(text){
+  /* 🧾 שיתפו לאפליקציה הודעה עם קישור לקבלה דיגיטלית (SMS / מייל / וואטסאפ) — פותחים העלאת קבלה וקוראים מהקישור, בלי להעתיק */
+  const lk=String(text||'').match(/https?:\/\/(?!(?:www\.)?yamshopping\.com)[^\s<>"']+/i),rest=String(text||'').replace(/https?:\/\/\S+/gi,'').trim();
+  if(lk&&(/קבל|חשבונית|receipt|invoice/i.test(rest)||rest.split(/\r?\n/).filter(x=>x.trim()).length<=2)&&typeof openUpload==='function'){
+    setTab('list');openUpload('receipt');const u=document.querySelector('#upUrl'),go=document.querySelector('#upUrlGo');if(u&&go){u.value=lk[0];go.click();}return;}
   const lines=String(text||'').split(/\r?\n/).map(x=>x.replace(/^\s*(?:[-–•*·▪◦●○☐☑✓✔]+|\d+[.)])\s*/,'').trim()).filter(x=>x&&!/[:：]\s*$/.test(x)&&!/https?:\/\//i.test(x));
   const l=curList();let n=0;
   lines.forEach(line=>{(parseItems(line)||[]).forEach(it=>{const name=String(it.name||'').trim().slice(0,60);if(!name||hasProfanity(name))return;

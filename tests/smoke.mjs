@@ -1891,11 +1891,21 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
     for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
     res.url = calls[0] && calls[0].receiptUrl; res.read = calls[1] && calls[1].vision; res.txt = calls[1] && calls[1].text;
     res.rows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length;
+    // שיתוף הודעת SMS עם קישור לקבלה אל האפליקציה — נפתחת העלאת קבלה והקישור נקרא לבד
+    closeSheet(); calls.length = 0;
+    paste20('תודה שקנית באושר עד! לצפייה בקבלה:\nhttps://receipts.example.co.il/r/xyz');
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.shared = calls[0] && calls[0].receiptUrl; res.sharedRows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length;
+    // רשימה רגילה שיש בה גם קישור — עדיין נכנסת לרשימה
+    closeSheet(); const before = curList().items.length; paste20('חלב\nלחם\nביצים\nמתכון: https://example.com/r');
+    res.listAdded = curList().items.length - before;
     return res;
   });
   assert(r.cap === 'environment' && !r.camMulti && r.galMulti && r.link, 'כפתורים: ' + JSON.stringify(r));
   assert(r.url === 'https://receipts.example.co.il/r/abc123', 'הקישור: ' + r.url);
   assert(r.read === 'receipt' && /חלב/.test(r.txt || '') && r.rows === 1, 'קריאה מהקישור: ' + JSON.stringify(r));
+  assert(r.shared === 'https://receipts.example.co.il/r/xyz' && r.sharedRows === 1, 'שיתוף מה-SMS: ' + JSON.stringify(r));
+  assert(r.listAdded === 3, 'רשימה עם קישור: ' + r.listAdded);
   if (SHOTS) { await page.evaluate(() => { document.querySelector('#v8SheetBody').scrollTop = 0; }); await page.screenshot({ path: SHOTS + '/2-קבלה-נקראה-מהקישור.png' }); }
   if (SHOTS) { await page.evaluate(() => { closeSheet(); openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/abc123'; }); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + '/1-העלאת-קבלה-צילום-וקישור.png' }); }
   // מצב קנייה: תמונה ליד המוצר, לחיצה עליה מגדילה ולא מסמנת כנקנה
