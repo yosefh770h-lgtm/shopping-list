@@ -1537,6 +1537,28 @@ await test('🏪 השוואת רשימה בין כל הסניפים בארץ (מ
   await ctx.close();
 });
 
+await test('✅ הכי זול לכל הרשימה: משווים רק מוצרים זהים שיש בכל החנויות', async () => {
+  const line = (q, code, cost) => ({ q, qty: 1, found: true, code, name: q, price: cost, cost, regular: cost });
+  const miss = (q) => ({ q, qty: 1, found: false });
+  const st = (store, chain_name, lines) => ({ store, chain: chain_name, chain_name, name: 'בני ברק', city: 'בני ברק', total: lines.reduce((a, l) => a + (l.cost || 0), 0), regular: 0, found: lines.filter((l) => l.found).length, lines });
+  const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }, { q: 'לחם', qty: 1 }, { q: 'ביצים', qty: 1 }, { q: 'קפה', qty: 1 }], missing: [], stores: [
+    // "זול" רק כי אין לו ביצים וקפה — בהשוואה הישנה הוא נראה הכי זול
+    st('1:1', 'רשת א', [line('חלב', '1', 6), line('לחם', '2', 8), line('ביצים', '3', 12), line('קפה', '4', 30)]),
+    st('2:2', 'רשת ב', [line('חלב', '1', 5), line('לחם', '2', 7), line('ביצים', '3', 13), miss('קפה')]),
+    st('3:3', 'רשת ג', [line('חלב', '1', 7), line('לחם', '9', 4), line('ביצים', '3', 11), line('קפה', '4', 28)])] }) });
+  const { ctx, page, errors } = await newPage({ priceApi });
+  await page.evaluate(() => { applyConfig('collector', { public: true }); curList().items = []; ['חלב', 'לחם', 'ביצים', 'קפה'].forEach((n) => addItem(n, '')); state.me = Object.assign(state.me || {}, { address: { city: 'בני ברק' } }); render(); openBasket(); });
+  await page.waitForSelector('#srvCmp .fair18');
+  const t = await page.locator('#srvCmp .fair18').innerText();
+  assert(/הושוו 3 מתוך 4/.test(t), 'צריך להשוות חלב, לחם וביצים (קפה חסר ברשת ב): ' + t);
+  assert(/הכי זול לכל הרשימה: רשת ב/.test(t), 'רשת ב הכי זולה על אותם 3 מוצרים (25 מול 26): ' + t);
+  assert(!/רשת ג/.test(t), 'ברשת ג הלחם הוא מוצר אחר — לא משווים אותה על הלחם: ' + t);
+  assert(/לא נכללו[^]*קפה/.test(t), 'צריך לכתוב מה לא נכלל: ' + t);
+  if (process.env.SHOTS) await page.locator('#basketOverlay').screenshot({ path: process.env.SHOTS + '/fair-phone.png' });
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('💰 כפתור "איפה הכי זול" ברשימה — נפתח בלשונית החנויות, והמנהל קובע אם ועד מתי', async () => {
   const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }], missing: [], stores: [{ store: '1:1', chain: 'RAMI_LEVY', chain_name: 'רמי לוי', name: 'בני ברק', city: 'בני ברק', total: 6.5, regular: 6.5, found: 1, lines: [{ q: 'חלב', qty: 1, found: true, name: 'חלב', cost: 6.5, regular: 6.5 }] }] }) });
   const { ctx, page, errors } = await newPage({ priceApi });
@@ -2188,6 +2210,31 @@ await test('✅ ממתין לאישור: רואים בדיוק מה ממתין (
   await page.evaluate((P) => { history.replaceState(null, '', '#admin-prices&item=price:' + P); openBO('prices'); }, P); await page.waitForTimeout(1200);
   const x = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
   assert(x.cur === 'prices' && x.id === P, 'קישור מהתוסף לא קפץ לפריט: ' + JSON.stringify(x));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
+await test('📈 גרף מחיר למוצר: "היה זול יותר בשבוע שעבר?" (/history)', async () => {
+  const asked = [];
+  const days = Array.from({ length: 14 }, (_, i) => ({ day: '2026-11-' + String(5 + i).padStart(2, '0'), n: 40, min: i < 9 ? 7.9 : 6.9, median: 8.5, max: 9.9, min_chain: i < 9 ? 'שופרסל' : 'רמי לוי' }));
+  days[3] = { day: '2026-11-08', n: 0 }; // יום בלי נתונים — חור בקו, לא אפס
+  const priceApi = (r) => { const u = new URL(r.request().url()); const p = u.pathname.replace('/api/prices', ''); asked.push(p + '?' + u.searchParams.toString());
+    const json = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
+    if (p === '/history') return json({ code: '7290004131074', name: 'חלב תנובה 3% 1 ליטר', days });
+    if (p === '/products') return json([{ code: '7290004131074', name: 'חלב תנובה 3% 1 ליטר', manufacturer: 'תנובה', stores: 40, chains: 5, min: 6.9, median: 8.5, max: 9.9 }]);
+    return json([]); };
+  const { ctx, page, errors } = await newPage({ priceApi });
+  await page.evaluate(() => { authUser = { id: 'me', email: 'x@y.z' }; applyConfig('collector', { public: true }); curList().items = []; addItem('חלב', '');
+    const it = curList().items[0]; Object.assign(it, { bc: '7290004131074', bn: 'חלב תנובה 3% 1 ליטר', bq: it.n }); save(); render(); pkOpen53(it.id); });
+  await page.waitForSelector('#v8SheetBody [data-pkhist]'); await page.click('#v8SheetBody [data-pkhist]');
+  await page.waitForSelector('#v8SheetBody svg.ph70');
+  assert(asked.some((q) => q.startsWith('/history') && /code=7290004131074/.test(q)), 'לא ביקשנו היסטוריה: ' + asked.join(' , '));
+  const t = await page.locator('#v8SheetBody').innerText();
+  assert(/הוזל/.test(t) && /לפני שבוע/.test(t), 'אין סיכום "הוזל מלפני שבוע": ' + t);
+  assert(await page.locator('#v8SheetBody svg.ph70 path.ph70lo').getAttribute('d').then((d) => (d.match(/M/g) || []).length === 2), 'יום בלי נתונים צריך להיות חור בקו');
+  const box = await page.locator('#v8SheetBody svg.ph70').boundingBox();
+  await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2);
+  assert(await page.locator('#v8SheetBody .ph70tip').isVisible(), 'אין תווית בריחוף על הגרף');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });

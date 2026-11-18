@@ -11,6 +11,7 @@ const num=x=>{const v=parseFloat(String(x==null?'':x).replace(/[^\d.\-]/g,''));r
 const r2=x=>Math.round(x*100)/100;
 const css=document.createElement('style');css.id='rcCss';css.textContent=
   '.rclink{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}.rclrow{display:flex;gap:6px;align-items:stretch}.rclrow input{flex:1 1 auto;min-width:0}.rclrow .btn{flex:0 0 auto;white-space:nowrap}'+
+  '.rclhint{display:block;margin-top:6px;font-size:12px;color:var(--muted);line-height:1.5}'+
   '.rclok{margin:6px 0;font-size:13px;color:var(--hdr2);font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.rclok small{color:var(--muted);font-weight:400}'+
   '.rctips{margin:6px 0;font-size:13px}.rctips summary{cursor:pointer;color:var(--hdr2);font-weight:700}.rctips ul{margin:6px 0;padding-inline-start:20px;color:var(--text)}'+
   '.rctbl{width:100%;border-collapse:collapse;font-size:13px}.rctbl th{font-size:12px;color:var(--muted);font-weight:600;text-align:start;padding:4px 3px;border-bottom:1px solid var(--line)}'+
@@ -164,6 +165,7 @@ openUpload=function(){
   const pdfL=$r('#upPdf').closest('label');
   pdfL.insertAdjacentHTML('afterend','<div class="rclink"><label class="il" for="upUrl">🔗 '+T('קבלה דיגיטלית? מדביקים כאן את הקישור שקיבלתם','Digital receipt? Paste its link here')+'</label>'+
     '<div class="rclrow"><input id="upUrl" type="url" inputmode="url" dir="ltr" autocomplete="off" placeholder="https://…"><button type="button" class="btn" id="upUrlGo">'+T('לקרוא מהקישור','Read the link')+'</button></div>'+
+    '<small class="rclhint">💡 '+(/YamShoppingApp|; wv\)/.test(navigator.userAgent)?T('עוד יותר מהר: בהודעת ה-SMS של הקבלה לוחצים לחיצה ארוכה ← שיתוף ← "רשימת קניות", והקבלה נקראת לבד.','Even faster: long-press the receipt SMS → Share → "Shopping list".'):T('בטלפון עם האפליקציה: בהודעת ה-SMS של הקבלה לוחצים לחיצה ארוכה ← שיתוף ← "רשימת קניות", והקבלה נקראת לבד.','With the app: long-press the receipt SMS → Share → "Shopping list".'))+'</small>'+
     '<div id="upUrlSt" role="status"></div><textarea id="upText" hidden></textarea></div>');
   b.onchange=async e=>{
     if(e.target.id==='rcEnh'){rcEnhance=e.target.checked;try{localStorage.setItem('yam_rc_enh',rcEnhance?'1':'0');}catch(x){}return;}

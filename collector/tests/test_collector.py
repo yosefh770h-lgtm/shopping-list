@@ -1176,3 +1176,24 @@ def test_shield_reads_api_events_and_blocks(tmp_path, monkeypatch):
     assert set(ev) == {("probe", "45.83.64.5"), ("direct", "45.83.64.6"), ("direct", "2.2.2.2")}
     assert ev[("direct", "2.2.2.2")]["detail"]["shared"] is True and ev[("direct", "2.2.2.2")]["detail"]["min"] == 0
     assert not (tmp_path / "shield-api.jsonl").exists()  # נקרא פעם אחת ונמחק
+
+
+def test_api_history(built, monkeypatch):
+    """גרף מחיר: המחיר של כל יום משוחזר מהיסטוריית השינויים (לפני שבוע 7.1, היום 6.5)."""
+    con, api = built
+    from fastapi.testclient import TestClient
+    store = con.execute("select id from stores where key='7290027600007:202'").fetchone()[0]
+    week = db.now() - 7 * 86400
+    con.execute("update prices set updated_at=? where store=?", (week - 86400, store))
+    con.commit()
+    monkeypatch.setattr(db, "now", lambda: week + 3 * 86400)
+    db.save_prices(con, db.ItemCache(con, "SHUFERSAL"), store, [{"code": "7290004131074", "name": "חלב", "price": 6.5}], full=False)
+    con.commit()
+    c = TestClient(api.app)
+    r = c.get("/history", params={"code": "7290004131074"})
+    assert r.status_code == 200, r.text
+    days = r.json()["days"]
+    assert len(days) == 14
+    assert days[-8]["min"] == 7.1 and days[-1]["min"] == 6.5  # לפני שבוע היה יקר יותר
+    assert c.get("/history", params={"code": "7290004131074", "exclude": "SHUFERSAL,RAMI_LEVY"}).status_code == 404
+    assert c.get("/history", params={"code": "abc"}).status_code == 422
