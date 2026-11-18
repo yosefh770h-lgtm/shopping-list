@@ -116,9 +116,12 @@ if(lb&&_login)lb.onclick=async function(ev){
 
 /* ================= בק אופיס: 🙋 אישור כניסה ================= */
 if(!window.boView)return;
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 (function(){const nav=$('#boNav');if(!nav||nav.querySelector('[data-s="loginreq"]'))return;
   const b=document.createElement('button');b.dataset.s='loginreq';b.innerHTML='🙋 אישור כניסה <span class="bobadge" id="boLrN" hidden></span>';
   const after=nav.querySelector('[data-s="security"]')||nav.querySelector('[data-s="users"]');if(after)after.after(b);else nav.appendChild(b);})();
+});
 const fmtL=d=>d?new Date(d).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'}):'';
 const agoL=d=>{const m=Math.floor((Date.now()-new Date(d).getTime())/60000);return m<1?'עכשיו':m<60?'לפני '+m+' דק׳':'לפני '+Math.floor(m/60)+' שע׳';};
 const ST={pending:'⏳ ממתין',approved:'✅ אושר — ממתין שייכנס',pre:'✉️ אישור מראש',used:'🔑 נכנס',rejected:'⛔ נדחה',expired:'⌛ פג תוקף',cancelled:'↩️ בוטל ע״י המשתמש'};

@@ -29,8 +29,11 @@ try{if(typeof add26==='function')add26('miMail','📧','מייל שבועי','We
 try{if(typeof yamiStep==='function')yamiStep(async raw=>{if(sb&&authUser&&/^(מייל שבועי|להסיר מייל|הסרה מהמייל|בלי מיילים)\??$/.test(String(raw||'').trim())){openMailPref();return true;}return false;});}catch(e){}
 
 /* ---------- בק אופיס ← 📧 מייל שבועי ---------- */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=$m('#boNav');if(nav&&!nav.querySelector('[data-s="mail"]')){const b=document.createElement('button');b.dataset.s='mail';b.textContent='📧 מייל שבועי';
   const ref=nav.querySelector('[data-s="updates"]');if(ref)ref.after(b);else nav.appendChild(b);}}catch(e){}
+});
 
 let edM=null;      // המייל שבעריכה (או null = רשימת המיילים)
 let subM='list';   // list | edit | rcpt | unsubs

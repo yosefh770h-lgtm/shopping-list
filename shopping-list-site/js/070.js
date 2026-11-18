@@ -194,6 +194,8 @@ srvBasketMount=function(box,itemsArg){const r=_pkMount.apply(this,arguments);try
     '🎯 '+T('כל המוצרים נבחרו מדויק — משווים אותו מוצר בכל החנויות.','All items are exact — the same product is compared everywhere.');
   if(sub)sub.insertAdjacentHTML('afterend','<p class="muted-note pk53tip">'+tip+'</p>');}catch(e){}return r;};
 /* 🛠️ בק אופיס (מנהלים): 📷 תמונות מוצרים שממתינות לאישור */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 (function(){const nav=document.querySelector('#boNav');if(!nav||nav.querySelector('[data-s="pphotos"]'))return;
   const b=document.createElement('button');b.dataset.s='pphotos';b.textContent='📷 תמונות מוצרים';
   const after=nav.querySelector('[data-s="products"]');if(after)after.after(b);else nav.appendChild(b);
@@ -212,6 +214,7 @@ srvBasketMount=function(box,itemsArg){const r=_pkMount.apply(this,arguments);try
       const {error:er}=await sb.from('product_photos').update({status:yes?'approved':'rejected'}).eq('id',a.dataset.ppok||a.dataset.ppno);
       if(er){flash('⚠️ '+er.message);return;}flash(yes?'✅ התמונה אושרה ומוצגת לכולם · המצלם קיבל '+repPts('pts_photo')+' מוניטין 🏅':'❌ התמונה הוסרה');window.boShow('pphotos');};});
 })();
+});
 /* ℹ️ אודות ← 📜 קרדיטים ומקורות: מאיפה מגיעים המידע והתמונות, עם הרישיונות */
 const _pkAbout=openAbout;
 openAbout=function(){const r=_pkAbout.apply(this,arguments);try{const b=$pk('#aboutBody');if(!b||b.querySelector('.cred53'))return r;

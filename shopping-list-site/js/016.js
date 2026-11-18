@@ -1714,4 +1714,8 @@ window.boView=(k,fn)=>{if(typeof fn==='function')VIEWS[k]=fn;};
 window.boShow=k=>show(k);
 /* להוסיף תוכן בסוף מסך קיים בבק אופיס: boAfter('guests', async main=>{...}) */
 window.boAfter=(k,fn)=>{const o=VIEWS[k];if(typeof o!=='function'||typeof fn!=='function')return;VIEWS[k]=async function(){const r=await o.apply(this,arguments);try{await fn($('#boMain'));}catch(e){console.warn('boAfter',k,e);}return r;};};
+/* קוד שמוסיף לתפריט של הבק אופיס: רץ מיד (הבק אופיס כבר נטען) */
+window.boReady=fn=>{try{fn();}catch(e){console.warn('boReady',e);}};
+/* הבק אופיס נטען רק כשנכנסים אליו (js/lazy.js) — כל מה שקבצים אחרים רשמו עד עכשיו, לפי הסדר */
+(window.__boQ||[]).splice(0).forEach(([t,k,fn])=>{if(t==='view')window.boView(k,fn);else if(t==='after')window.boAfter(k,fn);else window.boReady(fn);});
 })();

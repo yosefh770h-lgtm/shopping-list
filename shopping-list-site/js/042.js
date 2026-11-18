@@ -293,6 +293,8 @@ try{const _rh44=routeHash;routeHash=function(){const h=location.hash||'';const m
 try{const _rm44=renderMe;renderMe=function(){const r=_rm44.apply(this,arguments);try{const bd=document.querySelector('#me26b');if(bd&&sb&&authUser&&!bd.dataset.b44){bd.dataset.b44='1';sb.rpc('my_badges').then(({data,error})=>{if(!error&&Array.isArray(data))bd.innerHTML=badges44(data);});}}catch(e){}return r;};}catch(e){}
 
 /* ---------- בק אופיס: 🤝 קהילה (אותו לוח, עם כל העריכות) + ❌ מחירים שגויים בראש לשונית המחירים ---------- */
+/* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
+window.boReady(()=>{
 try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data-s="community"]')){const b=document.createElement('button');b.dataset.s='community';b.textContent='🤝 קהילה';const after=nav.querySelector('[data-s="reviews"]');if(after)after.after(b);else nav.appendChild(b);}
   window.boView&&window.boView('community',async function(){const m=document.querySelector('#boMain');m.onclick=null;H44.bo=true;
     m.innerHTML='<div class="card"><h2>🤝 קהילה</h2><p class="muted">לוח ההצעות, הטיפים לחיסכון, המבצעים שמשתמשים מצאו, השגרירים והתגים, ודיווחי "מחיר שגוי" — הכל כאן, וגם באתר עצמו (תפריט ⚙️ ← 🤝 קהילה). משנים סטטוס, עורכים, מאשרים ומוחקים ישר מהלוח.</p></div><div class="card" id="bo44"></div>';
@@ -301,4 +303,5 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
     main.insertAdjacentHTML('afterbegin','<div class="card hub44" id="bo44flags" style="border-color:#b3261e"><h2>❌ מחירים שמשתמשים סימנו "לא נכון" ('+data.length+')</h2><p class="muted">מה שהמדווחים כתבו שהוא המחיר הנכון. ✔ המחיר נכון — מנקה את הדיווחים · 🔄 לעדכן — מתקן ומודיע למדווחים · 🗑️ — מוחק את הדיווח.</p>'+flagsHtml44(data)+'</div>');
     const c=main.querySelector('#bo44flags');c.addEventListener('click',async e=>{const t=e.target.closest('[data-pfx44]');if(!t)return;e.stopPropagation();await flagAct44(t,()=>{const h=c.querySelector('h2');const n=c.querySelectorAll('[data-pfid44]').length;if(h)h.textContent='❌ מחירים שמשתמשים סימנו "לא נכון" ('+n+')';if(!n)c.remove();});},true);});
 }catch(e){console.warn('bo community',e);}
+});
 })();
