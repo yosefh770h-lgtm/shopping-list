@@ -25,7 +25,8 @@ GOV = ["https://www.gov.il/he/pages/cpfta_prices_regulations",
 # מה שכבר מכוסה אצלנו (לפי שם האתר)
 KNOWN_HOSTS = {"url.publishedprices.co.il", "url.retail.publishedprices.co.il", "laibcatalog.co.il",
                "prices.shufersal.co.il", "prices.carrefour.co.il", "shop.hazi-hinam.co.il",
-               "prices.super-pharm.co.il", "wm-gateway.wolt.com", "www.laibcatalog.co.il"}
+               "prices.super-pharm.co.il", "wm-gateway.wolt.com", "www.laibcatalog.co.il", "publishedprices.co.il",
+               "chp-kt.pages.dev", "www.citymarket-shops.co.il", "app.netiv-hesed.com"}
 KNOWN_BINA = {s["prefix"].lower() for s in sources.SOURCES.values() if s["engine"] == "bina"}
 KNOWN_USERS = {s["user"].lower() for s in sources.SOURCES.values() if s["engine"] == "cerberus"}
 

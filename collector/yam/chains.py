@@ -19,7 +19,7 @@ HEBREW = {
     "MAHSANI_ASHUK_NEW_SOURCE": "מחסני השוק",
     "NETIV_HASED": "נתיב החסד",
     "MESHMAT_YOSEF_1": "משנת יוסף",
-    "MESHMAT_YOSEF_2": "משנת יוסף",
+    "MESHMAT_YOSEF_2": "משנת יוסף (קיי.טי)",  # מקור נפרד (chp-kt.pages.dev) — שם נפרד, כדי שלא יתערבב ב-Supabase
     "OSHER_AD": "אושר עד",
     "POLIZER": "פוליצר",
     "RAMI_LEVY": "רמי לוי",
