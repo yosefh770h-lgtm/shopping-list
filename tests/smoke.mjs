@@ -46,6 +46,7 @@ async function newPage(opts = {}) {
   }
   await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
   await ctx.addInitScript(STUB);
+  if (opts.init) await ctx.addInitScript(opts.init);
   if (opts.adblock) await ctx.addInitScript(() => { new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.id && /^yb(Side|Pop|Top)$/.test(n.id)) n.remove(); }))).observe(document, { childList: true, subtree: true }); });
   const page = await ctx.newPage();
   const errors = [];
@@ -802,6 +803,46 @@ await test('🐞 יומן תקלות: כל תקלה מוסברת בעברית �
   await ctx.close();
 });
 
+await test('🐞 יומן תקלות לפי גרסה ודגם: האפליקציה שולחת גרסה ודגם, הבק אופיס מקבץ ומתריע בלוח הראשי', async () => {
+  const APP = 'Mozilla/5.0 (Linux; Android 14; SM-S901B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 YamShoppingApp/2.1';
+  const { ctx, page, errors } = await newPage({ userAgent: APP, viewport: { width: 1366, height: 900 } });
+  const sent = await page.evaluate(async () => { const calls = []; sb = { rpc: (n, a) => { calls.push(a); return Promise.resolve({}); } };
+    setTimeout(function appThing61() { null.y; }, 0); await new Promise((r) => setTimeout(r, 200)); return calls[0] || {}; });
+  assert(sent.p_app === '2.1' && sent.p_device === 'SM-S901B · Android 14' && /^[0-9a-f-]{36}$/.test(sent.p_dev || ''), 'לא נשלחו גרסה ודגם: ' + JSON.stringify(sent));
+  errors.length = 0; // התקלה שגרמנו בכוונה
+  const now = Date.now(), iso = (h) => new Date(now - h * 36e5).toISOString();
+  const D = { client_errors: [
+    { id: 1, msg: "Cannot read properties of null (reading 'qty')", src: 'renderList · /js/006.js:10:2', ua: APP, ver: '18', app_ver: '2.1', device: 'SM-S901B · Android 14', dev: 'd1', created_at: iso(1) },
+    { id: 2, msg: "Cannot read properties of null (reading 'qty')", src: 'renderList · /js/006.js:10:2', ua: APP, ver: '18', app_ver: '2.1', device: 'SM-A525F · Android 13', dev: 'd2', created_at: iso(2) },
+    { id: 3, msg: "Cannot read properties of null (reading 'qty')", src: 'renderList · /js/006.js:10:2', ua: APP, ver: '18', app_ver: '2.1', device: 'SM-S901B · Android 14', user_id: 'u3', created_at: iso(3) },
+    { id: 4, msg: '💥 האפליקציה נסגרה בגלל תקלה: NullPointerException', src: 'native · Updater.openInstaller:120 · thread main', ua: APP, ver: '18', app_ver: '2.0', device: 'SM-A525F · Android 13', dev: 'd2', created_at: iso(5) },
+    { id: 5, msg: 'ZXing is not defined', src: 'startScan · /:5000:3', ua: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36', ver: '18', app_ver: '', device: 'Android 10', dev: 'd9', created_at: iso(6) }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('errors'); }, D);
+  await page.waitForTimeout(400);
+  const bo = await page.evaluate(() => ({ n: document.querySelectorAll('#boMain .errx').length, t: document.querySelector('#boMain').innerText }));
+  assert(bo.n === 3 && /אפליקציה 2\.1/.test(bo.t) && /אתר \(דפדפן\)/.test(bo.t) && /Samsung Galaxy S22 \(SM-S901B\)/.test(bo.t) && /3 מכשירים/.test(bo.t), 'סיכום לפי גרסה ודגם: ' + bo.t.slice(0, 600));
+  assert(/הקוד של האפליקציה לאנדרואיד/.test(bo.t) && /NullPointerException/.test(bo.t), 'קריסה של האפליקציה לא מוסברת: ' + bo.t.slice(0, 900));
+  await page.click('#boMain [data-ef="site"]'); await page.waitForTimeout(300);
+  const site = await page.evaluate(() => document.querySelectorAll('#boMain .errx').length);
+  assert(site === 1, 'סינון "רק אתר": ' + site);
+  // בלוח הראשי: אותה תקלה ב-3 מכשירים השבוע — שורה בולטת
+  await page.evaluate(() => openBO('dash')); await page.waitForTimeout(600);
+  const dash = await page.evaluate(() => { const c = document.querySelector('#err61d0'); return c ? c.innerText : ''; });
+  assert(/3 מכשירים/.test(dash) && /2\.1/.test(dash) && /Galaxy S22/.test(dash), 'אין שורה בלוח הראשי: ' + dash);
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
+await test('💥 קריסה של האפליקציה (YamApp.lastCrash) נשלחת ליומן התקלות בפתיחה הבאה', async () => {
+  const APP = 'Mozilla/5.0 (Linux; Android 14; SM-S901B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 YamShoppingApp/2.2';
+  const { ctx, page } = await newPage({ userAgent: APP, init: () => { window.__crashCalls = []; window.YamApp = { lastCrash: () => JSON.stringify({ msg: '💥 האפליקציה נסגרה בגלל תקלה: IllegalStateException', where: 'Updater.run:42 · thread main', at: 1 }) }; } });
+  await page.evaluate(() => { sb = { rpc: (n, a) => { if (n === 'log_client_error') window.__crashCalls.push(a); return Promise.resolve({}); } }; });
+  await page.waitForTimeout(5000);
+  const c = await page.evaluate(() => window.__crashCalls.find((a) => /^native · /.test(a.p_src)) || null);
+  assert(c && /IllegalStateException/.test(c.p_msg) && c.p_app === '2.2' && /SM-S901B/.test(c.p_device), 'הקריסה לא נשלחה: ' + JSON.stringify(c));
+  await ctx.close();
+});
+
 await test('הצהרת נגישות קיימת ומקושרת', async () => {
   const { ctx, page } = await newPage();
   const r = await page.evaluate(async () => ({ link: !!document.querySelector('a[href="accessibility.html"]'), page: (await fetch('accessibility.html')).ok }));
@@ -1496,6 +1537,28 @@ await test('🏪 השוואת רשימה בין כל הסניפים בארץ (מ
   await ctx.close();
 });
 
+await test('✅ הכי זול לכל הרשימה: משווים רק מוצרים זהים שיש בכל החנויות', async () => {
+  const line = (q, code, cost) => ({ q, qty: 1, found: true, code, name: q, price: cost, cost, regular: cost });
+  const miss = (q) => ({ q, qty: 1, found: false });
+  const st = (store, chain_name, lines) => ({ store, chain: chain_name, chain_name, name: 'בני ברק', city: 'בני ברק', total: lines.reduce((a, l) => a + (l.cost || 0), 0), regular: 0, found: lines.filter((l) => l.found).length, lines });
+  const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }, { q: 'לחם', qty: 1 }, { q: 'ביצים', qty: 1 }, { q: 'קפה', qty: 1 }], missing: [], stores: [
+    // "זול" רק כי אין לו ביצים וקפה — בהשוואה הישנה הוא נראה הכי זול
+    st('1:1', 'רשת א', [line('חלב', '1', 6), line('לחם', '2', 8), line('ביצים', '3', 12), line('קפה', '4', 30)]),
+    st('2:2', 'רשת ב', [line('חלב', '1', 5), line('לחם', '2', 7), line('ביצים', '3', 13), miss('קפה')]),
+    st('3:3', 'רשת ג', [line('חלב', '1', 7), line('לחם', '9', 4), line('ביצים', '3', 11), line('קפה', '4', 28)])] }) });
+  const { ctx, page, errors } = await newPage({ priceApi });
+  await page.evaluate(() => { applyConfig('collector', { public: true }); curList().items = []; ['חלב', 'לחם', 'ביצים', 'קפה'].forEach((n) => addItem(n, '')); state.me = Object.assign(state.me || {}, { address: { city: 'בני ברק' } }); render(); openBasket(); });
+  await page.waitForSelector('#srvCmp .fair18');
+  const t = await page.locator('#srvCmp .fair18').innerText();
+  assert(/הושוו 3 מתוך 4/.test(t), 'צריך להשוות חלב, לחם וביצים (קפה חסר ברשת ב): ' + t);
+  assert(/הכי זול לכל הרשימה: רשת ב/.test(t), 'רשת ב הכי זולה על אותם 3 מוצרים (25 מול 26): ' + t);
+  assert(!/רשת ג/.test(t), 'ברשת ג הלחם הוא מוצר אחר — לא משווים אותה על הלחם: ' + t);
+  assert(/לא נכללו[^]*קפה/.test(t), 'צריך לכתוב מה לא נכלל: ' + t);
+  if (process.env.SHOTS) await page.locator('#basketOverlay').screenshot({ path: process.env.SHOTS + '/fair-phone.png' });
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('💰 כפתור "איפה הכי זול" ברשימה — נפתח בלשונית החנויות, והמנהל קובע אם ועד מתי', async () => {
   const priceApi = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [{ q: 'חלב', qty: 1 }], missing: [], stores: [{ store: '1:1', chain: 'RAMI_LEVY', chain_name: 'רמי לוי', name: 'בני ברק', city: 'בני ברק', total: 6.5, regular: 6.5, found: 1, lines: [{ q: 'חלב', qty: 1, found: true, name: 'חלב', cost: 6.5, regular: 6.5 }] }] }) });
   const { ctx, page, errors } = await newPage({ priceApi });
@@ -2147,6 +2210,31 @@ await test('✅ ממתין לאישור: רואים בדיוק מה ממתין (
   await page.evaluate((P) => { history.replaceState(null, '', '#admin-prices&item=price:' + P); openBO('prices'); }, P); await page.waitForTimeout(1200);
   const x = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
   assert(x.cur === 'prices' && x.id === P, 'קישור מהתוסף לא קפץ לפריט: ' + JSON.stringify(x));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
+await test('📈 גרף מחיר למוצר: "היה זול יותר בשבוע שעבר?" (/history)', async () => {
+  const asked = [];
+  const days = Array.from({ length: 14 }, (_, i) => ({ day: '2026-11-' + String(5 + i).padStart(2, '0'), n: 40, min: i < 9 ? 7.9 : 6.9, median: 8.5, max: 9.9, min_chain: i < 9 ? 'שופרסל' : 'רמי לוי' }));
+  days[3] = { day: '2026-11-08', n: 0 }; // יום בלי נתונים — חור בקו, לא אפס
+  const priceApi = (r) => { const u = new URL(r.request().url()); const p = u.pathname.replace('/api/prices', ''); asked.push(p + '?' + u.searchParams.toString());
+    const json = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
+    if (p === '/history') return json({ code: '7290004131074', name: 'חלב תנובה 3% 1 ליטר', days });
+    if (p === '/products') return json([{ code: '7290004131074', name: 'חלב תנובה 3% 1 ליטר', manufacturer: 'תנובה', stores: 40, chains: 5, min: 6.9, median: 8.5, max: 9.9 }]);
+    return json([]); };
+  const { ctx, page, errors } = await newPage({ priceApi });
+  await page.evaluate(() => { authUser = { id: 'me', email: 'x@y.z' }; applyConfig('collector', { public: true }); curList().items = []; addItem('חלב', '');
+    const it = curList().items[0]; Object.assign(it, { bc: '7290004131074', bn: 'חלב תנובה 3% 1 ליטר', bq: it.n }); save(); render(); pkOpen53(it.id); });
+  await page.waitForSelector('#v8SheetBody [data-pkhist]'); await page.click('#v8SheetBody [data-pkhist]');
+  await page.waitForSelector('#v8SheetBody svg.ph70');
+  assert(asked.some((q) => q.startsWith('/history') && /code=7290004131074/.test(q)), 'לא ביקשנו היסטוריה: ' + asked.join(' , '));
+  const t = await page.locator('#v8SheetBody').innerText();
+  assert(/הוזל/.test(t) && /לפני שבוע/.test(t), 'אין סיכום "הוזל מלפני שבוע": ' + t);
+  assert(await page.locator('#v8SheetBody svg.ph70 path.ph70lo').getAttribute('d').then((d) => (d.match(/M/g) || []).length === 2), 'יום בלי נתונים צריך להיות חור בקו');
+  const box = await page.locator('#v8SheetBody svg.ph70').boundingBox();
+  await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2);
+  assert(await page.locator('#v8SheetBody .ph70tip').isVisible(), 'אין תווית בריחוף על הגרף');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });

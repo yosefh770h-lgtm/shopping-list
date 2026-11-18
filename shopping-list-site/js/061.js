@@ -161,6 +161,18 @@
   const ERR61=e=>WHY61(e)[0];
   /* דגם הטלפון בשם מוכר (סמסונג גלקסי S), למשל SM-S901B ← Galaxy S22 */
   const PH61=d=>{const m=String(d||'').match(/SM-S9(0[168]|1[168]|2[168]|3[168])/);if(!m)return '';const g={0:'22',1:'23',2:'24',3:'25'}[m[1][0]],k={1:'',6:'+',8:' Ultra'}[m[1][1]];return 'Samsung Galaxy S'+g+k;};
+  window.phName61=PH61;
+  /* 🐞 בלוח הראשי: תקלה שקרתה השבוע ב-3 מכשירים שונים או יותר (באתר או באפליקציה) — שורה בולטת עם הגרסה והדגם, לפני שמישהו מתלונן.
+     רק למנהל (יומן התקלות פתוח רק לו) */
+  window.boAfter&&window.boAfter('dash',async main=>{if(!main||main.querySelector('#err61d0'))return;
+    const {data,error}=await sb.from('client_errors').select('msg,src,user_id,dev,ua,app_ver,device,ver').gt('created_at',new Date(Date.now()-7*864e5).toISOString()).neq('ver','collector').limit(1000);
+    if(error||!Array.isArray(data)||!data.length)return;
+    const g={};data.forEach(r=>{const k=r.msg+'|'+r.src,x=g[k]=g[k]||{r,d:new Set(),v:new Set(),m:new Set()};x.d.add(r.user_id||r.dev||r.ua);if(r.app_ver)x.v.add(r.app_ver);const md=String(r.device||'').split(' · ')[0];if(md&&!/^(Android|iOS) /.test(md))x.m.add(PH61(md)||md);});
+    const top=Object.values(g).sort((a,c)=>c.d.size-a.d.size)[0];if(!top||top.d.size<3)return;
+    const what=typeof errExplain==='function'?errExplain(top.r).what:top.r.msg;
+    main.insertAdjacentHTML('afterbegin','<div class="card" id="err61d0" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-color:#d68a45"><b>🐞</b><span style="flex:1">'+
+      esc('השבוע אותה תקלה קרתה ב-'+top.d.size+' מכשירים: '+String(what).split(/\. /)[0].slice(0,120)+(top.v.size?' · אפליקציה '+[...top.v].join(', '):' · באתר')+(top.m.size?' · '+[...top.m].slice(0,3).join(', '):''))+'</span><button class="btn sec" id="err61go">ליומן התקלות</button></div>');
+    main.querySelector('#err61go').onclick=()=>{const b=document.querySelector('#boNav [data-s="errors"]');if(b)b.click();};});
   /* בלוח הראשי של הבק אופיס: אם השבוע נכשלו עדכונים — שורה בולטת עם קפיצה לפרטים */
   window.boAfter&&window.boAfter('dash',async main=>{if(!main||main.querySelector('#upf61d0'))return;
     const {data,error}=await sb.rpc('staff_app_update_errors',{p_days:7});if(error||!Array.isArray(data)||!data.length)return;

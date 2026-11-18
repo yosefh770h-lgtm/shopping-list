@@ -137,12 +137,58 @@ async function pkOpen(id){const it=pkItem(id);if(!it)return;
   if(!ps.length){b.innerHTML='<p class="muted-note">🤷 '+(pkDown?T('הבחירה עוד לא זמינה. נסו שוב בעוד שעה.','Not available yet. Try again later.'):T('לא מצאתי מוצרים מתאימים ל"'+esc(it.n)+'".','No matching products found.'))+'</p>';return;}
   b.innerHTML='<p class="muted-note">'+T('"'+esc(it.n)+'" — איזה מוצר בדיוק? ההשוואה בין החנויות תהיה על המוצר שבוחרים.','Which product exactly? Stores are compared on it.')+'</p>'+
     '<div class="pkgrid">'+pkTiles(ps,it.n,ch&&ch.bc)+'</div>'+pkCredit()+
-    (ch?'<button type="button" class="btn sec" data-pksnap="1" style="width:100%;margin-top:10px">📷 '+T('יש לך את המוצר ביד? צלמו אותו — +'+repPts('pts_photo')+' נקודות מוניטין 🏅','Have it in hand? Take a photo — +'+repPts('pts_photo')+' reputation points 🏅')+'</button>'+
+    (ch?'<button type="button" class="btn" data-pkhist="1" style="width:100%;margin-top:10px">📈 '+T('גרף מחיר: היה זול יותר בשבוע שעבר?','Price chart: was it cheaper last week?')+'</button>'+
+      '<button type="button" class="btn sec" data-pksnap="1" style="width:100%;margin-top:10px">📷 '+T('יש לך את המוצר ביד? צלמו אותו — +'+repPts('pts_photo')+' נקודות מוניטין 🏅','Have it in hand? Take a photo — +'+repPts('pts_photo')+' reputation points 🏅')+'</button>'+
       '<button type="button" class="btn sec" data-pkclear="1" style="width:100%;margin-top:8px">↩️ '+T('ביטול הבחירה (כל מוצר מתאים)','Clear (any product)')+'</button>':'');
   pkFillImgs(b);
   b.onclick=async e=>{if(e.target.closest('[data-pkclear]')){pkClear(it);closeSheet();flash('↩️ '+T('הבחירה בוטלה','Cleared'));return;}
+    if(e.target.closest('[data-pkhist]')){const c=pkChosen(it);if(c)phOpen(c.bc,c.bn);return;}
     if(e.target.closest('[data-pksnap]')){const c=pkChosen(it);if(c&&await pkSnap(c.bc,c.bn)&&PK_OWN[c.bc]){PK_OWN[c.bc].then(src=>{if(src){delete c.bimg;save();render();}});pkFillImgs(b);}return;}
     const t=e.target.closest('[data-pkcode]');if(!t)return;const p=ps.find(x=>x.code===t.dataset.pkcode);if(!p)return;pkApply(it,p);closeSheet();flash('🎯 '+T('נבחר: ','Picked: ')+p.name);};}
+/* 📈 גרף מחיר למוצר ("היה זול יותר בשבוע שעבר?"): מהשרת (/history) — לכל יום ב-14 הימים האחרונים, המחיר הכי זול והחציון בכל הסניפים בארץ */
+const PH_CACHE={};
+function phFetch(code){if(PH_CACHE[code])return PH_CACHE[code];
+  return PH_CACHE[code]=priceApi('/history',{code,exclude:srvHidden().join(',')}).catch(e=>{delete PH_CACHE[code];throw e;});}
+const phDay=d=>{const [y,m,dd]=d.split('-');return +dd+'/'+(+m);};
+function phSummary(days){const cur=myCurrency();const ok=days.filter(d=>d.n);if(ok.length<2)return '';
+  const now=ok[ok.length-1],wk=days.length>=8&&days[days.length-8].n?days[days.length-8]:ok[0];
+  const back=days.length-1-days.indexOf(wk),diff=Math.round((now.min-wk.min)*100)/100,ago=back===7?T('לפני שבוע','a week ago'):T('לפני '+back+' ימים',back+' days ago');
+  const verdict=Math.abs(diff)<0.01?'🟰 '+T('אותו מחיר כמו '+ago,'Same price as '+ago):diff<0?'📉 '+T('הוזל ב-'+fmtPrice(-diff,cur)+' מ'+ago,'Down '+fmtPrice(-diff,cur)+' from '+ago):'📈 '+T('התייקר ב-'+fmtPrice(diff,cur)+' מ'+ago,'Up '+fmtPrice(diff,cur)+' from '+ago);
+  const lo=ok.reduce((a,d)=>d.min<a.min?d:a,ok[0]);
+  return '<div class="ph70sum"><div><small>'+esc(ago)+'</small><b>'+fmtPrice(wk.min,cur)+'</b></div><div><small>'+T('היום','Today')+'</small><b>'+fmtPrice(now.min,cur)+'</b></div></div>'+
+    '<p class="ph70v">'+verdict+'</p>'+(lo.min<now.min-0.009?'<p class="muted-note">💡 '+T('הכי זול בתקופה: '+fmtPrice(lo.min,cur)+' ב-'+phDay(lo.day)+(lo.min_chain?' ('+esc(lo.min_chain)+')':''),'Lowest in this period: '+fmtPrice(lo.min,cur)+' on '+phDay(lo.day))+'</p>':'');}
+function phChart(days){const ok=days.filter(d=>d.n);if(!ok.length)return '';const cur=myCurrency();
+  const W=340,H=170,L=40,R=12,Tp=12,B=24,n=days.length;
+  let lo=Math.min(...ok.map(d=>d.min)),hi=Math.max(...ok.map(d=>d.median));if(hi-lo<0.5){hi+=0.25;lo-=0.25;}const pad=(hi-lo)*0.12;lo=Math.max(0,lo-pad);hi+=pad;
+  const x=i=>L+(n<2?0:i*(W-L-R)/(n-1)),y=v=>Tp+(hi-v)*(H-Tp-B)/(hi-lo);
+  const path=k=>{let s='',up=false;days.forEach((d,i)=>{if(!d.n){up=false;return;}s+=(up?'L':'M')+x(i).toFixed(1)+' '+y(d[k]).toFixed(1);up=true;});return s;};
+  const dots=(k,c)=>days.map((d,i)=>d.n?'<circle class="'+c+'" cx="'+x(i).toFixed(1)+'" cy="'+y(d[k]).toFixed(1)+'" r="4"/>':'').join('');
+  const ticks=[lo+(hi-lo)*0.1,(lo+hi)/2,hi-(hi-lo)*0.1].map(v=>'<line class="ph70g" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'"/><text class="ph70ax" x="'+(L-4)+'" y="'+(y(v)+4).toFixed(1)+'" text-anchor="end">'+v.toFixed(v<10?2:1)+'</text>').join('');
+  const xl=days.map((d,i)=>(i%Math.ceil(n/5)===(n-1)%Math.ceil(n/5))?'<text class="ph70ax" x="'+x(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+phDay(d.day)+'</text>':'').join('');
+  const last=ok[ok.length-1],li=days.indexOf(last);
+  return '<div class="ph70lg"><span><i class="ph70k lo"></i>'+T('הכי זול בארץ','Lowest in Israel')+'</span><span><i class="ph70k md"></i>'+T('מחיר רגיל (חציון)','Typical (median)')+'</span></div>'+
+    '<div class="ph70w"><svg class="ph70" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+T('גרף מחיר ל-'+n+' ימים','Price chart, '+n+' days')+'">'+ticks+xl+
+    '<line class="ph70x" x1="0" x2="0" y1="'+Tp+'" y2="'+(H-B)+'" hidden/>'+
+    '<path class="ph70md" d="'+path('median')+'"/><path class="ph70lo" d="'+path('min')+'"/>'+dots('median','md')+dots('min','lo')+
+    '<text class="ph70lab" x="'+(x(li)-6).toFixed(1)+'" y="'+(y(last.min)+16).toFixed(1)+'" text-anchor="end">'+fmtPrice(last.min,cur)+'</text></svg><div class="ph70tip" hidden></div></div>'+
+    '<details class="ph70tbl"><summary>'+T('טבלה','Table')+'</summary><table><tr><th>'+T('יום','Day')+'</th><th>'+T('הכי זול','Lowest')+'</th><th>'+T('חציון','Median')+'</th><th>'+T('סניפים','Branches')+'</th></tr>'+
+    days.slice().reverse().map(d=>'<tr><td>'+phDay(d.day)+'</td><td>'+(d.n?fmtPrice(d.min,cur)+(d.min_chain?' <small>'+esc(d.min_chain)+'</small>':''):'—')+'</td><td>'+(d.n?fmtPrice(d.median,cur):'—')+'</td><td>'+(d.n||'—')+'</td></tr>').join('')+'</table></details>';}
+/* ריחוף / נגיעה בגרף: קו אנכי ותווית עם היום, הכי זול והחציון */
+function phHover(box,days){const svg=box.querySelector('svg.ph70');if(!svg)return;const tip=box.querySelector('.ph70tip'),ln=svg.querySelector('.ph70x'),cur=myCurrency();
+  const pts=[...svg.querySelectorAll('circle.lo')].map(c=>+c.getAttribute('cx'));const ok=days.filter(d=>d.n);
+  const move=e=>{const r=svg.getBoundingClientRect();const vx=(e.clientX-r.left)*340/r.width;let k=0;pts.forEach((p,i)=>{if(Math.abs(p-vx)<Math.abs(pts[k]-vx))k=i;});const d=ok[k];if(!d)return;
+    ln.setAttribute('x1',pts[k]);ln.setAttribute('x2',pts[k]);ln.removeAttribute('hidden');
+    tip.innerHTML='<b>'+phDay(d.day)+'</b><span><i class="ph70k lo"></i>'+fmtPrice(d.min,cur)+(d.min_chain?' · '+esc(d.min_chain):'')+'</span><span><i class="ph70k md"></i>'+fmtPrice(d.median,cur)+'</span>';
+    tip.hidden=false;const px=pts[k]*r.width/340;tip.style.left=Math.min(Math.max(0,px-tip.offsetWidth/2),r.width-tip.offsetWidth)+'px';};
+  svg.addEventListener('pointermove',move);svg.addEventListener('pointerdown',move);svg.addEventListener('pointerleave',()=>{tip.hidden=true;ln.setAttribute('hidden','');});}
+async function phOpen(code,name){const b=openSheet('📈 '+T('גרף מחיר','Price chart'),'<p class="muted-note">'+T('טוענת... 📈','Loading... 📈')+'</p>');
+  let d;try{d=await phFetch(code);}catch(e){b.innerHTML='<p class="muted-note">⚠️ '+esc(e.message||'')+'</p>';return;}
+  const days=(d&&d.days)||[];const has=days.filter(x=>x.n).length;
+  b.innerHTML='<p class="ph70n">'+thumb53(code,name||d.name,'','xs')+'<b>'+esc(name||d.name||'')+'</b></p>'+
+    (has?phSummary(days)+phChart(days)+'<p class="muted-note">'+T('לפי קבצי שקיפות המחירים של כל הרשתות, '+days.length+' הימים האחרונים. המחיר הרגיל, בלי מבצעים.','From the chains\' official price files, last '+days.length+' days. Regular price, without deals.')+'</p>'
+      :'<p class="muted-note">🤷 '+T('עוד אין מספיק היסטוריה למוצר הזה.','Not enough history for this product yet.')+'</p>');
+  pkFillImgs(b);phHover(b,days);}
+window.phOpen70=phOpen;
 window.pkOpen53=pkOpen;window.pkCard53=pkCard;
 /* 🎯 מתג "דיוק מוצרים" צמוד לכפתור התזכורות ברשימה — הכי נגיש. דלוק: אחרי הוספה מציעים מוצר מדויק; כבוי: המוצר נוסף כמו שנכתב */
 const pkTgChip=()=>{const on=!state.pick53off;return '<button type="button" class="chip pk53tg'+(on?' pkon':'')+'" data-pk53tg="1" role="switch" aria-checked="'+on+'" title="'+T('דלוק: אחרי הוספת מוצר בוחרים את המוצר המדויק. כבוי: המוצר נוסף כמו שנכתב.','On: pick the exact product after adding. Off: added as typed.')+'"><span class="pk53ic" aria-hidden="true">🎯</span>'+T('דיוק מוצרים','Exact products')+'<span class="pk53sw" aria-hidden="true"></span></button>';};
@@ -261,6 +307,17 @@ const st=document.createElement('style');st.textContent=
   '.pkth img{width:100%;height:100%;object-fit:contain;background:#fff}.pkth.ph{border:1px solid var(--line)}'+
   '.pkth.xs{width:24px;height:24px;border-radius:6px;margin-inline-end:5px}.pkth.xs .pkart{border-radius:6px}.pkth.xs .pkart .pkic{width:18px;height:18px;background:none}.pkth.xs .pkart .pkic svg{width:14px;height:14px}.pkth.xs .pkart .pkic span{font-size:13px!important}.pkth.xs .pksz{display:none}'+
   '.mysttab td .pkth.xs{width:22px;height:22px}.rkrow small .pkth.xs{width:34px;height:34px;margin-block:2px;border:1px solid var(--line)}.rkrow small .pkth.xs .pkart .pkic{width:24px;height:24px}'+
+  '.ph70n{display:flex;align-items:center;gap:6px;margin:0 0 8px}.ph70sum{display:flex;gap:10px}.ph70sum>div{flex:1;border:1px solid var(--line);border-radius:12px;padding:6px 10px;display:flex;flex-direction:column}'+
+  '.ph70sum small{color:var(--muted);font-size:12px}.ph70sum b{font-size:20px;color:var(--text)}.ph70v{margin:8px 0 4px;font-weight:700}'+
+  '.ph70lg{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--text);margin:10px 0 2px}.ph70lg span,.ph70tip span{display:inline-flex;align-items:center;gap:5px}'+
+  '.ph70k{display:inline-block;width:12px;height:4px;border-radius:2px;background:var(--ph-lo)}.ph70k.md{background:var(--ph-md)}'+
+  '.ph70w{position:relative;max-width:560px;margin-inline:auto;--ph-lo:#2a78d6;--ph-md:#eb6834;--ph-bg:var(--panel,#fff)}body.dark .ph70w,body.dark .ph70lg,body.dark .ph70tip{--ph-lo:#3987e5;--ph-md:#d95926}.ph70lg,.ph70tip{--ph-lo:#2a78d6;--ph-md:#eb6834}'+
+  'svg.ph70{width:100%;height:auto;display:block;touch-action:pan-y;direction:ltr}'+
+  '.ph70 path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.ph70lo{stroke:var(--ph-lo)}.ph70md{stroke:var(--ph-md)}'+
+  '.ph70 circle{stroke:var(--ph-bg);stroke-width:2}.ph70 circle.lo{fill:var(--ph-lo)}.ph70 circle.md{fill:var(--ph-md)}'+
+  '.ph70g{stroke:var(--line);stroke-width:1}.ph70x{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}.ph70x[hidden]{display:none}.ph70ax{fill:var(--muted);font-size:10px}.ph70lab{fill:var(--text);font-size:11px;font-weight:700}'+
+  '.ph70tip{position:absolute;top:0;pointer-events:none;background:var(--panel,#fff);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;display:flex;flex-direction:column;gap:2px;box-shadow:0 2px 8px rgba(0,0,0,.15);white-space:nowrap}.ph70tip[hidden]{display:none}'+
+  '.ph70tbl{margin-top:6px}.ph70tbl summary{cursor:pointer;color:var(--hdr2);font-size:13px}.ph70tbl table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}.ph70tbl th,.ph70tbl td{padding:3px 4px;border-bottom:1px solid var(--line);text-align:start}.ph70tbl small{color:var(--muted)}'+
   '.pkby{color:var(--muted);font-size:11px}.pkby[hidden]{display:none}'+
   '.pkcred{margin:2px 0 4px;font-size:12px;color:var(--muted)}.pkcred[hidden]{display:none}.pkcred a{color:inherit}'+
   '.cred53{margin:12px 0 6px;border:1px solid var(--line);border-radius:12px;padding:8px 12px}.cred53 summary{cursor:pointer;font-weight:700;color:var(--hdr2)}'+
