@@ -110,6 +110,16 @@ const ST={start:T('מתחילים…','Starting…'),download:T('מורידים 
   filter:T('🛡️ הסינון (למשל נטפרי) עוד לא אישר את הקובץ של הגרסה החדשה. כל קובץ חדש עובר אצלם בדיקה, וזה לוקח לפעמים כמה שעות. מנסים שוב מאוחר יותר, ואם זה לא מסתדר אפשר לבקש מהסינון לאשר את ההורדה מ-yamshopping.com. האפליקציה הנוכחית ממשיכה לעבוד כרגיל',
     '🛡️ Your content filter (e.g. NetFree) has not approved the new version file yet. New files are reviewed first, which can take a few hours. Try again later, or ask the filter to approve the download from yamshopping.com. The current app keeps working as usual')};
 const filterErr66=m=>/^(http_(418|403|451)|bad_redirect|bad_file)\b/.test(String(m||''));
+/* 📦 הקובץ ירד ונבדק, אבל אנדרואיד סירב להתקין. עד עכשיו הופיע "בודקים את האינטרנט" — וזה לא קשור לאינטרנט.
+   install_<מספר> מגיע מ-PackageInstaller: 2 = נחסם (סינון כמו הדרן שמנהל את הטלפון, או "חוסם אוטומטי" של סמסונג), 5 = האפליקציה הותקנה ממקור אחר (חתימה אחרת), 6 = אין מקום.
+   גם שגיאה בפתיחת ההתקנה עצמה (SecurityException / restriction) = הטלפון לא מרשה להתקין */
+const instErr66=m=>{m=String(m||'');
+  if(/^install_2\b|restrict|block|polic|not allowed|DISALLOW|Security|permission/i.test(m))return T('🛡️ הקובץ ירד, אבל הטלפון לא מרשה להתקין אותו. זה קורה כשיש סינון שמנהל את הטלפון (למשל הדרן) — הוא מאשר כל אפליקציה וכל גרסה בנפרד — או כש"חוסם אוטומטי" של סמסונג דלוק. מבקשים מהסינון לאשר את הגרסה החדשה של "רשימת קניות" ומנסים שוב. האפליקציה הנוכחית ממשיכה לעבוד כרגיל',
+    '🛡️ The file downloaded, but the phone does not allow installing it. A filter that manages the phone (or Samsung Auto Blocker) is blocking it. Ask the filter to approve the new version and try again. The current app keeps working');
+  if(/^install_5\b/.test(m))return T('📦 האפליקציה שבטלפון הותקנה ממקור אחר (למשל חנות של הסינון), ולכן אי אפשר לעדכן אותה מכאן. מעדכנים מאותו מקום שממנו הותקנה','📦 This app was installed from another source (e.g. the filter\'s store), so update it from there');
+  if(/^install_6\b/.test(m))return T('📦 אין מספיק מקום בטלפון. מפנים קצת מקום ומנסים שוב','📦 Not enough storage on the phone. Free some space and try again');
+  if(/^install_/.test(m))return T('📦 הקובץ ירד, אבל ההתקנה בטלפון נכשלה','📦 Downloaded, but installing failed')+' ('+m.slice(0,60)+')';
+  return '';};
 function openNatUpd66(){
   const n=nat();if(!n||!n.selfUpdate){if(window.openApkUpd56)openApkUpd56();return;}
   const b=openSheet('🔄 '+T('עדכון האפליקציה','Update the app'),'<div class="nu66 apks53"><div id="nuInfo66"></div>'+
@@ -128,7 +138,7 @@ window.yamNat66=function(kind,a,b,c){
   if(kind==='battery'){if(a==='ok')flash('✅ '+T('מעולה! ההתראות יגיעו גם כשהאפליקציה סגורה','Great! Notifications will arrive even when the app is closed'));try{renderNotif();}catch(e){}return;}
   if(kind==='release'){if(typeof window.__rel69==='function')window.__rel69(a);return;}
   if(kind!=='update')return;const st=$66('#nuSt66'),bar=document.querySelector('.nu66 .bar66 i'),go=$66('#nuGo66');
-  let txt=a==='error'&&filterErr66(c)?ST.filter:(ST[a]||'');if(a==='error'&&window.updFail61)updFail61(c);if(a==='download'&&b>=0)txt+=' · '+b+'%';if(a==='latest'&&c)txt+=' ('+c+')';
+  let txt=a==='error'?(filterErr66(c)?ST.filter:instErr66(c)||ST.error):(ST[a]||'');if(a==='error'&&window.updFail61)updFail61(c);if(a==='download'&&b>=0)txt+=' · '+b+'%';if(a==='latest'&&c)txt+=' ('+c+')';
   if(st)st.textContent=txt;else if(txt&&/^(done|error|latest|cancel|confirm|perm)$/.test(a))flash(txt);
   if(bar){bar.style.width=(a==='download'?Math.max(3,b):/^(verify|install|confirm|done)$/.test(a)?100:a==='start'?3:0)+'%';}
   if(go&&/^(error|cancel|latest)$/.test(a))go.disabled=false;};
