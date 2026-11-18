@@ -1,5 +1,9 @@
 // בודק כל דקה מה חדש באתר ומקפיץ התראה. השרת מחזיר רק מה שמותר לתפקיד של המחובר.
-import { rpc, getSession, getSettings, logout, siteUrl, KINDS, kindsForRole, ApiError, checkUpdate } from './api.js';
+import { rpc, getSession, getSettings, logout, siteUrl, KINDS, kindsForRole, ApiError, checkUpdate, getSeen } from './api.js';
+// כמה מבקשות ההצטרפות שסומנו "קראתי" עדיין ממתינות (כדי להוריד רק אותן מהמספר)
+async function seenStillPending(seen) {
+  try { return ((await rpc('staff_pending_items')) || []).filter(e => e.kind === 'bizreq' && seen['bizreq:' + e.ref]).length; } catch (e) { return 0; }
+}
 
 const ALARM = 'yam-poll';
 const MAX_EVENTS = 200;
@@ -45,7 +49,11 @@ async function doPoll() {
     const allowed = new Set(kindsForRole(role).filter(k => settings.kinds[k] !== false));
     // קצת אחורה מהאירוע האחרון שראינו, כדי לא לפספס; כפילויות מסוננות לפי מזהה
     const since = st.lastSeen ? new Date(new Date(st.lastSeen).getTime() - 5 * 60000).toISOString() : null;
-    const [rows, pending] = await Promise.all([rpc('staff_events', { p_since: since }), rpc('staff_pending')]);
+    const [rows, pending, seen] = await Promise.all([rpc('staff_events', { p_since: since }), rpc('staff_pending'), getSeen()]);
+    // מה שסימנו "קראתי" (באתר או כאן) — לא ממתין יותר
+    (rows || []).forEach(e => { if (seen[key(e)]) e.pending = false; });
+    const seenBiz = Object.keys(seen).filter(k => k.startsWith('bizreq:')).length;
+    if (pending && seenBiz) pending.bizreq = Math.max(0, (Number(pending.bizreq) || 0) - (await seenStillPending(seen)));
 
     const old = st.events || [];
     const known = new Set(old.map(key));

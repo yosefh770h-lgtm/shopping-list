@@ -1,5 +1,5 @@
 // חלון התוסף: כניסה, מה ממתין לאישור, עדכונים אחרונים, חיפוש מחירים והגדרות
-import { login, logout, getSession, getSettings, saveSettings, siteUrl, KINDS, ROLE_NAMES, kindsForRole, rpc, checkUpdate, searchPrices, searchProducts, groupPrices, DEFAULT_SITE } from './api.js';
+import { login, logout, getSession, getSettings, saveSettings, siteUrl, KINDS, ROLE_NAMES, kindsForRole, rpc, getSeen, checkUpdate, searchPrices, searchProducts, groupPrices, DEFAULT_SITE } from './api.js';
 import { $, esc, icon, paintIcons, kindOf, eventCard, onActClick, itemAttr } from './ui.js';
 
 const VIEWS = ['vLogin', 'vMain', 'vSearch', 'vSettings'];
@@ -71,7 +71,8 @@ async function loadTodo() {
     $('#todo').innerHTML = '<li class="card"><span class="err">' + esc(/staff_pending_items|function/.test(err.message) ? 'כדי לאשר מכאן צריך להריץ שוב את קוד ה-SQL באתר (בק אופיס ← הגדרה ראשונית ← שלב 1)' : err.message) + '</span></li>';
     return;
   }
-  rows = rows.filter(e => kinds.includes(e.kind)).slice(0, 40);
+  const seen = await getSeen();
+  rows = rows.filter(e => kinds.includes(e.kind) && !seen[e.kind + ':' + e.ref]).slice(0, 40);
   $('#todoWrap').hidden = !rows.length;
   $('#todoTtl').textContent = 'לאישור עכשיו (' + rows.length + ')';
   $('#todo').innerHTML = rows.map(e => {
