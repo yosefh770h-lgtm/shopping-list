@@ -211,24 +211,6 @@ async function nearbyDeals(useGeo){
   return {city,deals,here};
 }
 
-/* ---------- איזו רשת הכי זולה? דירוג באחוזים ---------- */
-let rankCache=null,rankAt=0,rankErr=false;
-async function loadRanking(force){
-  if(!sb||!authUser)return null;if(!force&&rankCache&&Date.now()-rankAt<10*60000)return rankCache;
-  try{const {data,error}=await sb.rpc('chain_price_ranking',{p_days:90,p_currency:myCurrency()});if(error)throw error;rankCache=data||[];rankAt=Date.now();rankErr=false;}catch(e){rankErr=true;rankCache=null;}
-  return rankCache;
-}
-function rankHtml(rows,title){
-  const MED=['🥇','🥈','🥉'];
-  if(!rows)return rankErr&&isAdmin()?'<div class="rank"><h3>🏆 '+T('איזו רשת הכי זולה?','Cheapest chain')+'</h3><div class="sub">⚠️ צריך להריץ שוב את קוד ה-SQL (בק אופיס ← ⚙️ הגדרה ראשונית)</div></div>':'';
-  if(!rows.length)return '<div class="rank"><h3>🏆 '+(title||T('איזו רשת הכי זולה?','Which chain is cheapest?'))+'</h3><div class="sub">'+T('עוד אין מספיק דיווחים — צריך מחיר של אותו מוצר בלפחות 2 רשתות. כל דיווח עוזר לכולם 💚','Not enough reports yet — need the same product in at least 2 chains.')+'</div></div>';
-  const tot=Math.max(...rows.map(r=>r.products));
-  return '<div class="rank"><h3>🏆 '+(title||T('איזו רשת הכי זולה?','Which chain is cheapest?'))+'</h3><div class="sub">'+T('לפי מחירים שדווחו ב-90 הימים האחרונים, על מוצרים שיש להם מחיר בכמה רשתות. האחוז = בכמה מהמוצרים הרשת הכי זולה.','Based on the last 90 days. % = share of products where the chain is cheapest.')+'</div>'+
-    rows.slice(0,10).map((r,i)=>'<div class="rkrow"><span class="rkn">'+(MED[i]||(i+1))+'</span><b>'+esc(r.chain)+'</b><span class="amt">'+r.cheapest_pct+'%</span><span class="rkbar"><i style="width:'+Math.max(3,r.cheapest_pct)+'%"></i></span><small>'+
-      T('הכי זולה ב-'+r.cheapest+' מתוך '+r.products+' מוצרים','Cheapest on '+r.cheapest+' of '+r.products)+' · '+(Number(r.avg_above_pct)>0?T('יקרה בממוצע ב-'+r.avg_above_pct+'% מהמחיר הזול ביותר','on average '+r.avg_above_pct+'% above the cheapest'):T('תמיד במחיר הזול ביותר 🎉','always the cheapest 🎉'))+(r.products<Math.min(5,tot)?' · '+T('מעט נתונים','little data'):'')+'</small></div>').join('')+'</div>';
-}
-async function fillRanking(){const el=document.querySelector('#chainRank');if(!el)return;const rows=await loadRanking();const el2=document.querySelector('#chainRank');if(el2)el2.innerHTML=rankHtml(rows);}
-
 /* ---------- מחיר ליחידה (לק"ג / לליטר / ליחידה) ---------- */
 /* גודל האריזה מתוך שם המוצר, למשל "חלב 1 ליטר", "אורז 500 גרם", "מים 6×1.5 ל" */
 const SIZE18_RE=/(?:(\d+)\s*[x×*]\s*)?(\d+(?:[.,]\d+)?)\s*(ק"ג|קג|קילו|ק״ג|גרם|גר|ג'|ג׳|ג(?=$|\s)|מ"ל|מל|מ״ל|ליטר|ל'|ל׳|ל(?=$|\s)|kg|g|ml|l|יחידות|יח'|יח׳|יח|רולים|כביסות)(?=$|[\s,.)])/i;
@@ -601,17 +583,14 @@ async function v7BotPre(raw){
   if((/(מבצעים|מבצע |מבצע$|הנחות|מוזל|הוזל|זול באזור)/.test(t)||(/(באזור שלי|לידי|קרוב אלי|קרוב לבית)/.test(t)&&(/(סופר|חנות|חנויות|מכולת|רשת|רשתות|לקנות|קניות|מחיר|זול)/.test(t)||t.split(' ').length<=2)))&&!/(דבר תורה|וורט)/.test(t)){
     botSay('📍 '+T('בודקת מבצעים לפי המיקום שלך...','Checking deals near you...'));
     const r=await nearbyDeals(/(לידי|באזור|קרוב|מיקום|כאן)/.test(t)||!myCity());
-    const rows=await loadRanking();const here=(rows||[]).filter(x=>r.here.has(x.chain));
     let s=r.deals.length?('🏷️ '+T('מבצעים פעילים'+(r.city?' ב'+r.city:'')+':','Active deals'+(r.city?' in '+r.city:'')+':')+'\n'+dealsText(r)):(T('לא מצאתי כרגע מבצעים מדווחים'+(r.city?' ב'+r.city:'')+' 🤷','No reported deals'+(r.city?' in '+r.city:'')+' right now 🤷'));
-    if(here.length)s+='\n\n💰 '+T('לפי הדיווחים, הרשת הכי זולה'+(r.city?' באזור':'')+': '+here[0].chain+' (הכי זולה ב-'+here[0].cheapest_pct+'% מהמוצרים)','Cheapest chain: '+here[0].chain);
     s+='\n\n🧭 '+T('לניווט: "נווטי ל<חנות> ב'+(r.city||'<עיר>')+'" · חנויות ומבצעים — בלשונית 🏪','Navigate: "navigate to <store>"')+(r.city?'':'\n📍 '+T('כדי שאדע איפה את/ה — '+GW2('אשרי','אשר')+' גישה למיקום, או '+GW2('בחרי','בחר')+' עיר ב"👤 האזור האישי"','Allow location or set your city in "👤 My area"'));
     botSay(s);return true;
   }
   if(/^(איפה הכי זול|איפה הכי משתלם|איזו רשת הכי זולה|איזה סופר הכי זול|מה הסופר הכי זול|הרשת הכי זולה|דירוג רשתות|איפה כדאי לקנות)( (את )?(ה)?רשימה| לקנות)?\??$/.test(t)){
-    const rows=await loadRanking();
-    let s=rows&&rows.length?('🏆 '+T('הרשתות הכי זולות לפי הדיווחים:','Cheapest chains by reports:')+'\n'+rows.slice(0,5).map((r,i)=>(['🥇','🥈','🥉'][i]||(i+1)+'.')+' '+r.chain+' — '+T('הכי זולה ב-'+r.cheapest_pct+'% מהמוצרים, יקרה בממוצע ב-'+r.avg_above_pct+'% מהזול','cheapest on '+r.cheapest_pct+'%, avg +'+r.avg_above_pct+'%')).join('\n')):T('עוד אין מספיק דיווחי מחיר כדי לדרג רשתות 🙏','Not enough price reports yet 🙏');
-    if(curList().items.some(i=>!i.done)){s+='\n\n🛒 '+T('פתחתי לך השוואה של הרשימה שלך בין החנויות 👇','Opening a comparison of your list 👇');setTimeout(openBasket,600);}
-    botSay(s);return true;
+    if(curList().items.some(i=>!i.done)){botSay('🛒 '+T('פתחתי לך השוואה של הרשימה שלך בין החנויות 👇','Opening a comparison of your list 👇'));setTimeout(openBasket,600);}
+    else botSay(T('מוסיפים מוצרים לרשימה, ואז אני משווה את כל הסל בין החנויות 🛒','Add items to your list and I will compare the whole basket 🛒'));
+    return true;
   }
   if(/(האזור האישי|הפרטים שלי|אזור אישי)/.test(t)){openMe();botSay('👤 '+T('פתחתי את האזור האישי','Opened your personal area'));return true;}
   if(/^(חוות דעת|חוות הדעת|ביקורות)[?？!.]*$/.test(t)||/(לדרג את האתר|דירוג לאתר|ביקורת על האתר|חוות דעת (על|ל)(ה)?אתר)/.test(t)){openReviews();botSay('⭐ '+T('פתחתי את חוות הדעת — תודה שאת/ה משתף/ת!','Opened reviews — thank you!'));return true;}
@@ -623,7 +602,7 @@ async function v7BotPre(raw){
   return false;
 }
 yamiStep(v7BotPre);
-/* הקשר לבינה המלאכותית: הרגלים, חנויות, מבצעים באזור ודירוג רשתות */
+/* הקשר לבינה המלאכותית: הרגלים, חנויות ומבצעים באזור */
 const _v7AiContext=aiContext;
 aiContext=function(){
   const me=meData();const H=habits();
@@ -634,7 +613,6 @@ aiContext=function(){
     me.orders.length?'זמני הזמנה קבועים: '+me.orders.map(o=>DAYS[o.day]+(o.time?' '+o.time:'')+' '+(o.store||'')).join(' · '):'',
     'עיר/מיקום: '+(myCity()||'לא ידוע'),
     deals.length?'מבצעים פעילים מהחנויות: '+deals.join(' | '):'',
-    rankCache&&rankCache.length?'דירוג רשתות (הכי זולה קודם): '+rankCache.slice(0,6).map(r=>r.chain+' — הכי זולה ב-'+r.cheapest_pct+'%, יקרה בממוצע ב-'+r.avg_above_pct+'%').join(' · '):'',
     'כשמתאים — הציעי למשתמש מבצעים ומחירים מוזלים לפי המיקום וההרגלים שלו, הזכירי את הקנייה הקודמת, ואמרי איפה הכי משתלם לקנות כל מוצר.'
   ].filter(Boolean).join('\n');
 };

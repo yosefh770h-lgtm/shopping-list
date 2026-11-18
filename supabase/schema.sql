@@ -928,8 +928,7 @@ where not exists (select 1 from public.branches)
 on conflict do nothing;
 
 -- =====================================================================
---  גרסה 7: חוות דעת על האתר, ניהול משתמשים, עריכת כל תוכן ע"י המנהל,
---  ודירוג רשתות לפי מחיר (באחוזים)
+--  גרסה 7: חוות דעת על האתר, ניהול משתמשים, עריכת כל תוכן ע"י המנהל
 -- =====================================================================
 
 -- ---------- חוות דעת על האתר — 1 עד 5 כוכבים, מתפרסמות רק אחרי אישור מנהל ----------
@@ -1076,28 +1075,8 @@ end $$;
 revoke all on function public.admin_rename_chain(text, text) from public, anon;
 grant execute on function public.admin_rename_chain(text, text) to authenticated;
 
--- ---------- איזו רשת הכי זולה? דירוג באחוזים ----------
--- לכל מוצר שיש לו מחיר בלפחות 2 רשתות: המחיר העדכני בכל רשת מושווה למחיר הזול ביותר.
--- cheapest_pct = באיזה אחוז מהמוצרים הרשת הכי זולה · avg_above_pct = בכמה אחוז היא יקרה בממוצע מהזול ביותר
-create or replace function public.chain_price_ranking(p_days int default 90, p_currency text default 'ILS')
-returns table(chain text, products int, cheapest int, cheapest_pct int, avg_above_pct numeric)
-language sql stable security definer set search_path = public as $$
-  with latest as (
-    select distinct on (x.product_key, x.chain) x.product_key, x.chain, x.price
-    from public.prices x
-    where auth.uid() is not null and x.status = 'approved' and x.currency = p_currency
-      and coalesce(x.updated_at, x.created_at) > now() - make_interval(days => greatest(1, least(coalesce(p_days, 90), 730)))
-    order by x.product_key, x.chain, coalesce(x.updated_at, x.created_at) desc
-  ), multi as (
-    select product_key, min(price) as mn from latest group by product_key having count(*) >= 2
-  )
-  select l.chain, count(*)::int, (count(*) filter (where l.price <= m.mn))::int,
-         round(100.0 * count(*) filter (where l.price <= m.mn) / count(*))::int,
-         round(avg(100.0 * (l.price - m.mn) / m.mn), 1)
-  from latest l join multi m on m.product_key = l.product_key
-  group by l.chain
-  order by 5 asc, 4 desc, 2 desc;
-$$;
+-- "איזו רשת הכי זולה?" הוסר: השווה כל רשת על מוצרים אחרים ולכן נתן תוצאה לא נכונה. ההשוואה האמיתית היא של הסל של המשתמש.
+drop function if exists public.chain_price_ranking(int, text);
 
 -- =====================================================================
 --  גרסה 8: מחיר מבצע + "נכון / לא נכון" לכל דיווח, מאגר מוצרים מקובץ (בלי כפילויות),
