@@ -9,7 +9,7 @@ applyRemote=function(remote,replace){_v9ApplyRemote(remote,replace);if(!remote)r
   if(remote.stock&&typeof remote.stock==='object')state.stock=replace?remote.stock:Object.assign({},state.stock||{},remote.stock);
   if(Array.isArray(remote.missingHome))state.missingHome=replace?remote.missingHome:Array.from(new Set((state.missingHome||[]).concat(remote.missingHome))).filter(n=>!pantryHas(n));
   if(Array.isArray(remote.templates)){const ids=new Set((state.templates||[]).map(t=>t.id));state.templates=replace?remote.templates:(state.templates||[]).concat(remote.templates.filter(t=>!ids.has(t.id)));}};
-const _v9Logout=doLogout;doLogout=async function(){const r=await _v9Logout();state.stock={};state.missingHome=[];state.templates=[];return r;};
+onLogout('reset',()=>{state.stock={};state.missingHome=[];state.templates=[];});
 
 /* ---------- מלאי הבית בכמויות ---------- */
 const pkey=n=>NORMP[norm(n)]||norm(n);

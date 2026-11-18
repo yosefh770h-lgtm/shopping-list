@@ -110,7 +110,7 @@ const _v17ApplyRemote=applyRemote;
 applyRemote=function(remote,replace){_v17ApplyRemote(remote,replace);if(!remote||!Array.isArray(remote.errands))return;
   if(replace){state.errands=remote.errands;return;}
   const m={};(state.errands||[]).forEach(x=>m[x.id]=x);remote.errands.forEach(x=>{if(x&&x.id&&(!m[x.id]||(x.ts||0)>=(m[x.id].ts||0)))m[x.id]=x;});state.errands=Object.values(m);};
-const _v17Logout=doLogout;doLogout=async function(){const r=await _v17Logout.apply(this,arguments);state.errands=[];return r;};
+onLogout('reset',()=>{state.errands=[];});
 /* בשיתוף ובהדפסה של הרשימה */
 const _v17ShareText=shareText;
 shareText=function(){const s=_v17ShareText.apply(this,arguments);const o=errSorted(errOpen());if(!o.length)return s;

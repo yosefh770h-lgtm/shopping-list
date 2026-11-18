@@ -671,8 +671,7 @@ function v7AfterEnter(){
   setTimeout(checkSaleAlerts,6000);
 }
 /* ביציאה — מנקים את ההתראות של המשתמש מהמכשיר */
-const _v7Logout=doLogout;
-doLogout=async function(){inbox=[];saveInbox();updateBell(false);document.querySelector('#botNudge').hidden=true;askStoreTs=0;return _v7Logout();};
+onLogout('before',()=>{inbox=[];saveInbox();updateBell(false);document.querySelector('#botNudge').hidden=true;askStoreTs=0;});
 const _v7AfterEnter=afterEnter;
 afterEnter=function(){_v7AfterEnter();setTimeout(v7AfterEnter,2500);};
 setInterval(()=>{if(document.visibilityState==='visible')checkSaleAlerts();},10*60*1000);

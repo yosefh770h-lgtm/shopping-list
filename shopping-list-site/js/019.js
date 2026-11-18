@@ -182,8 +182,7 @@ insertPrice=async function(row){const r=await _v16InsertPrice.apply(this,argumen
 const _v16RemoveItem=removeItem;
 removeItem=function(id){const it=curList().items.find(x=>x.id===id);const r=_v16RemoveItem.apply(this,arguments);if(it&&!curList().items.some(x=>x.id===id))logAct('remove_item',it.n);return r;};
 document.addEventListener('click',e=>{if(e.target.closest('#invCreate'))logAct('invite_created','');if(e.target.closest('[data-mrm]'))logAct('member_removed','');if(e.target.closest('#fbSend'))logAct('feedback','');if(e.target.closest('#upConfirm'))logAct('upload_confirm',typeof upMode!=='undefined'?upMode:'');},true);
-const _v16DoLogout=doLogout;
-doLogout=async function(){logAct('logout','');return _v16DoLogout.apply(this,arguments);};
+onLogout('before',()=>logAct('logout',''));
 
 /* ---------- 🎰 מכונות אוטומטיות לעסקים: פחיות, חטיפים, קפה, מים ועוד ---------- */
 const MKINDS={cans:['🥤','מכונת פחיות'],snacks:['🍫','מכונת חטיפים'],coffee:['☕','מכונת קפה'],water:['💧','מכונת מים'],ice:['🧊','מכונת קרח / גלידה'],toys:['🧸','מכונת צעצועים'],other:['🎰','מכונה אחרת']};

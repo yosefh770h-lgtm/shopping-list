@@ -83,6 +83,36 @@ await test('סידורים דרך יאמי + מלל ארוך לא בורח מה�
   await ctx.close();
 });
 
+await test('יציאה מהחשבון: כל הניקויים רצים פעם אחת, ובלי אינטרנט עם שינויים שלא נשמרו אפשר לבטל', async () => {
+  const { ctx, page, errors } = await newPage();
+  const r = await page.evaluate(async () => {
+    sb = window.__stub({}); authUser = { id: 'tester', email: 't@example.com' };
+    const acts = []; logAct = (a) => acts.push(a);
+    const fill = () => { state.stock = { חלב: 2 }; state.missingHome = ['לחם']; state.templates = [{ id: 1 }]; state.errands = [{ id: 'e1' }]; state.budget = { x: 1 }; state.homeMod = { a: 1 }; inbox = [{ id: 'n1' }]; };
+    const out = {};
+    // 1) בלי אינטרנט + שינויים שלא נשמרו + לוחצים "ביטול" — לא יוצאים ולא מוחקים כלום
+    fill(); const realOff = isOffline, realConfirm = window.uiConfirm;
+    isOffline = () => true; offPending = 1; window.uiConfirm = async () => false;
+    await doLogout();
+    out.cancelKept = !!authUser && state.stock.חלב === 2 && inbox.length === 1 && acts.length === 0;
+    isOffline = realOff; offPending = 0; window.uiConfirm = realConfirm;
+    // 2) יציאה רגילה
+    await doLogout();
+    out.loggedOut = authUser === null;
+    out.cleared = JSON.stringify(state.stock) === '{}' && state.missingHome.length === 0 && state.templates.length === 0 && state.errands.length === 0 && JSON.stringify(state.homeMod) === '{}' && !!state.budget && !state.budget.x && inbox.length === 0;
+    out.acts = acts.join(',');
+    out.oneHookEach = typeof onLogout === 'function' && LOGOUT_HOOKS.guard.length === 1 && LOGOUT_HOOKS.reset.length === 4;
+    return out;
+  });
+  assert(r.cancelKept, 'ביטול היציאה בלי אינטרנט בכל זאת ניקה/יצא');
+  assert(r.loggedOut, 'לא יצא מהחשבון');
+  assert(r.cleared, 'נשאר מידע של המשתמש אחרי יציאה');
+  assert(r.acts === 'logout', 'רישום היציאה ביומן: ' + r.acts);
+  assert(r.oneHookEach, 'מספר הניקויים הרשומים לא כצפוי');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('יאמי: ברכה/מילת מפתח בתוך בקשה אמיתית לא נבלעת בתשובה מוכנה — הבקשה וההיסטוריה מגיעות לבינה המלאכותית', async () => {
   const { ctx, page, errors } = await newPage();
   const r = await page.evaluate(async () => {
