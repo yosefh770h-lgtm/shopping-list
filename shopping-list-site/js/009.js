@@ -111,12 +111,13 @@ function openUpload(mode){
   const b=openSheet(upMode==='receipt'?'🧾 '+T('העלאת קבלה','Upload a receipt'):'📝 '+T('העלאת רשימת קניות','Upload a shopping list'),
     '<div class="seg"><button data-um="receipt"'+(upMode==='receipt'?' class="on"':'')+'>🧾 '+T('קבלה מקנייה','Receipt')+'</button><button data-um="list"'+(upMode==='list'?' class="on"':'')+'>📝 '+T('רשימה כתובה','Written list')+'</button></div>'+
     '<p class="muted-note">'+(upMode==='receipt'?T('מצלמים את הקבלה (קבלה ארוכה — כמה תמונות), או מעלים קבלה דיגיטלית כקובץ PDF. יאמי קוראת את המוצרים, הכמויות, המחירים והחברות — ואתם מאשרים לפני שמשהו נשמר. 💚 המחירים יעזרו לכולם — נא לוודא שהם נכונים.','Photograph the receipt; you confirm before anything is saved.'):T('מצלמים רשימה בכתב יד או מדביקים טקסט — יאמי מפענחת, ואתם מאשרים לפני שזה נכנס לרשימה.','Photograph a handwritten list or paste text; you confirm first.'))+'</p>'+
-    '<label class="btn" style="display:block;text-align:center;cursor:pointer">📷 '+T('צילום / בחירת תמונות','Take / choose photos')+'<input type="file" id="upFiles" accept="image/*" multiple hidden></label>'+
+    '<label class="btn" style="display:block;text-align:center;cursor:pointer">📷 '+T('לצלם עכשיו','Take a photo')+'<input type="file" id="upCam" accept="image/*" capture="environment" hidden></label>'+
+    '<label class="btn sec" style="display:block;text-align:center;cursor:pointer;margin-top:8px">🖼️ '+T('בחירת תמונות מהגלריה','Choose photos from the gallery')+'<input type="file" id="upFiles" accept="image/*" multiple hidden></label>'+
     '<div class="upthumbs" id="upThumbs"></div>'+
     (upMode==='list'?'<label class="il" for="upText">'+T('או מקלידים / מדביקים את הרשימה:','Or type / paste the list:')+'</label><textarea id="upText" style="min-height:90px" placeholder="'+T('חלב 2\nלחם\nעגבניות 1 קג','milk 2\nbread')+'"></textarea>':'')+
     '<button id="upRead" style="width:100%;margin-top:8px">✨ '+T('לקרוא ולהציג לאישור','Read and show for approval')+'</button><div id="upOut"></div>');
   drawThumbs();
-  b.onchange=async e=>{if(e.target.id!=='upFiles')return;const all=Array.from(e.target.files||[]),fs=all.slice(0,Math.max(0,(isAdmin()?6:3)-upImgs.length));if(fs.length<all.length)flash(T('⚠️ אפשר עד '+(isAdmin()?6:3)+' תמונות של רשימה','⚠️ Up to '+(isAdmin()?6:3)+' photos'));for(const f of fs){try{upImgs.push(await shrinkImage(f,1600));}catch(err){flash(T('⚠️ לא הצלחתי לקרוא תמונה','⚠️ Could not read an image'));}}e.target.value='';drawThumbs();};
+  b.onchange=async e=>{if(e.target.id!=='upFiles'&&e.target.id!=='upCam')return;const all=Array.from(e.target.files||[]),fs=all.slice(0,Math.max(0,(isAdmin()?6:3)-upImgs.length));if(fs.length<all.length)flash(T('⚠️ אפשר עד '+(isAdmin()?6:3)+' תמונות של רשימה','⚠️ Up to '+(isAdmin()?6:3)+' photos'));for(const f of fs){try{upImgs.push(await shrinkImage(f,1600));}catch(err){flash(T('⚠️ לא הצלחתי לקרוא תמונה','⚠️ Could not read an image'));}}e.target.value='';drawThumbs();};
   b.onclick=async e=>{
     const um=e.target.closest('[data-um]');if(um){openUpload(um.dataset.um);return;}
     const rm=e.target.closest('[data-uprm]');if(rm){upImgs.splice(+rm.dataset.uprm,1);drawThumbs();return;}

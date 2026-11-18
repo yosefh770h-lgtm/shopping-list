@@ -10,6 +10,8 @@ let rcEnhance=true;try{rcEnhance=localStorage.getItem('yam_rc_enh')!=='0';}catch
 const num=x=>{const v=parseFloat(String(x==null?'':x).replace(/[^\d.\-]/g,''));return isNaN(v)?0:v;};
 const r2=x=>Math.round(x*100)/100;
 const css=document.createElement('style');css.id='rcCss';css.textContent=
+  '.rclink{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}.rclrow{display:flex;gap:6px;align-items:stretch}.rclrow input{flex:1 1 auto;min-width:0}.rclrow .btn{flex:0 0 auto;white-space:nowrap}'+
+  '.rclok{margin:6px 0;font-size:13px;color:var(--hdr2);font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.rclok small{color:var(--muted);font-weight:400}'+
   '.rctips{margin:6px 0;font-size:13px}.rctips summary{cursor:pointer;color:var(--hdr2);font-weight:700}.rctips ul{margin:6px 0;padding-inline-start:20px;color:var(--text)}'+
   '.rctbl{width:100%;border-collapse:collapse;font-size:13px}.rctbl th{font-size:12px;color:var(--muted);font-weight:600;text-align:start;padding:4px 3px;border-bottom:1px solid var(--line)}'+
   '.rctbl td{padding:4px 3px;border-bottom:1px solid var(--line);vertical-align:top}.rctbl input:not([type=checkbox]){width:100%;min-width:0;box-sizing:border-box;padding:6px;border:1px solid var(--chipbr);border-radius:8px;background:var(--inputbg);color:var(--text);font-family:inherit;font-size:13px}'+
@@ -107,6 +109,38 @@ function rcAdd(parts,key){const g=++rcSeq;parts.forEach(d=>rcGrp.set(d,{g,key}))
 function rcGroups(){const out=[],by={};upImgs.forEach((d,i)=>{const m=rcGrp.get(d),g=m?String(m.g):'x'+i;if(!by[g]){by[g]={g,idx:[]};out.push(by[g]);}by[g].idx.push(i);});return out;}
 function rcRemove(g){const grp=rcGroups().find(x=>x.g===g);if(!grp)return;for(let k=grp.idx.length-1;k>=0;k--){rcGrp.delete(upImgs[grp.idx[k]]);upImgs.splice(grp.idx[k],1);}}
 const rcFileKey=(f,enh)=>[f.name,f.size,f.lastModified,enh?1:0].join('|');
+/* מביאים את הקבלה מהקישור דרך השרת (הדפדפן לא יכול לפתוח אתר אחר ישירות), ומיד קוראים אותה */
+const rcB64=b=>{const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;};
+let rcLinking=false;
+async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrlSt');if(!inp||!st)return;
+  /* מדביקים לפעמים את כל ההודעה ("הקבלה שלך: https://...") — לוקחים ממנה את הקישור */
+  const m=String(inp.value||'').match(/https?:\/\/[^\s<>"']+/i);
+  if(!m){st.innerHTML='<p class="muted-note">⚠️ '+T('לא מצאתי קישור — מדביקים את הכתובת שמתחילה ב-https://','No link found — paste the address starting with https://')+'</p>';inp.focus();return;}
+  const url=m[0].replace(/[).,;!?״"']+$/,'');inp.value=url;
+  if(!sb||!authUser){st.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים 🙂','Sign in first 🙂')+'</p>';return;}
+  const key='url|'+url;if(rcHas(key)){flash(T('ℹ️ הקבלה מהקישור הזה כבר נמצאת','ℹ️ This receipt is already added'));return;}
+  rcLinking=true;const btn=$r('#upUrlGo');if(btn)btn.disabled=true;
+  st.innerHTML='<div class="empty">🔗 '+T('פותחת את הקבלה מהקישור…','Opening the receipt link…')+'</div>';
+  const send=async()=>{let data=null,error=null;try{({data,error}=await sb.functions.invoke('ai-chat',{body:{receiptUrl:url}}));}catch(e){error=e;}
+    const code=error&&error.context&&error.context.status;if(error&&error.context&&typeof error.context.json==='function'){try{data=await error.context.json();}catch(e){}}return {data,code,error};};
+  try{let r=await send();if(r.code===401){try{const {data:rs}=await sb.auth.refreshSession();if(rs&&rs.session)r=await send();}catch(e){}}
+    if($r('#upUrlSt')!==st||upMode!=='receipt')return;
+    const f=r.data&&r.data.fetched;
+    if(!f){st.innerHTML='<p class="muted-note">⚠️ '+esc((r.data&&r.data.text)||(r.data&&r.data.disabled?T('קריאת קבלות צריכה את הבינה המלאכותית — היא עוד לא מופעלת באתר.','Reading needs the AI.'):T('לא הצלחתי לפתוח את הקישור 🙁','Could not open the link 🙁')))+'</p>';
+      try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r.data&&r.data.error)||r.code||'error')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}
+      return;}
+    if(f.kind==='text'){const t=$r('#upText');if(t)t.value=String(f.text||'');
+      st.innerHTML='<p class="rclok">✅ '+T('הקבלה מהקישור נקלטה','The receipt was fetched')+' <small dir="ltr">'+esc(f.host||'')+'</small> <button type="button" class="mini" id="upUrlX" aria-label="'+T('ביטול הקבלה מהקישור','Remove the linked receipt')+'">✕</button></p>';}
+    else{const room=rcMaxParts()-upImgs.length;if(room<=0){st.innerHTML='<p class="muted-note">⚠️ '+T('אין מקום לעוד חלקים בקבלה הזו — מוחקים תמונה ומנסים שוב','No room — remove a photo and try again')+'</p>';return;}
+      const u8=rcB64(f.data||'');
+      if(f.kind==='pdf'){const file=new File([u8],'receipt.pdf',{type:'application/pdf'});const pr=await rcPdfParts(file,rcEnhance,room);if(pr.more)flash(T('⚠️ הקבלה ארוכה מדי לקריאה אחת — נכנסו רק העמודים הראשונים','⚠️ Only the first pages were added'));rcAdd(pr.parts,key);}
+      else{const file=new File([u8],'receipt.jpg',{type:f.mime||'image/jpeg'});const parts=await rcPrep(file,rcEnhance);rcAdd(parts.slice(0,room),key);}
+      drawThumbs();st.innerHTML='<p class="rclok">✅ '+T('הקבלה מהקישור נקלטה','The receipt was fetched')+' <small dir="ltr">'+esc(f.host||'')+'</small></p>';}
+    inp.value='';
+    /* "ישאב את הנתונים לבד" — מיד ממשיכים לקריאה ולמסך האישור */
+    const go=$r('#upRead');if(go)go.click();}
+  catch(err){console.error('receipt link',err);if($r('#upUrlSt')===st)st.innerHTML='<p class="muted-note">⚠️ '+T('לא הצלחתי לפתוח את הקבלה מהקישור','Could not open the linked receipt')+(err&&err.name==='PasswordException'?T(' — הקובץ נעול בסיסמה',' — the file is password protected'):'')+'</p>';}
+  finally{rcLinking=false;const b2=$r('#upUrlGo');if(b2)b2.disabled=false;}}
 const _open=openUpload;
 openUpload=function(){
   /* פתיחה חדשה של החלון (לא מעבר בין "קבלה" ל"רשימה" בתוך החלון) — מתחילים נקי, בלי תמונות שנשארו מניסיון קודם */
@@ -114,13 +148,19 @@ openUpload=function(){
   const sh=document.getElementById('v8Sheet'),nm=arguments[0]||upMode;if(!(sh&&sh.classList.contains('open')&&$r('#upThumbs'))||nm!==upMode){upImgs.length=0;rcGrp.clear();}
   const res=_open.apply(this,arguments);if(upMode!=='receipt')return res;
   const inp=$r('#upFiles'),b=$r('#v8SheetBody');if(!inp||!b)return res;
-  inp.closest('label').insertAdjacentHTML('beforebegin','<details class="rctips"><summary>📸 '+T('איך לצלם כדי שהקריאה תהיה מדויקת','How to photograph for an accurate reading')+'</summary><ul>'+
+  const camL=($r('#upCam')||inp).closest('label');
+  camL.insertAdjacentHTML('beforebegin','<details class="rctips"><summary>📸 '+T('איך לצלם כדי שהקריאה תהיה מדויקת','How to photograph for an accurate reading')+'</summary><ul>'+
     '<li>'+T('מניחים את הקבלה ישרה על משטח כהה, באור טוב ובלי צל או ברק.','Lay the receipt flat on a dark surface, good light, no shadow or glare.')+'</li>'+
     '<li>'+T('כל הקבלה בפוקוס וממלאת את התמונה לרוחב.','Keep it in focus and filling the frame width.')+'</li>'+
     '<li>'+T('קבלה ארוכה — כמה תמונות מלמעלה למטה, כל אחת חופפת קצת לקודמת (גם ההתחלה עם שם החנות וגם הסוף עם הסה״כ).','Long receipt: several photos top to bottom with a small overlap (include the header and the total).')+'</li></ul></details>'+
     '<label class="radio"><input type="checkbox" id="rcEnh"'+(rcEnhance?' checked':'')+'> ✨ '+T('חידוד טקסט לקבלה דהויה (שחור-לבן)','Sharpen faded text (black & white)')+'</label>');
   /* קבלה דיגיטלית (PDF) — כפתור נפרד, כי באפליקציה בוחר הקבצים מציג רק את הסוג הראשון שב-accept */
   inp.closest('label').insertAdjacentHTML('afterend','<label class="btn sec" style="display:block;text-align:center;cursor:pointer;margin-top:8px">📄 '+T('העלאת קבלה כקובץ PDF','Upload a PDF receipt')+'<input type="file" id="upPdf" accept="application/pdf,.pdf" multiple hidden></label>');
+  /* 🔗 קבלה דיגיטלית מקישור (SMS / מייל / וואטסאפ) — בלי להוריד ולהעלות, ובלי צילומי מסך של קבלה ארוכה */
+  const pdfL=$r('#upPdf').closest('label');
+  pdfL.insertAdjacentHTML('afterend','<div class="rclink"><label class="il" for="upUrl">🔗 '+T('קבלה דיגיטלית? מדביקים כאן את הקישור שקיבלתם','Digital receipt? Paste its link here')+'</label>'+
+    '<div class="rclrow"><input id="upUrl" type="url" inputmode="url" dir="ltr" autocomplete="off" placeholder="https://…"><button type="button" class="btn" id="upUrlGo">'+T('לקרוא מהקישור','Read the link')+'</button></div>'+
+    '<div id="upUrlSt" role="status"></div><textarea id="upText" hidden></textarea></div>');
   b.onchange=async e=>{
     if(e.target.id==='rcEnh'){rcEnhance=e.target.checked;try{localStorage.setItem('yam_rc_enh',rcEnhance?'1':'0');}catch(x){}return;}
     if(e.target.id==='upPdf'){const fs=Array.from(e.target.files||[]);e.target.value='';if(!fs.length)return;let full=false;
@@ -132,14 +172,18 @@ openUpload=function(){
       if(out&&$r('#upOut')===out&&out.querySelector('.empty'))out.innerHTML='';
       if(full)flash(T('⚠️ הקבלה ארוכה מדי לקריאה אחת — נכנסו רק העמודים הראשונים','⚠️ The receipt is too long for one reading — only the first pages were added'));
       drawThumbs();return;}
-    if(e.target.id!=='upFiles')return;const fs=Array.from(e.target.files||[]);e.target.value='';let full=false;
+    if(e.target.id!=='upFiles'&&e.target.id!=='upCam')return;const fs=Array.from(e.target.files||[]);e.target.value='';let full=false;
     for(const f of fs){const room=rcMaxParts()-upImgs.length;if(room<=0){full=true;break;}
       const key=rcFileKey(f,rcEnhance);if(rcHas(key)){flash(T('ℹ️ התמונה הזו כבר נמצאת','ℹ️ This photo is already added'));continue;}
       try{const parts=(await rcPrep(f,rcEnhance)).filter(d=>!upImgs.includes(d));if(parts.length>room)full=true;if(parts.length)rcAdd(parts.slice(0,room),key);}catch(err){flash(T('⚠️ לא הצלחתי לקרוא תמונה','⚠️ Could not read an image'));}}
     if(full)flash(T('⚠️ אין מקום לעוד תמונות בקבלה הזו — אפשר למחוק תמונה ולהוסיף אחרת','⚠️ No room for more photos in this receipt'));
     drawThumbs();};
   /* ✕ על תמונה — מוחק את התמונה עם כל החלקים שלה */
-  const _click=b.onclick;b.onclick=e=>{const rm=e.target.closest('[data-rcrm]');if(rm){rcRemove(rm.dataset.rcrm);drawThumbs();return;}return _click&&_click.call(b,e);};
+  const _click=b.onclick;b.onclick=e=>{const rm=e.target.closest('[data-rcrm]');if(rm){rcRemove(rm.dataset.rcrm);drawThumbs();return;}
+    if(e.target.closest('#upUrlGo')){rcLink();return;}
+    if(e.target.closest('#upUrlX')){const t=$r('#upText');if(t)t.value='';const st=$r('#upUrlSt');if(st)st.innerHTML='';return;}
+    return _click&&_click.call(b,e);};
+  const ui=$r('#upUrl');if(ui)ui.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();rcLink();}});
   return res;};
 const _thumbs=drawThumbs;
 drawThumbs=function(){if(upMode!=='receipt')return _thumbs.apply(this,arguments);const el=$r('#upThumbs');if(!el)return;const gs=rcGroups();
