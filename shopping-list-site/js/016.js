@@ -1418,6 +1418,14 @@ VIEWS.pending=async function(){
       if(await ok(ok1==='1'?sb.from(tb).update({status:'approved'}).eq('id',id):sb.from(tb).delete().eq('id',id),ok1==='1'?'✔️ אושר':'✖ נדחה')){t.closest('.item').remove();updatePendBadge();}else t.disabled=false;}};
 };
 function pendOpen([k,ref],d){const x=k==='c'?(d.cloth||[]).find(y=>y.id===ref):(d.items||[]).find(y=>y.kind===k&&y.ref===ref);if(!x)return;const t=pendTarget(x);if(t)boJump(t[0],t[1],t[2],t[3]);}
+/* 🔗 קישור ישיר לפריט (מהתוסף לכרום / מהתראה): #admin-prices&item=price:<מזהה> — פותח את הבק אופיס ישר על הפריט */
+const _pdOpenBO=window.openBO;
+window.openBO=async function(){const m=location.hash.match(/[&?]item=([a-z]+):([^&]+)/);const r=await _pdOpenBO.apply(this,arguments);
+  if(m&&sb&&isStaff()){const k=m[1];let ref='';try{ref=decodeURIComponent(m[2]);}catch(e){}
+    let d=null;try{d=await pendingData();}catch(e){}
+    const x=d&&d.items.find(y=>y.kind===k&&y.ref===ref);
+    if(x)pendOpen([k,ref],d);else if(PSEC[k]&&k!=='scrape')boJump(PSEC[k],ref,'');}
+  return r;};
 /* 📊 סקירה: מה בדיוק ממתין — כל פריט לחיץ וקופץ ישר אליו */
 const _pdDash=VIEWS.dash;
 VIEWS.dash=async function(){await _pdDash.apply(this,arguments);if(cur!=='dash'||!allowed('pending'))return;

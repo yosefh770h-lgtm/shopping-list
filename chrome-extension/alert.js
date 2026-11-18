@@ -23,7 +23,7 @@ document.addEventListener('click', async e => {
   if (o || c) {
     const q = await queue(), i = Number((o || c).dataset[o ? 'open' : 'close']), ev = q[i];
     q.splice(i, 1); await setQueue(q);
-    if (o && ev) chrome.tabs.create({ url: siteUrl(await getSettings(), kindOf(ev.kind).section) });
+    if (o && ev) chrome.tabs.create({ url: siteUrl(await getSettings(), kindOf(ev.kind).section, ev) });
     render(); return;
   }
   if (e.target.closest('#openAll')) { chrome.tabs.create({ url: siteUrl(await getSettings(), '') }); await setQueue([]); window.close(); return; }

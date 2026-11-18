@@ -2081,6 +2081,10 @@ await test('✅ ממתין לאישור: רואים בדיוק מה ממתין (
   await page.click('#pdDash [data-pjump*="review"]'); await page.waitForTimeout(900);
   const r = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
   assert(r.cur === 'reviews' && r.id === R, 'מהסקירה לא קפץ לחוות הדעת: ' + JSON.stringify(r));
+  // קישור מהתוסף לכרום: #admin-prices&item=price:<id> פותח את הבק אופיס ישר על הפריט
+  await page.evaluate((P) => { history.replaceState(null, '', '#admin-prices&item=price:' + P); openBO('prices'); }, P); await page.waitForTimeout(1200);
+  const x = await page.evaluate(() => { const e = document.querySelector('#boMain .bojump'); return { cur: (document.querySelector('#boNav button.on') || {dataset:{}}).dataset.s, id: e && e.dataset.id }; });
+  assert(x.cur === 'prices' && x.id === P, 'קישור מהתוסף לא קפץ לפריט: ' + JSON.stringify(x));
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });

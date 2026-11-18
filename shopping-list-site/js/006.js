@@ -745,7 +745,7 @@ async function onSignedIn(user){
   await startCloud();
   loadPublicData();
   afterEnter();
-  const admHash=location.hash.match(/^#admin(?:-([a-z]+))?$/);
+  const admHash=location.hash.match(/^#admin(?:-([a-z]+))?(?:&|$)/);
   if(admHash&&isStaff())openBO(admHash[1]);
   else setTimeout(async()=>{await checkUpdates();loadAds();},1500); /* אם הוצג עדכון — הפרסומת מחכה שייסגר (maybePopupAd) */
   setTimeout(initStores,2000);

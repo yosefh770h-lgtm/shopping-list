@@ -134,9 +134,9 @@ function notify(id, sticky, title, message, context) {
 
 // לחיצה על התראה פותחת את הבק אופיס בלשונית הנכונה
 async function openFromNotification(id) {
-  let section = '';
-  if (id.startsWith('yam|')) section = (KINDS[id.slice(4).split(':')[0]] || {}).section || '';
-  chrome.tabs.create({ url: siteUrl(await getSettings(), section) });
+  let section = '', item = null;
+  if (id.startsWith('yam|')) { const kr = id.slice(4), i = kr.indexOf(':'), kind = kr.slice(0, i); section = (KINDS[kind] || {}).section || ''; item = { kind, ref: kr.slice(i + 1) }; }
+  chrome.tabs.create({ url: siteUrl(await getSettings(), section, item) });
   chrome.notifications.clear(id);
 }
 chrome.notifications.onButtonClicked.addListener((id, btn) => {

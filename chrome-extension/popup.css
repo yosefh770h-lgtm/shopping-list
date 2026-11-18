@@ -155,3 +155,7 @@ body.alert main{padding:12px}
 .alert .card .acts .btn{flex:1}
 .footbar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--card)}
 .footbar .btn{flex:1}
+
+/* קפיצה לסוג מסוים ברשימת "לאישור עכשיו" */
+@keyframes flash{0%,50%{box-shadow:0 0 0 3px #e0b100}100%{box-shadow:none}}
+.card.flash{animation:flash 2.2s ease-out}

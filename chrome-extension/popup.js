@@ -1,6 +1,6 @@
 // חלון התוסף: כניסה, מה ממתין לאישור, עדכונים אחרונים, חיפוש מחירים והגדרות
 import { login, logout, getSession, getSettings, saveSettings, siteUrl, KINDS, ROLE_NAMES, kindsForRole, rpc, checkUpdate, searchPrices, searchProducts, groupPrices, DEFAULT_SITE } from './api.js';
-import { $, esc, icon, paintIcons, kindOf, eventCard, onActClick } from './ui.js';
+import { $, esc, icon, paintIcons, kindOf, eventCard, onActClick, itemAttr } from './ui.js';
 
 const VIEWS = ['vLogin', 'vMain', 'vSearch', 'vSettings'];
 const OLD_DAYS = 30;
@@ -17,7 +17,8 @@ function view(v) {
 const current = () => VIEWS.find(id => !$('#' + id).hidden);
 const backToMain = () => { view('vMain'); render(); };
 
-async function openSite(section) { chrome.tabs.create({ url: siteUrl(await getSettings(), section) }); window.close(); }
+async function openSite(section, item) { chrome.tabs.create({ url: siteUrl(await getSettings(), section, item) }); window.close(); }
+const itemOf = el => { const v = el.dataset.item || '', i = v.indexOf('|'); return i > 0 ? { kind: v.slice(0, i), ref: v.slice(i + 1) } : null; };
 
 // ---------- מסך ראשי ----------
 function pendingChip(k, n) {
@@ -25,7 +26,7 @@ function pendingChip(k, n) {
     : ['chat', 'message'].includes(k) ? KINDS[k].label + ' (לא נקראו)'
     : ['abuse', 'error'].includes(k) ? KINDS[k].label + ' (לטיפול)'
     : KINDS[k].label;
-  return '<button class="chip hot" data-open="' + KINDS[k].section + '">' + icon(KINDS[k].icon) + esc(label) + '<b>' + n + '</b></button>';
+  return '<button class="chip hot" data-pk="' + k + '" data-open="' + KINDS[k].section + '">' + icon(KINDS[k].icon) + esc(label) + '<b>' + n + '</b></button>';
 }
 
 async function render() {
@@ -75,14 +76,17 @@ async function loadTodo() {
   $('#todoTtl').textContent = 'לאישור עכשיו (' + rows.length + ')';
   $('#todo').innerHTML = rows.map(e => {
     const shown = e.kind === 'chain' ? { ...e, detail: { store: 'חנות', online: 'אונליין' }[e.detail] || e.detail } : e;
-    return eventCard({ ...shown, pending: true }, { openBtn: true, extra: '<button class="lnk" data-open="' + esc(kindOf(e.kind).section) + '">פתיחה בבק אופיס' + icon('external') + '</button>' });
+    return eventCard({ ...shown, pending: true }, { openBtn: true, extra: '<button class="lnk" data-open="' + esc(kindOf(e.kind).section) + '"' + itemAttr(e) + '>לפתוח ולראות באתר' + icon('external') + '</button>' }).replace('<li class="card', '<li data-tk="' + esc(e.kind) + '" class="card');
   }).join('');
 }
 
 // ---------- לחיצות ----------
 document.addEventListener('click', e => {
   const act = e.target.closest('[data-act]'); if (act) { e.stopPropagation(); onActClick(act, loadTodo); return; }
-  const o = e.target.closest('[data-open]'); if (o) { openSite(o.dataset.open); return; }
+  // לחיצה על סוג למעלה: קופץ לפריטים מהסוג הזה ברשימת "לאישור עכשיו" (ואם אין שם — פותח את המסך באתר)
+  const pk = e.target.closest('[data-pk]'); const first = pk && $('#todo [data-tk="' + pk.dataset.pk + '"]');
+  if (first) { first.scrollIntoView({ behavior: 'smooth', block: 'start' }); first.classList.remove('flash'); void first.offsetWidth; first.classList.add('flash'); return; }
+  const o = e.target.closest('[data-open]'); if (o) { openSite(o.dataset.open, itemOf(o)); return; }
   const f = e.target.closest('[data-f]'); if (f) { filter = f.dataset.f; render(); return; }
   const tab = e.target.closest('[data-st]'); if (tab) { setTab(tab.dataset.st); doSearch(); return; }
   const pq = e.target.closest('[data-pq]'); if (pq) { $('#inQ').value = pq.dataset.pq; setTab('prices'); doSearch(); return; }
@@ -90,7 +94,7 @@ document.addEventListener('click', e => {
   const ws = e.target.closest('[data-site]'); if (ws) openSitePrices(ws.dataset.site);
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.matches('.card[data-open]')) openSite(e.target.dataset.open);
+  if (e.key === 'Enter' && e.target.matches('.card[data-open]')) openSite(e.target.dataset.open, itemOf(e.target));
 });
 
 // ---------- חיפוש מוצרים ומחירים ----------

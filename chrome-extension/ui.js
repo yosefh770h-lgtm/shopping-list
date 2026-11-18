@@ -68,11 +68,14 @@ export function actionsHtml(e) {
   return '<div class="acts">' + b(a[0], 1) + (a[1] ? b(a[1], 0, true) : '') + '</div>';
 }
 
+// לאיזה פריט הלחיצה קופצת בבק אופיס
+export const itemAttr = e => e.ref ? ' data-item="' + esc(e.kind + '|' + e.ref) + '"' : '';
+
 // כרטיס עדכון אחד. opts: { isNew, openBtn, extra }
 export function eventCard(e, opts = {}) {
   const k = kindOf(e.kind);
   const when = e.created_at ? '<time title="' + esc(new Date(e.created_at).toLocaleString('he-IL')) + '">' + timeAgo(e.created_at) + '</time>' : '';
-  return '<li class="card' + (opts.isNew ? ' new' : '') + '"' + (opts.openBtn ? '' : ' data-open="' + esc(k.section) + '" tabindex="0"') + '>' +
+  return '<li class="card' + (opts.isNew ? ' new' : '') + '"' + (opts.openBtn ? '' : ' data-open="' + esc(k.section) + '"' + itemAttr(e) + ' tabindex="0"') + '>' +
     '<div class="meta"><span class="kind">' + icon(k.icon) + esc(k.label) + (e.pending ? '<span class="pill">' + pendLabel(e.kind) + '</span>' : '') + '</span>' + when + '</div>' +
     '<div class="t">' + esc(e.title) + '</div>' +
     (e.detail ? '<div class="d">' + esc(e.detail) + '</div>' : '') +
