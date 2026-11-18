@@ -374,7 +374,7 @@ VIEWS.ads=async function(){
       if(!playable)msg=(msg?msg+' ':'')+'⚠️ הסרטון עלה, אבל הדפדפן הזה לא מצליח לנגן אותו. כדאי MP4 רגיל (H.264), למשל לייצא אותו שוב מתוכנת העריכה.';}
     catch(err){const m=String(err&&err.message||err);console.warn('ad video upload failed',err);
       /* נרשם גם ביומן התקלות, כדי שיהיה אפשר לראות בדיוק מה השרת ענה */
-      try{sb.rpc('log_client_error',{p_msg:('העלאת סרטון פרסומת נכשלה: '+m).slice(0,500),p_src:'adVidFile · '+f.name.slice(0,80)+' · '+typ+' · '+Math.round(f.size/1024)+'KB',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}
+      try{sb.rpc('log_client_error',{p_msg:('העלאת סרטון פרסומת נכשלה: '+m).slice(0,500),p_src:'adVidFile · '+f.name.slice(0,80)+' · '+typ+' · '+Math.round(f.size/1024)+'KB',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}
       msg=/bucket|not found|row-level|policy|unauthorized|403|column|schema cache|ads_video_check/i.test(m)?'⚠️ הסרטון לא עלה: צריך להריץ שוב את קוד ה-SQL (בק אופיס ← ⚙️ הגדרה ראשונית), ואז לנסות שוב. ('+m.slice(0,80)+')'
         :'⚠️ הסרטון לא עלה: '+m.slice(0,140);flash(msg);}
     finally{$('#adSave').disabled=false;if(!done)e.target.value='';vidSync(msg);preview();}};
@@ -1500,16 +1500,35 @@ VIEWS.texts=async function(){await _a11yTexts.apply(this,arguments);if(cur!=='te
     '<label>הערה נוספת (לא חובה)</label><input id="a11yX" maxlength="200" value="'+esc(v.note||'')+'"><button class="btn" id="a11ySave" style="margin-top:8px">💾 שמירה</button></div>');
   $('#a11ySave').onclick=()=>{const d=new Date();setCfg('a11y',{name:$('#a11yN').value.trim(),phone:$('#a11yP').value.trim(),email:$('#a11yE').value.trim(),note:$('#a11yX').value.trim(),updated:d.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'})},'✔️ נשמר — מופיע בהצהרת הנגישות');};};
 
-/* ---------- 🐞 יומן תקלות — מה נשבר אצל משתמשים ---------- */
-VIEWS.errors=async function(){
+/* ---------- 🐞 יומן תקלות — מה נשבר אצל משתמשים ----------
+   נובמבר 2026: גם לפי גרסת האפליקציה ודגם הטלפון — כמו "עדכוני אפליקציה שנכשלו". סינון: הכל / רק אפליקציה / רק אתר */
+VIEWS.errors=async function(f){f=f||'all';
   const {data,error}=await sb.from('client_errors').select('*').order('created_at',{ascending:false}).limit(500);
-  const list=data||[];const by={};list.forEach(r=>{const k=r.msg+'|'+r.src;(by[k]=by[k]||{msg:r.msg,src:r.src,n:0,users:new Set(),last:r.created_at,ver:r.ver,ua:r.ua}).n++;if(r.user_id)by[k].users.add(r.user_id);});
+  const all=data||[],isApp=r=>!!r.app_ver,srv=r=>r.ver==='collector';
+  const list=all.filter(r=>f==='app'?isApp(r):f==='site'?!isApp(r)&&!srv(r):true);
+  const who=r=>r.user_id||r.dev||r.ua,model=r=>String(r.device||'').split(' · ')[0],ph=d=>(window.phName61&&phName61(d))||'';
+  const mName=d=>{const p=ph(d);return p?p+' ('+d+')':d;};
+  const by={};list.forEach(r=>{const k=r.msg+'|'+r.src;const g=by[k]=by[k]||{msg:r.msg,src:r.src,n:0,users:new Set(),vers:new Set(),models:new Set(),last:r.created_at,ver:r.ver,ua:r.ua};
+    g.n++;g.users.add(who(r));if(r.app_ver)g.vers.add(r.app_ver);if(model(r)&&!/^(Android|iOS) /.test(model(r)))g.models.add(model(r));});
   const rows=Object.values(by).sort((a,b)=>new Date(b.last)-new Date(a.last));
-  $('#boMain').innerHTML='<div class="card"><h2>🐞 יומן תקלות</h2><p class="muted">כשמשהו נשבר אצל משתמש באתר, זה נרשם כאן אוטומטית (60 יום אחרונים). תקלות זהות מקובצות יחד. לכל תקלה כתוב בעברית מה קרה, באיזה חלק של האתר ובאיזה מכשיר.</p>'+(error?'<p class="muted">⚠️ צריך להריץ שוב את קוד ה-SQL. '+esc(error.message)+'</p>':'')+
-    (rows.length?rows.map(r=>{const x=errExplain(r);return '<div class="item errx"><div style="font-size:16px;font-weight:700;margin-bottom:4px">📝 '+esc(x.what)+'</div><div>🔁 <b>כמה:</b> '+r.n+' פעמים · '+r.users.size+' משתמשים</div>'+
-      '<div>📍 <b>איפה:</b> '+esc(x.where)+'</div><div>📱 <b>אצל:</b> '+esc(x.who)+'</div><div>🕐 <b>לאחרונה:</b> '+esc(fmt(r.last))+(r.ver?' · גרסה '+esc(r.ver):'')+'</div>'+
+  /* סיכום: כמה תקלות וכמה מכשירים בכל גרסה ובכל דגם (אותה תקלה במכשירים רבים מאותה גרסה = כנראה באג בגרסה) */
+  const sum=(key)=>{const m={};list.forEach(r=>{const k=key(r);if(!k)return;const x=m[k]=m[k]||{n:0,d:new Set(),t:new Set()};x.n++;x.d.add(who(r));x.t.add(r.msg+'|'+r.src);});
+    return Object.entries(m).sort((a,b)=>b[1].d.size-a[1].d.size||b[1].n-a[1].n);};
+  const vSum=sum(r=>isApp(r)?'אפליקציה '+r.app_ver:srv(r)?'':'אתר (דפדפן)'),mSum=sum(r=>{const m=model(r);return m&&!/^(Android|iOS) /.test(m)?m:'';}).slice(0,15);
+  const tbl=(t,L,c)=>!L.length?'':'<div class="tw" tabindex="0" role="region" aria-label="'+t+'" style="flex:1;min-width:240px"><table><thead><tr><th>'+t+'</th><th>תקלות</th><th>מכשירים</th><th>סוגים</th></tr></thead><tbody>'+
+    L.map(([k,x])=>'<tr><td data-l="'+t+'"'+(c?' dir="ltr"':'')+'>'+esc(c?mName(k):k)+'</td><td data-l="תקלות">'+x.n+'</td><td data-l="מכשירים"><b>'+x.d.size+'</b></td><td data-l="סוגים">'+x.t.size+'</td></tr>').join('')+'</tbody></table></div>';
+  const chip=(k,l)=>'<button class="btn '+(f===k?'':'sec')+'" data-ef="'+k+'" aria-pressed="'+(f===k)+'">'+l+'</button>';
+  $('#boMain').innerHTML='<div class="card"><h2>🐞 יומן תקלות</h2><p class="muted">כשמשהו נשבר אצל משתמש באתר או באפליקציה, זה נרשם כאן אוטומטית (עד 60 יום), עם גרסת האפליקציה ודגם הטלפון. תקלות זהות מקובצות יחד. כשאותה תקלה קורית ב-3 מכשירים שונים ביממה, המנהלים מקבלים התראה.</p>'+(error?'<p class="muted">⚠️ צריך להריץ שוב את קוד ה-SQL. '+esc(error.message)+'</p>':'')+
+    '<div class="row" style="gap:6px;margin:6px 0">'+chip('all','הכל')+chip('app','📱 רק אפליקציה')+chip('site','🌐 רק אתר')+'</div>'+
+    (list.length?'<h3 style="margin:10px 0 4px">לפי גרסה ודגם</h3><div style="display:flex;gap:10px;flex-wrap:wrap">'+tbl('גרסה',vSum)+tbl('דגם טלפון',mSum,1)+'</div>':'')+
+    (rows.length?rows.map(r=>{const x=errExplain(r);return '<div class="item errx"><div style="font-size:16px;font-weight:700;margin-bottom:4px">📝 '+esc(x.what)+'</div><div>🔁 <b>כמה:</b> '+r.n+' פעמים · '+r.users.size+' מכשירים</div>'+
+      '<div>📍 <b>איפה:</b> '+esc(x.where)+'</div><div>📱 <b>אצל:</b> '+esc(x.who)+'</div>'+
+      (r.vers.size?'<div>🔢 <b>גרסת אפליקציה:</b> <span dir="ltr">'+esc([...r.vers].join(', '))+'</span></div>':'')+
+      (r.models.size?'<div>📲 <b>דגמים:</b> <span dir="ltr">'+esc([...r.models].slice(0,8).map(mName).join(', '))+'</span></div>':'')+
+      '<div>🕐 <b>לאחרונה:</b> '+esc(fmt(r.last))+(r.ver?' · גרסת אתר '+esc(r.ver):'')+'</div>'+
       (x.tip?'<div>💡 <b>מה לעשות:</b> '+esc(x.tip)+'</div>':'')+
       '<details><summary class="muted">🔧 פרטים טכניים</summary><div style="overflow-wrap:anywhere;direction:ltr;text-align:left;font-size:13px"><b>'+esc(r.msg)+'</b><br>'+esc(r.src)+'<br><span class="muted">'+esc(r.ua)+'</span></div></details></div>';}).join('')+'<button class="btn sec" id="errClr" style="margin-top:10px">🗑️ ניקוי היומן</button>':'<p style="font-size:18px;margin-top:8px">🎉 אין תקלות רשומות</p>')+'</div>';
+  document.querySelectorAll('#boMain [data-ef]').forEach(b=>b.onclick=()=>VIEWS.errors(b.dataset.ef));
   const c=$('#errClr');if(c)c.onclick=async()=>{if((await uiConfirm('לנקות את כל יומן התקלות?'))&&await ok(sb.from('client_errors').delete().gt('id',0),'🗑️ נוקה'))VIEWS.errors();};
 };
 /* ---------- 🏷️ v23: קרדיט למדווחים — מתי הציבור רואה מי דיווח/כתב ---------- */
