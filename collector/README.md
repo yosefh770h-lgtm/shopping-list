@@ -13,9 +13,9 @@
 ## מאיפה מגיעים הקבצים
 
 ההורדה היא קוד שלנו (`yam/sources.py`): הפורטלים הציבוריים שהרשתות חייבות לפרסם לפי חוק קידום התחרות בענף המזון
-(Cerberus / Bina / laibcatalog, והאתרים של שופרסל, קרפור, חצי חינם, סופר פארם ו-וולט). לא משתמשים יותר ב-il-supermarket-scraper,
+(Cerberus / Bina / laibcatalog, והאתרים של שופרסל, קרפור, חצי חינם, סופר פארם, וולט, סיטי מרקט, נתיב החסד ומשנת יוסף). לא משתמשים יותר ב-il-supermarket-scraper,
 שהרישיון שלו אוסר שימוש מסחרי. רשימת הפורטלים מבוססת על israeli-prices (MIT) — ראו `THIRD_PARTY_LICENSES.md`.
-רשתות שעוד אין להן מקור מאומת: `sources.MISSING`. בדיקה ידנית בשרת (רק קורא): `cd /opt/yamshopping/repo/collector && /opt/yamshopping/venv/bin/python -m yam.sources`
+כל 34 הרשתות ברשימה הרשמית של משרד הכלכלה (gov.il, cpfta_prices_regulations) מכוסות. בדיקה ידנית בשרת (רק קורא): `cd /opt/yamshopping/repo/collector && /opt/yamshopping/venv/bin/python -m yam.sources`
 
 ## מה נשמר איפה
 

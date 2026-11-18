@@ -249,8 +249,53 @@ def list_wolt(http, spec, kind, day):
     return _newest_first(out)
 
 
+# ---------- משנת יוסף (המקור השני, chp-kt.pages.dev): רשימה ב-JSON, הקבצים ב-Backblaze ----------
+def list_kt(http, spec, kind, day):
+    rows = http.get("https://list-files.w5871031-kt.workers.dev/").json()
+    out = [((r.get("name") or "").strip(), r.get("url") or "") for r in rows or []]
+    return _newest_first([(n, u) for n, u in out if n and u.startswith("https://")])
+
+
+# ---------- סיטי מרקט (חנויות): www.citymarket-shops.co.il ----------
+_CM_T = {"price": "1", "pricefull": "1", "promo": "2", "promofull": "2", "stores": "3"}
+_ROW = re.compile(r"<tr\b.*?</tr>", re.S | re.I)
+_CM_LINK = re.compile(r'href="(/downloadFile/[\w-]+)"')
+_CM_NAME = re.compile(r"\b((?:PriceFull|PromoFull|StoresFull|Price|Promo|Stores)\d{13}[-\w.]*)")
+
+
+def list_citymarket(http, spec, kind, day):
+    """הדף מציג את הקבצים של היום, 50 בעמוד. קישור ההורדה הוא מזהה, ושם הקובץ כתוב באותה שורה בטבלה."""
+    base = "https://www.citymarket-shops.co.il"
+    out, seen = [], set()
+    for page in range(1, 60):
+        rows = 0
+        for tr in _ROW.findall(http.get(f"{base}/?t={_CM_T[kind]}&p={page}").text):
+            link, name = _CM_LINK.search(tr), _CM_NAME.search(re.sub(r"<[^>]+>", " ", tr))
+            if not link or not name:
+                continue
+            rows += 1
+            if name.group(1) not in seen:
+                seen.add(name.group(1))
+                out.append((name.group(1), base + link.group(1)))
+        if rows < 50:
+            break
+    return out
+
+
+# ---------- נתיב החסד (כולל ברכל ושירה מרקט): app.netiv-hesed.com ----------
+_NH_NAME = re.compile(r"fileName=([^\"&]+)", re.I)
+
+
+def list_netiv(http, spec, kind, day):
+    """כל הקבצים של היום בעמוד אחד; הורדה דרך /Prices/Download?fileName=..."""
+    base = "https://app.netiv-hesed.com"
+    names = {html.unescape(n) for n in _NH_NAME.findall(http.get(f"{base}/").text)}
+    return _newest_first([(n, f"{base}/Prices/Download?fileName={quote(n)}") for n in names])
+
+
 LISTERS = {"cerberus": list_cerberus, "bina": list_bina, "laib": list_laib, "shufersal": list_shufersal,
-           "hazi": list_hazi, "superpharm": list_superpharm, "carrefour": list_carrefour, "wolt": list_wolt}
+           "hazi": list_hazi, "superpharm": list_superpharm, "carrefour": list_carrefour, "wolt": list_wolt,
+           "kt": list_kt, "citymarket": list_citymarket, "netiv": list_netiv}
 
 
 def _c(user, chain_id, password="", folder="/"):
@@ -299,10 +344,14 @@ SOURCES = {
     "VICTORY_NEW_SOURCE": _l("7290696200003"),
     "MAHSANI_ASHUK_NEW_SOURCE": _l("7290661400001"),
     "HET_COHEN_NEW_SOURCE": _l("7290455000004"),
+    # מהרשימה הרשמית של משרד הכלכלה (gov.il, cpfta_prices_regulations) — בלי כניסה
+    "MESHMAT_YOSEF_2": {"engine": "kt"},
+    "CITY_MARKET_SHOPS": {"engine": "citymarket"},
+    "NETIV_HASED": {"engine": "netiv"},
 }
 
-# רשתות שהיו באוסף הישן ועוד אין לנו מקור מאומת עבורן — מוצגות בבק אופיס עם הודעה ברורה
-MISSING = {"MESHMAT_YOSEF_2", "CITY_MARKET_SHOPS", "NETIV_HASED"}
+# רשתות שעוד אין לנו מקור מאומת עבורן (כרגע: אין — כל הרשתות ברשימה של משרד הכלכלה מכוסות)
+MISSING = set()
 
 
 def list_files(http, chain, kind, day=None):

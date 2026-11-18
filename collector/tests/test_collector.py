@@ -531,7 +531,7 @@ def test_sources_file_names_and_day_filter(monkeypatch):
     got = sources.list_files(None, "RAMI_LEVY", "price", dt.date(2026, 10, 25))
     assert got == [("Price7290058140886-001-202610250500.gz", "u1")]
     with pytest.raises(RuntimeError):
-        sources.list_files(None, "NETIV_HASED", "price")
+        sources.list_files(None, "NO_SUCH_CHAIN", "price")
 
 
 def test_every_known_chain_has_a_source_or_is_marked_missing():
@@ -578,6 +578,72 @@ def test_cerberus_login_and_listing(monkeypatch):
     login = calls[1][2]
     assert login["username"] == "yuda_ho" and login["csrftoken"] == "T1"
     assert calls[2][2]["csrftoken"] == "T2" and calls[2][2]["cd"] == "/Yuda" and calls[2][2]["sSearch"] == "Price"
+
+
+def test_new_official_sources(monkeypatch):
+    """משנת יוסף (המקור השני), סיטי מרקט (חנויות) ונתיב החסד — מהרשימה של משרד הכלכלה."""
+    from yam import sources
+
+    class R:
+        def __init__(self, text="", data=None):
+            self.text, self._data = text, data
+
+        def json(self):
+            return self._data
+
+    kt = [{"type": "PriceFull", "name": "PriceFull5144744100002-001-001-20261118-000001.xml.gz",
+           "url": "https://kt-prices.s3.eu-central-003.backblazeb2.com/PriceFull5144744100002-001-001-20261118-000001.xml.gz"},
+          {"type": "PriceFull", "name": "PriceFull5144744100002-001-001-20261117-000002.xml.gz",
+           "url": "https://kt-prices.s3.eu-central-003.backblazeb2.com/PriceFull5144744100002-001-001-20261117-000002.xml.gz"},
+          {"type": "Stores", "name": "Stores5144744100002-000-20261118-000000.xml.gz", "url": "https://kt/x"}]
+    cm_row = ('<tr><td>18-11-2026 00:59</td><td>סיטי מרקט חנקין</td><td>{n}</td><td>Prices</td><td>מלא</td>'
+              '<td>963.4</td><td><a href="/downloadFile/{u}">הורדה</a></td></tr>')
+    cm1 = "<table>" + "".join(cm_row.format(n=f"PriceFull7290000000003-{i:03}-202611180059", u=f"id-{i}") for i in range(50)) + "</table>"
+    cm2 = "<table>" + cm_row.format(n="Price7290000000003-000-006-20261118-100313.gz", u="id-x") + "</table>"
+    netiv = ('<a href="/Prices/Download?fileName=Price7290058160839-006-004-20261118-080856.GZ">הורדה</a>'
+             '<a href="/Prices/Download?fileName=PriceFull7290058160839-006-004-20261118-000100.GZ">הורדה</a>')
+    seen = []
+
+    class FakeHttp:
+        def get(self, url, **k):
+            seen.append(url)
+            if "workers.dev" in url:
+                return R(data=kt)
+            if "citymarket" in url:
+                return R(cm1 if url.endswith("p=1") else cm2)
+            return R(netiv)
+
+    day = dt.date(2026, 11, 18)
+    got = sources.list_files(FakeHttp(), "MESHMAT_YOSEF_2", "pricefull", day)
+    assert got == [(kt[0]["name"], kt[0]["url"])]
+    got = sources.list_files(FakeHttp(), "CITY_MARKET_SHOPS", "pricefull", day)
+    assert len(got) == 50 and got[0] == ("PriceFull7290000000003-000-202611180059", "https://www.citymarket-shops.co.il/downloadFile/id-0")
+    assert "https://www.citymarket-shops.co.il/?t=1&p=2" in seen
+    assert sources.list_files(FakeHttp(), "CITY_MARKET_SHOPS", "price", day) == [
+        ("Price7290000000003-000-006-20261118-100313.gz", "https://www.citymarket-shops.co.il/downloadFile/id-x")]
+    got = sources.list_files(FakeHttp(), "NETIV_HASED", "price", day)
+    assert got == [("Price7290058160839-006-004-20261118-080856.GZ",
+                    "https://app.netiv-hesed.com/Prices/Download?fileName=Price7290058160839-006-004-20261118-080856.GZ")]
+    assert not sources.MISSING
+
+
+def test_sub_brands_shown_separately():
+    """כל מותג שמשרד הכלכלה מונה בתוך רשת מוצג בשם שלו."""
+    from yam import api
+    assert api.shown_chain("RAMI_LEVY", "סופר קופיקס", "") == "סופר קופיקס"
+    assert api.shown_chain("RAMI_LEVY", "", "Quik רמת גן") == "קוויק"
+    assert api.shown_chain("YAYNO_BITAN_AND_CARREFOUR", "קוויק", "") == "קוויק"
+    assert api.shown_chain("YAYNO_BITAN_AND_CARREFOUR", "ביתן אונליין", "") == "ביתן אונליין"
+    assert api.shown_chain("NETIV_HASED", "שירה מרקט", "") == "שירה מרקט"
+    assert api.shown_chain("NETIV_HASED", "", "ברכל אלעד") == "ברכל טוב"
+    assert api.shown_chain("RAMI_LEVY", "", "רמי לוי תלפיות") == "רמי לוי"
+
+
+def test_every_chain_has_its_own_name():
+    """השם בעברית הוא המפתח של הרשת ב-Supabase — שתי רשתות עם אותו שם היו מתערבבות."""
+    from yam import chains as C
+    names = [C.hebrew(c) for c in C.all_chains()]
+    assert len(names) == len(set(names)), [n for n in names if names.count(n) > 1]
 
 
 def test_paged_listing_stops_at_older_pages(monkeypatch):
