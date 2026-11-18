@@ -270,6 +270,33 @@ function bindTools18(root){
   calc18Render();
 }
 
+/* ---------- השוואה הוגנת: איפה הכי זול לכל הרשימה ----------
+   כל חנות מחזירה מחיר רק לחלק מהמוצרים, ולפעמים מוצר אחר (מותג או אריזה אחרים). כדי לא להשוות סכומים של מוצרים שונים,
+   בוחרים את המוצרים שנמצאים באותו מוצר בדיוק (אותו ברקוד) בכל החנויות שבהשוואה, ומשווים רק אותם.
+   st = [{s, m:{מוצר:{code,cost,reg}}}] · n = כמה מוצרים ברשימה. מחזיר {common, rows:[{s,sum,reg}]} או null */
+function fair18(st,n){
+  const ref={};
+  st.forEach(x=>Object.entries(x.m).forEach(([k,v])=>{const c=v.code||'';(ref[k]=ref[k]||{})[c]=(ref[k][c]||0)+1;}));
+  Object.keys(ref).forEach(k=>{ref[k]=Object.entries(ref[k]).sort((a,b)=>b[1]-a[1])[0][0];});
+  const has=x=>Object.keys(x.m).filter(k=>(x.m[k].code||'')===ref[k]);
+  const cand=st.map(x=>({x,h:has(x)})).filter(o=>o.h.length).sort((a,b)=>b.h.length-a.h.length);
+  if(cand.length<2)return null;
+  const need=Math.max(2,Math.ceil(0.6*cand[0].h.length));
+  let common=null;const pick=[];
+  for(const o of cand){const nx=common?common.filter(k=>o.h.includes(k)):o.h.slice();if(nx.length<need)continue;common=nx;pick.push(o.x);if(pick.length>=12)break;}
+  if(pick.length<2||!common||common.length<2)return null;
+  const rows=pick.map(x=>({s:x.s,sum:rnd2(common.reduce((a,k)=>a+x.m[k].cost,0)),reg:rnd2(common.reduce((a,k)=>a+x.m[k].reg,0))})).sort((a,b)=>a.sum-b.sum);
+  return {common,rows,n};
+}
+function fair18Html(f,label,nameOf,cur,missName){
+  const best=f.rows[0],MED=['🥇','🥈','🥉'];
+  const out=missName?missName.filter(Boolean):[];
+  return '<div class="rank fair18"><h3>✅ '+T('הכי זול לכל הרשימה: ','Cheapest for the whole list: ')+esc(nameOf(best.s))+' — '+fmtPrice(best.sum,cur)+'</h3>'+
+    '<div class="sub">'+T('הושוו '+f.common.length+' מתוך '+f.n+' מוצרים: רק מוצרים זהים שיש בכל '+f.rows.length+' '+label+' שבהשוואה, כדי שההשוואה תהיה הוגנת.','Compared '+f.common.length+' of '+f.n+' items: only identical items found in all '+f.rows.length+' compared.')+'</div>'+
+    f.rows.slice(0,5).map((r,i)=>{const d=rnd2(r.sum-best.sum);return '<div class="rkrow"><span class="rkn">'+(MED[i]||(i+1))+'</span><b>'+esc(nameOf(r.s))+'</b><span class="amt">'+fmtPrice(r.sum,cur)+'</span><small>'+(i===0?T('הכי זול 🎉','cheapest 🎉'):T('יקר ב-','more by ')+fmtPrice(d,cur)+(best.sum>0?' ('+Math.round(100*d/best.sum)+'%)':''))+'</small></div>';}).join('')+
+    (out.length?'<p class="muted-note">'+T('לא נכללו בהשוואה (אין בכל החנויות, או מוצר שונה): ','Left out (not in every store, or a different product): ')+out.map(esc).join(', ')+'</p>':'')+'</div>';
+}
+
 /* ---------- סל הקניות: איפה הכי זול לקנות את הרשימה ---------- */
 async function basketCompare(itemsArg){
   const open=itemsArg||curList().items.filter(i=>!i.done);
@@ -286,7 +313,7 @@ async function basketCompare(itemsArg){
   const minBy={},chains={};
   Object.values(latest).forEach(({r})=>{const k=r.product_key;if(!byKey[k])return;const dc=dealCost(r,byKey[k].mult);const p=dc.cost;
     if(!minBy[k]||p<minBy[k].p)minBy[k]={p,reg:dc.regular,save:dc.save,deal:dc.deal&&dc.save>0,deal_text:r.deal_text||'',note:dc.note,chain:r.chain};
-    const c=chains[r.chain]||(chains[r.chain]={chain:r.chain,keys:[],sum:0,reg:0,save:0,deals:0});c.keys.push(k);c.sum=rnd2(c.sum+p);c.reg=rnd2(c.reg+dc.regular);c.save=rnd2(c.save+dc.save);if(dc.deal&&dc.save>0)c.deals++;});
+    const c=chains[r.chain]||(chains[r.chain]={chain:r.chain,keys:[],sum:0,reg:0,save:0,deals:0});c.keys.push(k);(c.m||(c.m={}))[k]={cost:p,reg:dc.regular};c.sum=rnd2(c.sum+p);c.reg=rnd2(c.reg+dc.regular);c.save=rnd2(c.save+dc.save);if(dc.deal&&dc.save>0)c.deals++;});
   const rows=Object.values(chains).map(c=>{const mins=c.keys.reduce((a,k)=>a+minBy[k].p,0);return Object.assign(c,{above:mins?Math.round(1000*(c.sum-mins)/mins)/10:0});}).sort((a,b)=>b.keys.length-a.keys.length||a.sum-b.sum);
   const found=Object.keys(minBy);
   return {items:open.length,keys,byKey,found,missing:keys.filter(k=>!minBy[k]).map(k=>byKey[k].n),rows,minBy,split:rnd2(found.reduce((a,k)=>a+minBy[k].p,0)),splitReg:rnd2(found.reduce((a,k)=>a+minBy[k].reg,0))};
@@ -306,10 +333,10 @@ async function openBasket(itemsArg,label){
   const cur=myCurrency();const MED=['🥇','🥈','🥉'];
   let h=(!itemsArg&&state.lists.length>1?'<div class="row18"><label class="il" for="bk18List">'+T('איזו רשימה להשוות?','Which list?')+'</label><select id="bk18List">'+state.lists.map(l=>'<option value="'+esc(l.id)+'"'+(l.id===state.active?' selected':'')+'>'+esc(l.name)+'</option>').join('')+'</select></div>':'')+'<p class="muted-note">'+T('נמצאו מחירים ל-'+r.found.length+' מתוך '+r.keys.length+' מוצרים ברשימה "'+esc(label||curList().name)+'". המחירים לפי דיווחי הקהילה והסופרים.','Prices found for '+r.found.length+' of '+r.keys.length+' items.')+'</p>';
   if(r.rows.length){
-    const cheapestFull=r.rows.filter(x=>x.keys.length===r.found.length).sort((a,b)=>a.sum-b.sum)[0];
+    const fair=fair18(r.rows.map(c=>({s:c.chain,m:c.m})),r.found.length);
     /* שלוש שורות ברורות: מחיר רגיל · עם המבצעים · כמה חוסכים */
     const sums=(reg,cost)=>'<div class="sums18"><div><small>'+T('מחיר רגיל','Regular price')+'</small><b'+(reg>cost?' class="was"':'')+'>'+fmtPrice(reg,cur)+'</b></div><div><small>'+T('עם המבצעים','With deals')+'</small><b>'+fmtPrice(cost,cur)+'</b></div><div class="sv"><small>'+T('חוסכים','You save')+'</small><b>'+fmtPrice(rnd2(reg-cost),cur)+(reg>cost?' <i>('+Math.round(100*(reg-cost)/reg)+'%)</i>':'')+'</b></div></div>';
-    if(cheapestFull&&r.found.length>1)h+='<div class="rank" style="border-color:var(--hdr2)"><h3>✅ '+T('הכי משתלם לקנות הכל ב'+esc(cheapestFull.chain),'Cheapest to buy everything at '+esc(cheapestFull.chain))+' — '+fmtPrice(cheapestFull.sum,cur)+'</h3>'+sums(cheapestFull.reg,cheapestFull.sum)+'</div>';
+    if(fair){const b=fair.rows[0];h+=fair18Html(fair,T('הרשתות','chains'),x=>x,cur,r.found.filter(k=>!fair.common.includes(k)).map(k=>r.byKey[k].n)).replace('</h3>','</h3>'+sums(b.reg,b.sum));}
     h+='<div class="rank"><h3>🏪 '+T('השוואה בין החנויות','Store comparison')+'</h3>'+r.rows.slice(0,10).map((c,i)=>'<div class="rkrow"><span class="rkn">'+(MED[i]||(i+1))+'</span><b>'+esc(c.chain)+'</b><span class="amt">'+(c.save>0?'<s class="was18">'+fmtPrice(c.reg,cur)+'</s> ':'')+fmtPrice(c.sum,cur)+'</span><span class="rkbar"><i style="width:'+Math.round(100*c.keys.length/Math.max(1,r.found.length))+'%"></i></span><small>'+T('יש מחיר ל-'+c.keys.length+' מתוך '+r.found.length+' מוצרים','Prices for '+c.keys.length+' of '+r.found.length)+(c.save>0?' · 🔥 '+T(c.deals+' מבצעים — חוסכים '+fmtPrice(c.save,cur),c.deals+' deals — save '+fmtPrice(c.save,cur)):'')+' · '+(c.above>0?T('יקר ב-'+c.above+'% מהזול ביותר על אותם מוצרים',c.above+'% above cheapest'):T('הכי זול על המוצרים האלה 🎉','cheapest on these 🎉'))+(c.keys.length<r.found.length?'<br>🤷 '+T('אין כאן מחיר ל: ','No price here for: ')+r.found.filter(k=>!c.keys.includes(k)).map(k=>esc(r.byKey[k].n)).join(', '):'')+'</small></div>').join('')+'</div>';
     h+='<div class="rank"><h3>🧩 '+T('הכי חסכוני: כל מוצר איפה שהוא הכי זול','Max savings: each item where it is cheapest')+' — '+fmtPrice(r.split,cur)+'</h3>'+sums(r.splitReg,r.split)+r.found.map(k=>{const m=r.minBy[k];return '<div class="merow">'+(thumb53('x')?thumb53(r.byKey[k].bc,r.byKey[k].n):'<span>'+emojiOf(r.byKey[k].n)+'</span>')+'<span class="grow">'+esc(r.byKey[k].n)+(r.byKey[k].mult>1?' ×'+r.byKey[k].mult:'')+'<small>'+esc(m.chain)+(m.deal?' · 🔥 '+esc(m.deal_text||T('מבצע','deal'))+' · '+T('חוסכים ','save ')+fmtPrice(m.save,cur):'')+(m.note?' · 💡 '+esc(m.note):'')+unitTag18(r.byKey[k].n,m.p/Math.max(1,r.byKey[k].mult),cur,' · ')+'</small></span><b>'+(m.deal?'<s class="was18">'+fmtPrice(m.reg,cur)+'</s> ':'')+fmtPrice(m.p,cur)+'</b></div>';}).join('')+'</div>';
   }
@@ -352,7 +379,9 @@ function srvBasketMount(box,itemsArg){
   const res=wrap.querySelector('#srvRes'),cityIn=wrap.querySelector('#srvCity');const cur=myCurrency();const MED=['🥇','🥈','🥉'];
   const draw=d=>{const st=(d.stores||[]).filter(s=>!hid.includes(s.chain)&&s.found>0).slice(0,20);
     if(!st.length){res.innerHTML='<p class="muted-note">🤷 '+T('לא נמצאו חנויות עם מחירים לרשימה הזו כאן','No stores found here')+'</p>';return;}
-    res.innerHTML=st.map((s,i)=>{const save=Math.round((s.regular-s.total)*100)/100;
+    const nm=x=>(x.chain_name||'')+(x.brand?' · '+x.brand:'')+(x.name?' '+x.name:'');
+    const fair=d.items.length>1?fair18(st.map(x=>{const m={};x.lines.forEach((l,i)=>{if(l.found)m[i]={code:l.code,cost:l.cost,reg:l.regular};});return {s:x,m};}),d.items.length):null;
+    res.innerHTML=(fair?fair18Html(fair,T('החנויות','stores'),nm,cur,d.items.map((w,i)=>fair.common.includes(String(i))?'':w.q).filter(q=>!(d.missing||[]).includes(q))):'')+st.map((s,i)=>{const save=Math.round((s.regular-s.total)*100)/100;
       return '<details class="srvSt"><summary class="rkrow"><span class="rkn">'+(MED[i]||(i+1))+'</span><span><b>'+(s.online?'🌐 ':'')+esc(s.chain_name)+(s.brand?' · '+esc(s.brand):'')+'</b> '+esc(s.name||'')+'<small> · '+esc(srvAddr(s))+(s.km!=null&&!s.online?' · '+s.km+T(' ק"מ',' km'):'')+'</small></span>'+
         '<span class="amt">'+(save>0?'<s class="was18">'+fmtPrice(s.regular,cur)+'</s> ':'')+fmtPrice(s.total,cur)+'</span><small>'+(d.items.length===1?(s.lines[0]&&s.lines[0].found?thumb53(s.lines[0].code,s.lines[0].name,s.lines[0].q,'xs')+esc(s.lines[0].name)+(s.lines[0].deal?' · 🔥 '+esc(s.lines[0].deal.text||''):''):T('אין בחנות','not in this store')):T('יש מחיר ל-'+s.found+' מתוך '+d.items.length+' מוצרים',s.found+' of '+d.items.length+' items'))+(save>0?' · 🔥 '+T('חוסכים ','save ')+fmtPrice(save,cur):'')+'</small></summary>'+
         s.lines.map(l=>'<div class="merow">'+(l.found&&thumb53(l.code)?thumb53(l.code,l.name,l.q):'<span>'+(l.found?'▫️':'🤷')+'</span>')+'<span class="grow">'+esc(l.q)+(l.qty>1?' ×'+l.qty:'')+(l.found?'<small>'+esc(l.name)+(l.deal?' · 🔥 '+esc(l.deal.text||T('מבצע','deal')):'')+'</small>':'<small>'+T('אין בחנות','not in this store')+'</small>')+'</span><b>'+(l.found?(l.deal&&l.cost<l.regular?'<s class="was18">'+fmtPrice(l.regular,cur)+'</s> ':'')+fmtPrice(l.cost,cur):'—')+'</b></div>').join('')+'</details>';}).join('')+
