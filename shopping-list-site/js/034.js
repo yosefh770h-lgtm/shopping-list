@@ -16,6 +16,7 @@ const mName26=k=>{const [y,m]=k.split('-');return T(HE_MONTHS26[+m-1],new Date(+
   '#shop26{position:fixed;inset:0;z-index:9000;background:var(--chat,#f6f3ec);color:var(--text);display:flex;flex-direction:column}#shop26[hidden]{display:none}'+
   '#shop26 header{background:var(--hdr);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}#shop26 header b{flex:1;font-size:18px}#shop26 header button{background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:10px;padding:8px 12px;font:inherit;cursor:pointer}'+
   '#shop26 .sbody{flex:1;overflow-y:auto;padding:8px 12px 90px}#shop26 h3{margin:14px 4px 6px;font-size:15px;color:var(--hdr2)}'+
+  '#shop26 .srow>span.sim26,body.r2 #shop26 .srow>span.sim26:nth-child(n){display:block!important;width:52px;height:52px;flex:none;border-radius:10px;overflow:hidden;background:#fff;border:1px solid var(--line);cursor:zoom-in}#shop26 .sim26 img{width:100%;height:100%;object-fit:cover;display:block}#shop26 .srow.done .sim26{opacity:.45}'+
   '#shop26 .srow{display:flex;align-items:center;gap:12px;width:100%;text-align:right;background:var(--inputbg);color:var(--text);border:1px solid var(--chipbr);border-radius:14px;padding:14px;margin:6px 0;font:inherit;font-size:20px;cursor:pointer;min-height:58px}'+
   '#shop26 .srow .ck{width:30px;height:30px;border-radius:50%;border:2px solid var(--hdr2);flex:none;display:flex;align-items:center;justify-content:center;font-size:18px}#shop26 .srow.done{background:transparent;border-style:dashed}#shop26 .srow.done .ck{background:var(--hdr2);color:#fff}#shop26 .srow.done .nm{text-decoration:line-through}#shop26 .srow .q{margin-inline-start:auto;font-size:15px;color:var(--muted)}'+
   '#shop26 footer{position:absolute;bottom:0;inset-inline:0;padding:10px 12px;background:var(--panel);border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}#shop26 footer .pg{flex:1;font-weight:700}#shop26 footer button{padding:12px 16px;border-radius:12px;border:none;background:var(--hdr2);color:#fff;font:inherit;font-weight:700;cursor:pointer}'+
@@ -155,12 +156,14 @@ let wake26=null;
 async function wakeOn26(){try{if('wakeLock' in navigator){wake26=await navigator.wakeLock.request('screen');}}catch(e){wake26=null;}}
 /* מוצר שנשמר פעם כ"אחר" (לפני תיקון הקטגוריות) — מחשבים שוב */
 const cat26=i=>i.c&&i.c!=='אחר'?i.c:resolveCat(i.n);const aIdx26=i=>{const k=AISLE26.indexOf(cat26(i));return k<0?99:k;};
+/* תמונה כמו ברשימה: התמונה שצילמתם למוצר, או התמונה של המוצר המדויק שנבחר להשוואת מחירים */
+const img26=i=>{const a=typeof safeImg==='function'?safeImg(i.img):'';if(a)return a;return i.bc&&i.bq===i.n&&typeof safeImg==='function'?safeImg(i.bimg):'';};
 function drawShop26(){const box=$26('#shop26');if(!box||box.hidden)return;const l=curList();
   const its=l.items.slice().sort((a,b)=>(a.done-b.done)||aIdx26(a)-aIdx26(b));
   const open=its.filter(i=>!i.done),done=its.filter(i=>i.done);let h='',last='';
   open.forEach(i=>{const c=AISLE26.includes(cat26(i))?cat26(i):'אחר';if(c!==last){h+='<h3>'+esc(CATE[c]||'🛒')+' '+esc(c)+'</h3>';last=c;}h+=row(i);});
   if(done.length)h+=done.map(row).join('');
-  function row(i){return '<button class="srow'+(i.done?' done':'')+'" data-s26="'+esc(i.id)+'" aria-pressed="'+(i.done?'true':'false')+'"><span class="ck">'+(i.done?'✓':'')+'</span><span>'+esc(i.e||'')+'</span><span class="nmw"><span class="nm">'+esc(i.n)+'</span>'+(i.note&&!state.shopNoNotes?'<small class="snote">📝 '+esc(i.note)+'</small>':'')+'</span>'+(i.q?'<span class="q">×'+esc(i.q)+'</span>':'')+'</button>';}
+  function row(i){const im=img26(i);return '<button class="srow'+(i.done?' done':'')+'" data-s26="'+esc(i.id)+'" aria-pressed="'+(i.done?'true':'false')+'"><span class="ck">'+(i.done?'✓':'')+'</span>'+(im?'<span class="sim26" data-s26img="'+esc(i.id)+'" title="'+T('הגדלת התמונה','View photo')+'"><img src="'+esc(im)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></span>':'<span>'+esc(i.e||'')+'</span>')+'<span class="nmw"><span class="nm">'+esc(i.n)+'</span>'+(i.note&&!state.shopNoNotes?'<small class="snote">📝 '+esc(i.note)+'</small>':'')+'</span>'+(i.q?'<span class="q">×'+esc(i.q)+'</span>':'')+'</button>';}
   /* הערות למוצרים (למשל "רק של חברה מסוימת") — שורה שנייה מתחת לשם; כפתור 📝 בכותרת מסתיר / מציג */
   const hasN=l.items.some(i=>i.note&&!i.done),nb=box.querySelector('[data-s26n]');
   if(nb){nb.hidden=!hasN;nb.setAttribute('aria-pressed',state.shopNoNotes?'false':'true');nb.classList.toggle('off',!!state.shopNoNotes);}
@@ -171,7 +174,8 @@ function openShop26(){let box=$26('#shop26');
   if(!box){box=document.createElement('div');box.id='shop26';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',T('מצב קנייה','Shopping mode'));
     box.innerHTML='<header><div class="t26"><b>'+T('מצב קנייה','Shopping mode')+'</b><small class="ln"></small></div><button data-s26n="1" class="s26n" hidden aria-pressed="true" title="'+T('להציג / להסתיר הערות','Show / hide notes')+'" aria-label="'+T('הערות למוצרים','Item notes')+'">📝</button><button data-s26x="1" aria-label="'+T('יציאה ממצב קנייה','Exit shopping mode')+'">✕</button></header><div class="pgc26"><div class="pgt26"><span class="pg"></span></div><div class="bar26"><i></i></div></div><div class="sbody"></div><footer><button data-s26fin="1">'+T('סיימתי קנייה','Done shopping')+'</button></footer>';
     document.body.appendChild(box);
-    box.addEventListener('click',e=>{const r=e.target.closest('[data-s26]');if(r){const i=curList().items.find(x=>x.id===r.dataset.s26);if(i){i.done=!i.done;i.ts=Date.now();save();render();drawShop26();try{navigator.vibrate&&navigator.vibrate(15);}catch(err){}}return;}
+    box.addEventListener('click',e=>{const pi=e.target.closest('[data-s26img]');if(pi){e.stopPropagation();const it=curList().items.find(x=>x.id===pi.dataset.s26img),src=it&&img26(it);if(src&&typeof openZoomImg==='function')openZoomImg(src,it.n,pi.closest('[data-s26]'));return;}
+      const r=e.target.closest('[data-s26]');if(r){const i=curList().items.find(x=>x.id===r.dataset.s26);if(i){i.done=!i.done;i.ts=Date.now();save();render();drawShop26();try{navigator.vibrate&&navigator.vibrate(15);}catch(err){}}return;}
       if(e.target.closest('[data-s26x]')){closeShop26();return;}
       if(e.target.closest('[data-s26n]')){state.shopNoNotes=!state.shopNoNotes;save();drawShop26();return;}
       if(e.target.closest('[data-s26fin]')){closeShop26();openFinish();}});
@@ -239,6 +243,10 @@ function run20(){if(!app20.a||$26('#login.open'))return; /* לא מחובר — 
     else if(a==='paste')paste20(t);}catch(e){}},600);}
 /* "תקנה בבקשה:\nחלב 3\nלחם\nביצים" ← חלב ×3, לחם, ביצים. שורת פתיחה שנגמרת בנקודתיים ושורות של קישורים לא נכנסות */
 function paste20(text){
+  /* 🧾 שיתפו לאפליקציה הודעה עם קישור לקבלה דיגיטלית (SMS / מייל / וואטסאפ) — פותחים העלאת קבלה וקוראים מהקישור, בלי להעתיק */
+  const lk=String(text||'').match(/https?:\/\/(?!(?:www\.)?yamshopping\.com)[^\s<>"']+/i),rest=String(text||'').replace(/https?:\/\/\S+/gi,'').trim();
+  if(lk&&(/קבל|חשבונית|receipt|invoice/i.test(rest)||rest.split(/\r?\n/).filter(x=>x.trim()).length<=2)&&typeof openUpload==='function'){
+    setTab('list');openUpload('receipt');const u=document.querySelector('#upUrl'),go=document.querySelector('#upUrlGo');if(u&&go){u.value=lk[0];go.click();}return;}
   const lines=String(text||'').split(/\r?\n/).map(x=>x.replace(/^\s*(?:[-–•*·▪◦●○☐☑✓✔]+|\d+[.)])\s*/,'').trim()).filter(x=>x&&!/[:：]\s*$/.test(x)&&!/https?:\/\//i.test(x));
   const l=curList();let n=0;
   lines.forEach(line=>{(parseItems(line)||[]).forEach(it=>{const name=String(it.name||'').trim().slice(0,60);if(!name||hasProfanity(name))return;

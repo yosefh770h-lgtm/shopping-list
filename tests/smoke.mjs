@@ -1874,6 +1874,64 @@ await test('🔎 כל חיפוש ב"איפה הכי זול" נספר, ובבק �
   await ctx.close();
 });
 
+await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמונות במצב קנייה', async () => {
+  const { ctx, page, errors } = await newPage();
+  const SHOTS = process.env.SHOTS;
+  const r = await page.evaluate(async () => {
+    const calls = [];
+    sb = window.__stub({}); authUser = { id: 'tester', email: 't@example.com' };
+    const RC = { store: 'אושר עד', branch: 'בני ברק', date: '2026-11-18', total: 11.8, items: [{ name: 'חלב 3%', brand: 'תנובה', qty: 2, price: 5.9, total: 11.8 }], check: { ok: true, passes: 1 } };
+    sb.functions.invoke = (n, o) => { calls.push(o.body); if (o.body.receiptUrl) return Promise.resolve({ data: { fetched: { kind: 'text', text: 'אושר עד\nחלב 3% | 2 | 11.80\nסה"כ 11.80', host: 'receipts.example.co.il' } }, error: null });
+      return Promise.resolve({ data: { receipt: JSON.parse(JSON.stringify(RC)) }, error: null }); };
+    openUpload('receipt');
+    const cam = document.querySelector('#upCam'), gal = document.querySelector('#upFiles');
+    const res = { cap: cam && cam.getAttribute('capture'), camMulti: cam && cam.multiple, galMulti: gal && gal.multiple, link: !!document.querySelector('#upUrl') };
+    document.querySelector('#upUrl').value = 'הקבלה שלך מאושר עד: https://receipts.example.co.il/r/abc123. תודה!';
+    document.querySelector('#upUrlGo').click();
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.url = calls[0] && calls[0].receiptUrl; res.read = calls[1] && calls[1].vision; res.txt = calls[1] && calls[1].text;
+    res.rows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length;
+    // שומרים — בפעם הבאה מאותו אתר שם החנות מתמלא לבד (גם כשהקריאה טעתה בשם)
+    document.querySelector('#urStore').value = 'אושר עד'; document.querySelector('#urPub').checked = false; document.querySelector('#urStock').checked = false;
+    await confirmUpload(); res.closed = !document.querySelector('#v8Sheet.open');
+    RC.store = 'אושר-עד בעמ'; openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/zzz'; document.querySelector('#upUrlGo').click();
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.store2 = document.querySelector('#urStore') && document.querySelector('#urStore').value;
+    // שיתוף הודעת SMS עם קישור לקבלה אל האפליקציה — נפתחת העלאת קבלה והקישור נקרא לבד
+    closeSheet(); calls.length = 0;
+    paste20('תודה שקנית באושר עד! לצפייה בקבלה:\nhttps://receipts.example.co.il/r/xyz');
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.shared = calls[0] && calls[0].receiptUrl; res.sharedRows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length;
+    // רשימה רגילה שיש בה גם קישור — עדיין נכנסת לרשימה
+    closeSheet(); const before = curList().items.length; paste20('חלב\nלחם\nביצים\nמתכון: https://example.com/r');
+    res.listAdded = curList().items.length - before;
+    return res;
+  });
+  assert(r.cap === 'environment' && !r.camMulti && r.galMulti && r.link, 'כפתורים: ' + JSON.stringify(r));
+  assert(r.url === 'https://receipts.example.co.il/r/abc123', 'הקישור: ' + r.url);
+  assert(r.read === 'receipt' && /חלב/.test(r.txt || '') && r.rows === 1, 'קריאה מהקישור: ' + JSON.stringify(r));
+  assert(r.shared === 'https://receipts.example.co.il/r/xyz' && r.sharedRows === 1, 'שיתוף מה-SMS: ' + JSON.stringify(r));
+  assert(r.closed && r.store2 === 'אושר עד', 'שם החנות לפי האתר: ' + JSON.stringify(r));
+  assert(r.listAdded === 3, 'רשימה עם קישור: ' + r.listAdded);
+  if (SHOTS) { await page.evaluate(() => { document.querySelector('#v8SheetBody').scrollTop = 0; }); await page.screenshot({ path: SHOTS + '/2-קבלה-נקראה-מהקישור.png' }); }
+  if (SHOTS) { await page.evaluate(() => { closeSheet(); openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/abc123'; }); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + '/1-העלאת-קבלה-צילום-וקישור.png' }); }
+  // מצב קנייה: תמונה ליד המוצר, לחיצה עליה מגדילה ולא מסמנת כנקנה
+  const s = await page.evaluate(async () => {
+    closeSheet();
+    const c = document.createElement('canvas'); c.width = c.height = 80; const x = c.getContext('2d'); x.fillStyle = '#2a9d8f'; x.fillRect(0, 0, 80, 80); x.fillStyle = '#fff'; x.fillRect(20, 10, 40, 60);
+    const l = curList(); l.items = [{ id: 'm1', n: 'חלב', q: '2', c: 'מוצרי חלב', e: '🥛', done: false, ts: Date.now(), img: c.toDataURL('image/jpeg', 0.9) }, { id: 'b1', n: 'לחם', q: '', c: 'לחמים', e: '🍞', done: false, ts: Date.now() }];
+    save(); render(); openShop26();
+    const th = document.querySelector('#shop26 [data-s26img="m1"]');
+    const vis = th && getComputedStyle(th).display !== 'none' && th.getBoundingClientRect().width > 30;
+    th.click(); await new Promise((r) => setTimeout(r, 200));
+    return { vis, zoom: !!document.querySelector('#zv:not([hidden])'), done: curList().items[0].done, emoji: !document.querySelector('#shop26 [data-s26="b1"] [data-s26img]') };
+  });
+  assert(s.vis && s.zoom && !s.done && s.emoji, 'מצב קנייה: ' + JSON.stringify(s));
+  if (SHOTS) { await page.screenshot({ path: SHOTS + '/4-מצב-קנייה-תמונה-מוגדלת.png' }); await page.evaluate(() => document.querySelector('#zv [data-zv="x"]').click()); await page.waitForTimeout(200); await page.screenshot({ path: SHOTS + '/3-מצב-קנייה-עם-תמונות.png' }); }
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('🧾 אחרי סריקת קבלה: איפה היה יותר זול — ליד החנות שקנית (לפי הסניף) וליד הבית, בלי לבזבז חיפושים של אורח', async () => {
   const asked = [];
   const S = [{ store: '1:1', chain: 'RAMI_LEVY', chain_name: 'רמי לוי', name: 'בני ברק', address: 'השומר 4', city: 'בני ברק', lat: 32.09, lng: 34.83 },
