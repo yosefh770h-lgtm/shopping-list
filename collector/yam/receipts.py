@@ -100,13 +100,26 @@ def to_receipt(kind, d):
                       "ok": abs(total - s) <= 0.1 if total else None, "verified": True, "passes": 1, "bad_lines": []}}
 
 
+BLOCKED = ("אושר עד לא מאפשר לשרת שלנו לפתוח את הקבלה. באפליקציה המעודכנת הקבלה נפתחת ישר מהטלפון. "
+           "באתר: פותחים את הקישור בכרום ← ⋮ ← שיתוף ← הדפסה ← שמירה כ-PDF, ומעלים כאן את ה-PDF.")
+
+
 def fetch_known(url, timeout=12):
     """אתר קבלות מוכר: (קבלה, None) או (None, (קוד, הודעה))"""
     kind, api = api_for(url)
-    try:
-        r = requests.get(api, headers={"Accept": "application/json", "User-Agent": UA, "Referer": url}, timeout=timeout, allow_redirects=False)
-    except requests.RequestException:
-        return None, (502, "האתר של הקבלה לא ענה — נסו שוב בעוד רגע")
+    r = None
+    for attempt in range(2):
+        try:
+            r = requests.get(api, headers={"Accept": "application/json", "User-Agent": UA, "Referer": url}, timeout=(6, timeout), allow_redirects=False)
+            break
+        except requests.RequestException as e:
+            # בלי הקישור עצמו (פרטי) — רק האתר וסוג התקלה, כדי לדעת אם האתר חוסם את השרת
+            print(f"receipt {kind} {urlsplit(api).hostname}: {type(e).__name__}", flush=True)
+            if isinstance(e, requests.Timeout):
+                break
+    if r is None:
+        # אושר עד (Pairzon) לא עונה לשרת שלנו בכלל. האפליקציה יכולה להביא את הנתונים מהטלפון — מחזירים לה את הכתובת
+        return None, ((502, BLOCKED, {"api": api, "kind": kind}) if kind == "pairzon" else (502, "האתר של הקבלה לא ענה — נסו שוב בעוד רגע"))
     if r.status_code == 404:
         return None, (404, "הקבלה לא נמצאה בקישור — אולי פג התוקף שלו")
     if r.status_code != 200 or len(r.content) > 3_000_000:

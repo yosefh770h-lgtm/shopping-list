@@ -2008,6 +2008,29 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
     // רשימה רגילה שיש בה גם קישור — עדיין נכנסת לרשימה
     closeSheet(); const before = curList().items.length; paste20('חלב\nלחם\nביצים\nמתכון: https://example.com/r');
     res.listAdded = curList().items.length - before;
+    // 📷 צילום של קבלה עם QR: הקוד מפוענח בטלפון והקבלה נקראת מהקישור, בלי בינה מלאכותית
+    closeSheet(); calls.length = 0; links.length = 0;
+    linkReply = { kind: 'receipt', host: 'shop.pairzon.com', receipt: { store: 'רשת לדוגמה', branch: '', date: '2026-11-19', total: 10, items: [{ name: 'חלב 3%', qty: 2, price: 5, total: 10, barcode: '' }], check: { ok: true, passes: 1, verified: true } } };
+    const Z = await loadZxing(); const QR = 'https://shop.pairzon.com/r.html?id=00000000-0000-4000-8000-000000000003&p=1';
+    const bm = new Z.QRCodeWriter().encode(QR, Z.BarcodeFormat.QR_CODE, 240, 240, new Map());
+    const qc = document.createElement('canvas'); qc.width = 300; qc.height = 700; const qx = qc.getContext('2d'); qx.fillStyle = '#fff'; qx.fillRect(0, 0, 300, 700); qx.fillStyle = '#000';
+    for (let y = 0; y < bm.getHeight(); y++) for (let x = 0; x < bm.getWidth(); x++) if (bm.get(x, y)) qx.fillRect(30 + x, 430 + y, 1, 1);
+    const blob = await new Promise((r) => qc.toBlob(r, 'image/png'));
+    openUpload('receipt'); const cam2 = document.querySelector('#upCam'); const dt = new DataTransfer(); dt.items.add(new File([blob], 'receipt.png', { type: 'image/png' }));
+    cam2.files = dt.files; cam2.dispatchEvent(new Event('change', { bubbles: true }));
+    for (let k = 0; k < 60 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.qrLink = links[0]; res.qrAi = calls.length; res.qrRows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length; res.qrImgs = upImgs.length;
+    // 📱 אושר עד חוסם את השרת: באפליקציה הטלפון מביא את הנתונים, והשרת רק מסדר אותם (receipt/parse)
+    closeSheet(); const posts = []; const API = 'https://shop.pairzon.com/v1.0/documents/00000000-0000-4000-8000-000000000004?p=1';
+    window.YamApp = { appInfo: () => '{"receiptJson":true}', receiptJson: (u, id) => setTimeout(() => yamReceiptJson(id, u === API ? '{"items":[]}' : null), 20) };
+    window.fetch = (u, o) => { u = String(u);
+      if (/\/receipt\/parse$/.test(u)) { posts.push(JSON.parse(o.body)); return Promise.resolve(new Response(JSON.stringify(linkReply), { status: 200 })); }
+      if (/\/receipt\?u=/.test(u)) return Promise.resolve(new Response(JSON.stringify({ error: 'חסום', api: API, kind: 'pairzon' }), { status: 502 }));
+      return realFetch(u, o); };
+    openUpload('receipt'); document.querySelector('#upUrl').value = 'https://shop.pairzon.com/r.html?id=00000000-0000-4000-8000-000000000004&p=1'; document.querySelector('#upUrlGo').click();
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.nativeKind = posts[0] && posts[0].kind; res.nativeRows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length;
+    delete window.YamApp;
     // השרת לא הצליח — מוצגת ההודעה שלו
     linkReply = null; window.fetch = (u, o) => /\/receipt\?u=/.test(String(u)) ? Promise.resolve(new Response(JSON.stringify({ error: 'הקבלה לא נמצאה בקישור' }), { status: 404 })) : realFetch(u, o);
     closeSheet(); openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/gone'; document.querySelector('#upUrlGo').click();
@@ -2023,6 +2046,8 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
   assert(r.knownCalls === 1 && r.knownRows === 2 && r.knownStore === 'אושר עד', 'קבלה מאתר מוכר: ' + JSON.stringify(r));
   assert(r.listAdded === 3, 'רשימה עם קישור: ' + r.listAdded);
   assert(/הקבלה לא נמצאה/.test(r.errMsg || ''), 'הודעת שגיאה מהשרת: ' + r.errMsg);
+  assert(r.nativeKind === 'pairzon' && r.nativeRows === 1, 'אושר עד מהטלפון: ' + JSON.stringify(r));
+  assert(r.qrLink === 'https://shop.pairzon.com/r.html?id=00000000-0000-4000-8000-000000000003&p=1' && r.qrAi === 0 && r.qrRows === 1 && r.qrImgs === 0, 'QR בצילום הקבלה: ' + JSON.stringify(r));
   if (SHOTS) { await page.evaluate(() => { document.querySelector('#v8SheetBody').scrollTop = 0; }); await page.screenshot({ path: SHOTS + '/2-קבלה-נקראה-מהקישור.png' }); }
   if (SHOTS) { await page.evaluate(() => { closeSheet(); openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/abc123'; }); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + '/1-העלאת-קבלה-צילום-וקישור.png' }); }
   // מצב קנייה: תמונה ליד המוצר, לחיצה עליה מגדילה ולא מסמנת כנקנה
