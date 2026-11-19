@@ -188,7 +188,7 @@ async def limits(req: Request, call_next):
         return JSONResponse({"error": bad[1]}, status_code=bad[0], headers={"Retry-After": "60"} if bad[0] == 429 else {})
     res = await call_next(req)
     _note(req, ip, peer, site, res.status_code)
-    if path == "/receipt":
+    if path.startswith("/receipt"):
         res.headers["Cache-Control"] = "private, no-store"  # קבלה אישית — לא נשמרת בשום מטמון
     elif res.status_code == 200:
         res.headers["Cache-Control"] = "public, max-age=300"
@@ -741,9 +741,8 @@ RECEIPT_DAY = int(os.environ.get("RECEIPT_PER_DAY", "60"))
 _rc_daily = {}
 
 
-@app.get("/receipt")
-def receipt(req: Request, u: str = Query(..., min_length=10, max_length=2000)):
-    """הקישור של קבלה דיגיטלית ← הקבלה (אושר עד / Pairzon, Weezmo) או התוכן של הדף לקריאה. לא נשמר כלום"""
+def _rc_allow(req: Request):
+    """רק דרך האתר, ובמכסה של קבלות לכל משתמש (בדקה וביום)"""
     ip, peer, via = who(req)
     if not via and not is_own(ip):
         raise HTTPException(403, "רק דרך האתר")
@@ -756,10 +755,36 @@ def receipt(req: Request, u: str = Query(..., min_length=10, max_length=2000)):
         if used >= RECEIPT_DAY or not _take("rc:" + ip, RECEIPT_RATE, t):
             raise HTTPException(429, "יותר מדי קבלות מקישור — נסו שוב מאוחר יותר")
         _rc_daily[day][ip] = used + 1
+
+
+@app.get("/receipt")
+def receipt(req: Request, u: str = Query(..., min_length=10, max_length=2000)):
+    """הקישור של קבלה דיגיטלית ← הקבלה (אושר עד / Pairzon, Weezmo) או התוכן של הדף לקריאה. לא נשמר כלום"""
+    _rc_allow(req)
     out, err = receipts.fetch(u)
     if err:
-        return JSONResponse({"error": err[1]}, status_code=err[0])
+        return JSONResponse({"error": err[1], **(err[2] if len(err) > 2 else {})}, status_code=err[0])
     return out
+
+
+@app.post("/receipt/parse")
+async def receipt_parse(req: Request):
+    """האפליקציה הביאה מהטלפון את הנתונים של אתר קבלות מוכר (אושר עד חוסם את השרת) ← הקבלה המסודרת. לא נשמר כלום"""
+    _rc_allow(req)
+    raw = await req.body()
+    if len(raw) > 3_000_000:
+        raise HTTPException(413, "הקבלה גדולה מדי")
+    try:
+        body = __import__("json").loads(raw)
+    except ValueError:
+        raise HTTPException(400, "נתונים לא תקינים")
+    kind = body.get("kind") if isinstance(body, dict) else None
+    if kind not in ("pairzon", "weezmo"):
+        raise HTTPException(400, "אתר קבלות לא מוכר")
+    rc = receipts.to_receipt(kind, body.get("data"))
+    if not rc or not rc["items"]:
+        return JSONResponse({"error": "לא מצאתי מוצרים בקבלה"}, status_code=422)
+    return {"kind": "receipt", "receipt": rc, "host": "pairzon.com" if kind == "pairzon" else "receipts.weezmo.com"}
 
 
 @app.get("/history")

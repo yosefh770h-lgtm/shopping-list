@@ -1259,3 +1259,24 @@ def test_receipt_endpoint(built, monkeypatch):
     api._rc_daily.clear()
     codes = [c.get("/receipt", params={"u": "https://shop.example.com/r3"}, headers=dict(site, **{"x-real-ip": "1.1.1.1"})).status_code for _ in range(3)]
     assert 429 in codes
+
+
+def test_receipt_blocked_and_parse(built, monkeypatch):
+    """אושר עד לא עונה לשרת ← הודעה ברורה + כתובת הנתונים לאפליקציה; receipt/parse מסדר נתונים שהטלפון הביא"""
+    _, api = built
+    from fastapi.testclient import TestClient
+    from yam import receipts as R
+
+    def boom(*a, **k):
+        raise R.requests.ConnectTimeout("x")
+    monkeypatch.setattr(R.requests, "get", boom)
+    c = TestClient(api.app)
+    site = {"Referer": "https://www.yamshopping.com/"}
+    r = c.get("/receipt", params={"u": FAKE_PZ}, headers=site)
+    assert r.status_code == 502 and "PDF" in r.json()["error"] and r.json()["api"].startswith("https://shop.pairzon.com/v1.0/documents/")
+    pz = {"items": [{"name": "חלב", "price": 6.5, "quantity": 2, "total": 13}], "store": {"business": {"name": "רשת"}}, "total": 13}
+    r = c.post("/receipt/parse", json={"kind": "pairzon", "data": pz}, headers=site)
+    assert r.status_code == 200 and r.json()["receipt"]["items"][0]["qty"] == 2 and "no-store" in r.headers["cache-control"]
+    assert c.post("/receipt/parse", json={"kind": "other", "data": pz}, headers=site).status_code == 400
+    assert c.post("/receipt/parse", json={"kind": "pairzon", "data": {"items": []}}, headers=site).status_code == 422
+    assert c.post("/receipt/parse", json={"kind": "pairzon", "data": pz}).status_code == 403

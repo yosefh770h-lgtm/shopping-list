@@ -896,6 +896,46 @@ public class AppActivity extends Activity {
             ptrOk = ok;
         }
 
+        /** 🧾 2.2: אושר עד (Pairzon) לא עונה לשרת שלנו, אבל כן לטלפון (חיבור רגיל בישראל). מביאים מכאן רק את נתוני הקבלה
+         *  מהכתובת המדויקת של האתר (בלי עוגיות, בלי הפניות), ומחזירים לאתר: window.yamReceiptJson(id, טקסט או null) */
+        @JavascriptInterface
+        public void receiptJson(String url, String id) {
+            final String u = url == null ? "" : url, cb = id == null ? "" : id;
+            if (!cb.matches("[a-z0-9]{1,20}")) return;
+            final boolean ok = u.matches("https://[a-z0-9-]{1,40}\\.pairzon\\.com/v1\\.0/documents/[0-9a-fA-F-]{36}\\?p=\\d{1,10}");
+            new Thread(() -> {
+                String out = null;
+                if (ok) {
+                    java.net.HttpURLConnection c = null;
+                    try {
+                        c = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+                        c.setInstanceFollowRedirects(false);
+                        c.setUseCaches(false);
+                        c.setConnectTimeout(10000);
+                        c.setReadTimeout(15000);
+                        c.setRequestProperty("Accept", "application/json");
+                        if (c.getResponseCode() == 200) {
+                            java.io.InputStream in = c.getInputStream();
+                            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+                            byte[] b = new byte[16384];
+                            int n;
+                            while ((n = in.read(b)) > 0) {
+                                buf.write(b, 0, n);
+                                if (buf.size() > 3_000_000) { buf.reset(); break; }
+                            }
+                            in.close();
+                            if (buf.size() > 0) out = buf.toString("UTF-8");
+                        }
+                    } catch (Exception ignored) {
+                    } finally {
+                        if (c != null) c.disconnect();
+                    }
+                }
+                final String js = "window.yamReceiptJson&&yamReceiptJson(" + JSONObject.quote(cb) + "," + (out == null ? "null" : JSONObject.quote(out)) + ")";
+                ui.post(() -> { String pu = web.getUrl(); if (pu != null && isOurPage(Uri.parse(pu))) web.evaluateJavascript(js, null); });
+            }).start();
+        }
+
         /** גרסת האפליקציה ומה היא יודעת לעשות — האתר בודק כאן אם אפשר לעדכן מתוך האפליקציה */
         @JavascriptInterface
         public String appInfo() {
@@ -915,6 +955,7 @@ public class AppActivity extends Activity {
                 o.put("battery", Power.state(AppActivity.this)); // 2.1: "ok" / "ask" / "na"; 2.2: גם "blocked"
                 o.put("batLost", Power.lost(AppActivity.this)); // 2.2: היה "ללא הגבלות" והטלפון ביטל לבד
                 o.put("autostart", Power.xiaomi()); // 2.1: שיאומי — צריך גם "הפעלה אוטומטית"
+                o.put("receiptJson", true); // 2.2: קבלת אושר עד נפתחת מהטלפון
                 o.put("splash", true); // 2.1: האתר מנגן את אנימציית הפתיחה (גם אחרי זמן ארוך ברקע)
                 o.put("offline", Offline.has(AppActivity.this)); // 2.1: עותק של האתר בתוך האפליקציה
                 o.put("offlineNow", offline);

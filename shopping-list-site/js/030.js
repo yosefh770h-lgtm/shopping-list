@@ -112,11 +112,32 @@ function rcRemove(g){const grp=rcGroups().find(x=>x.g===g);if(!grp)return;for(le
 const rcFileKey=(f,enh)=>[f.name,f.size,f.lastModified,enh?1:0].join('|');
 /* מביאים את הקבלה מהקישור דרך השרת (הדפדפן לא יכול לפתוח אתר אחר ישירות), ומיד קוראים אותה */
 const rcB64=b=>{const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;};
-let rcLinking=false,rcLinkHost='';
+let rcLinking=false,rcLinkHost='',rcLastOk=false;
 /* 🏪 איזו רשת שולחת קבלות מאיזה אתר — נלמד מהקבלות שאישרתם, וממלא את שם החנות לבד בפעם הבאה */
 const rcHostKey='yam_rc_hosts';
 const rcHosts=()=>{try{return JSON.parse(localStorage.getItem(rcHostKey)||'{}')||{};}catch(e){return {};}};
-async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrlSt');if(!inp||!st)return;
+/* 📷 קוד QR בצילום הקבלה (רשתות רבות מדפיסות QR לקבלה הדיגיטלית): מפענחים אותו בטלפון ופותחים את הקבלה מהקישור —
+   מהיר ומדויק, בלי בינה מלאכותית. בלי QR — ממשיכים לקריאה הרגילה */
+async function rcQrUrl(file){if(!file||!/^image\//.test(file.type||''))return '';let img=null;
+  try{img=window.createImageBitmap?await createImageBitmap(file):null;}catch(e){img=null;}if(!img)return '';
+  const W=img.width,H=img.height,cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+  /* כל התמונה (עד 1600), ואז החצי התחתון בחדות גבוהה יותר — שם ה-QR נמצא בדרך כלל */
+  const views=[[0,0,W,H,1600],[0,H/2,W,H/2,2000]];const ok=t=>/^https:\/\/[^\s]+$/i.test(String(t||'').trim())?String(t).trim():'';
+  let Z=null,rd=null,nat=null;
+  try{if(typeof scanNativeOk==='function'&&scanNativeOk()){const fm=await window.BarcodeDetector.getSupportedFormats();if(fm.includes('qr_code'))nat=new window.BarcodeDetector({formats:['qr_code']});}}catch(e){nat=null;}
+  try{for(const [x,y,w,h,max] of views){const k=Math.min(1,max/Math.max(w,h));cv.width=Math.round(w*k);cv.height=Math.round(h*k);cx.drawImage(img,x,y,w,h,0,0,cv.width,cv.height);
+      if(nat){try{const c=await nat.detect(cv);const u=c&&c.length&&ok(c[0].rawValue);if(u)return u;}catch(e){}}
+      else{if(!Z){try{Z=await loadZxing();}catch(e){return '';}const hm=new Map();hm.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.QR_CODE]);hm.set(Z.DecodeHintType.TRY_HARDER,true);rd=new Z.MultiFormatReader();rd.setHints(hm);}
+        try{const r=rd.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv))));const u=r&&ok(r.getText());if(u)return u;}catch(e){}}}}
+  finally{cv.width=cv.height=0;try{img.close&&img.close();}catch(e){}}
+  return '';}
+/* 📱 2.2: הטלפון מביא את נתוני הקבלה מאתר שחוסם את השרת (רק כתובת הנתונים של אושר עד — נבדק גם באפליקציה) */
+function rcNativeOk(){try{return !!(window.YamApp&&YamApp.receiptJson&&JSON.parse(YamApp.appInfo()||'{}').receiptJson);}catch(e){return false;}}
+const rcNativeWait={};let rcNativeSeq=0;
+window.yamReceiptJson=(id,txt)=>{const f=rcNativeWait[id];if(f){delete rcNativeWait[id];f(txt);}};
+function rcNativeJson(api){return new Promise(res=>{const id='r'+(++rcNativeSeq);const t=setTimeout(()=>{delete rcNativeWait[id];res(null);},30000);
+  rcNativeWait[id]=txt=>{clearTimeout(t);res(typeof txt==='string'?txt:null);};try{YamApp.receiptJson(String(api),id);}catch(e){clearTimeout(t);delete rcNativeWait[id];res(null);}});}
+async function rcLink(){if(rcLinking)return;rcLastOk=false;const inp=$r('#upUrl'),st=$r('#upUrlSt');if(!inp||!st)return;
   /* מדביקים לפעמים את כל ההודעה ("הקבלה שלך: https://...") — לוקחים ממנה את הקישור */
   const m=String(inp.value||'').match(/https?:\/\/[^\s<>"']+/i);
   if(!m){st.innerHTML='<p class="muted-note">⚠️ '+T('לא מצאתי קישור — מדביקים את הכתובת שמתחילה ב-https://','No link found — paste the address starting with https://')+'</p>';inp.focus();return;}
@@ -128,7 +149,14 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
   /* כל הקישורים נפתחים בשרת שלנו בארץ — אתרי קבלות כמו אושר עד לא עונים לשרתים בחו"ל */
   try{let r=null,data=null;try{r=await fetch((typeof PRICE_API!=='undefined'?PRICE_API:'/api/prices')+'/receipt?u='+encodeURIComponent(url),{cache:'no-store'});data=await r.json();}catch(e){data=null;}
     if($r('#upUrlSt')!==st||upMode!=='receipt')return;
-    const f=r&&r.ok&&data&&data.kind?data:null;
+    let f=r&&r.ok&&data&&data.kind?data:null;
+    /* 📱 אושר עד חוסם את השרת — באפליקציה (2.2) הטלפון מביא את נתוני הקבלה בעצמו, והשרת רק מסדר אותם */
+    if(!f&&data&&data.api&&rcNativeOk()){st.innerHTML='<div class="empty">📱 '+T('פותחת את הקבלה מהטלפון…','Opening the receipt from the phone…')+'</div>';
+      const raw=await rcNativeJson(data.api);if($r('#upUrlSt')!==st||upMode!=='receipt')return;
+      let pj=null;if(raw){try{pj=JSON.parse(raw);}catch(e){pj=null;}}
+      if(pj){try{const r2=await fetch((typeof PRICE_API!=='undefined'?PRICE_API:'/api/prices')+'/receipt/parse',{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify({kind:data.kind,data:pj})});
+        const d2=await r2.json();if(r2.ok&&d2&&d2.kind)f=d2;else if(d2&&d2.error)data={error:d2.error};}catch(e){}}
+      if($r('#upUrlSt')!==st||upMode!=='receipt')return;}
     if(!f){st.innerHTML='<p class="muted-note">⚠️ '+esc((data&&data.error)||T('לא הצלחתי לפתוח את הקישור 🙁 נסו שוב, או שמרו את הקבלה כ-PDF והעלו אותה.','Could not open the link 🙁'))+'</p>';
       try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r&&r.status)||'network')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}
       return;}
@@ -136,7 +164,7 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
     /* אתר קבלות מוכר (אושר עד / Pairzon, Weezmo): השרת כבר קרא את הנתונים המסודרים — ישר למסך האישור, בלי בינה מלאכותית */
     if(f.kind==='receipt'&&f.receipt&&Array.isArray(f.receipt.items)){inp.value='';
       st.innerHTML='<p class="rclok">✅ '+T('הקבלה נקראה מהקישור','The receipt was read from the link')+' <small dir="ltr">'+esc(f.host||'')+'</small></p>';
-      upResult={receipt:f.receipt};showUploadReview();return;}
+      upResult={receipt:f.receipt};rcLastOk=true;showUploadReview();return;}
     if(f.kind==='text'){const t=$r('#upText');if(t)t.value=String(f.text||'');
       st.innerHTML='<p class="rclok">✅ '+T('הקבלה מהקישור נקלטה','The receipt was fetched')+' <small dir="ltr">'+esc(f.host||'')+'</small> <button type="button" class="mini" id="upUrlX" aria-label="'+T('ביטול הקבלה מהקישור','Remove the linked receipt')+'">✕</button></p>';}
     else{const room=rcMaxParts()-upImgs.length;if(room<=0){st.innerHTML='<p class="muted-note">⚠️ '+T('אין מקום לעוד חלקים בקבלה הזו — מוחקים תמונה ומנסים שוב','No room — remove a photo and try again')+'</p>';return;}
@@ -146,7 +174,7 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
       drawThumbs();st.innerHTML='<p class="rclok">✅ '+T('הקבלה מהקישור נקלטה','The receipt was fetched')+' <small dir="ltr">'+esc(f.host||'')+'</small></p>';}
     inp.value='';
     /* "ישאב את הנתונים לבד" — מיד ממשיכים לקריאה ולמסך האישור */
-    const go=$r('#upRead');if(go)go.click();}
+    rcLastOk=true;const go=$r('#upRead');if(go)go.click();}
   catch(err){console.error('receipt link',err);if($r('#upUrlSt')===st)st.innerHTML='<p class="muted-note">⚠️ '+T('לא הצלחתי לפתוח את הקבלה מהקישור','Could not open the linked receipt')+(err&&err.name==='PasswordException'?T(' — הקובץ נעול בסיסמה',' — the file is password protected'):'')+'</p>';}
   finally{rcLinking=false;const b2=$r('#upUrlGo');if(b2)b2.disabled=false;}}
 const _open=openUpload;
@@ -168,6 +196,7 @@ openUpload=function(){
   const pdfL=$r('#upPdf').closest('label');
   pdfL.insertAdjacentHTML('afterend','<div class="rclink"><label class="il" for="upUrl">🔗 '+T('קבלה דיגיטלית? מדביקים כאן את הקישור שקיבלתם','Digital receipt? Paste its link here')+'</label>'+
     '<div class="rclrow"><input id="upUrl" type="url" inputmode="url" dir="ltr" autocomplete="off" placeholder="https://…"><button type="button" class="btn" id="upUrlGo">'+T('לקרוא מהקישור','Read the link')+'</button></div>'+
+    '<small class="rclhint">⚡ '+T('הכי מהיר ומדויק: קבלה דיגיטלית (קישור), או צילום של קבלה שיש בה קוד QR — נקראות תוך שנייה. צילום בלי QR נקרא בבינה מלאכותית ולוקח קצת יותר.','Fastest: a digital receipt link, or a photo of a receipt with a QR code — read in a second. Photos without a QR are read by AI and take a little longer.')+'</small>'+
     '<small class="rclhint">💡 '+(/YamShoppingApp|; wv\)/.test(navigator.userAgent)?T('עוד יותר מהר: בהודעת ה-SMS של הקבלה לוחצים לחיצה ארוכה ← שיתוף ← "רשימת קניות", והקבלה נקראת לבד.','Even faster: long-press the receipt SMS → Share → "Shopping list".'):T('בטלפון עם האפליקציה: בהודעת ה-SMS של הקבלה לוחצים לחיצה ארוכה ← שיתוף ← "רשימת קניות", והקבלה נקראת לבד.','With the app: long-press the receipt SMS → Share → "Shopping list".'))+'</small>'+
     '<div id="upUrlSt" role="status"></div><textarea id="upText" hidden></textarea></div>');
   b.onchange=async e=>{
@@ -182,6 +211,10 @@ openUpload=function(){
       if(full)flash(T('⚠️ הקבלה ארוכה מדי לקריאה אחת — נכנסו רק העמודים הראשונים','⚠️ The receipt is too long for one reading — only the first pages were added'));
       drawThumbs();return;}
     if(e.target.id!=='upFiles'&&e.target.id!=='upCam')return;const fs=Array.from(e.target.files||[]);e.target.value='';let full=false;
+    if(upMode==='receipt'&&!upImgs.length&&fs.length&&fs.length<=3){const st=$r('#upUrlSt');if(st)st.innerHTML='<div class="empty">🔎 '+T('מחפשת קוד QR בקבלה…','Looking for a QR code…')+'</div>';
+      let qr='';for(const f of fs){try{qr=await rcQrUrl(f);}catch(err){qr='';}if(qr)break;}
+      if(st&&!qr&&$r('#upUrlSt')===st)st.innerHTML='';
+      if(qr){const ui=$r('#upUrl');if(ui){ui.value=qr;await rcLink();if(rcLastOk)return;const st2=$r('#upUrlSt');if(st2)st2.insertAdjacentHTML('beforeend','<p class="muted-note">'+T('ממשיכים עם הצילום — לוחצים על קריאה.','Continuing with the photo.')+'</p>');}}}
     for(const f of fs){const room=rcMaxParts()-upImgs.length;if(room<=0){full=true;break;}
       const key=rcFileKey(f,rcEnhance);if(rcHas(key)){flash(T('ℹ️ התמונה הזו כבר נמצאת','ℹ️ This photo is already added'));continue;}
       try{const parts=(await rcPrep(f,rcEnhance)).filter(d=>!upImgs.includes(d));if(parts.length>room)full=true;if(parts.length)rcAdd(parts.slice(0,room),key);}catch(err){flash(T('⚠️ לא הצלחתי לקרוא תמונה','⚠️ Could not read an image'));}}
