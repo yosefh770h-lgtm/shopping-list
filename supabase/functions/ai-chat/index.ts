@@ -996,11 +996,69 @@ function htmlToText(html: string): string {
   const t = decodeEnt(body).split("\n").map((l) => l.replace(/[ \t\u00a0]+/g, " ").replace(/^\s*\|\s*|\s*\|\s*$/g, "").trim()).filter(Boolean).join("\n");
   return (t + (data ? "\n\nנתונים מהדף:\n" + data : "")).slice(0, 16000);
 }
-type LinkResult = { ok: true; kind: "pdf" | "image" | "text"; data?: string; mime?: string; text?: string; host: string } | { ok: false; error: string; text: string };
+type LinkResult = { ok: true; kind: "pdf" | "image" | "text" | "receipt"; data?: string; mime?: string; text?: string; receipt?: Receipt; host: string } | { ok: false; error: string; text: string };
+// ---------- אתרי קבלות דיגיטליות מוכרים: הקבלה נטענת שם מנתונים מסודרים (JSON), אז קוראים אותם ישירות — מדויק, מהיר ובלי בינה מלאכותית ----------
+// Pairzon (אושר עד ועוד): https://<רשת>.pairzon.com/<...>.html?id=<מזהה>&p=<קידומת> ← /v1.0/documents/<מזהה>?p=<קידומת>
+// Weezmo (ג'מבו ועוד): https://receipts.weezmo.com/cms.html?q=<מזהה> ← /api/receipts/<מזהה>
+// לוקחים רק את המוצרים, המחירים, החנות והתאריך — לא פרטי תשלום ולא פרטים אישיים
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const day = (x: unknown) => { const m = String(x || "").match(/^(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ""; };
+const str = (x: unknown, n = 80) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+function knownReceiptApi(u: URL): { api: string; kind: "pairzon" | "weezmo" } | null {
+  const h = u.hostname.toLowerCase(), q = u.searchParams;
+  if (/^[a-z0-9-]+\.pairzon\.com$/.test(h) && GUID.test(q.get("id") || "") && /^\d{1,10}$/.test(q.get("p") || "")) {
+    return { kind: "pairzon", api: `https://${h}/v1.0/documents/${q.get("id")}?p=${q.get("p")}` };
+  }
+  if (h === "receipts.weezmo.com" && GUID.test(q.get("q") || "")) return { kind: "weezmo", api: `https://receipts.weezmo.com/api/receipts/${q.get("q")}?withTemplate=false` };
+  return null;
+}
+// deno-lint-ignore no-explicit-any
+function receiptFromJson(kind: "pairzon" | "weezmo", d: any): Receipt | null {
+  if (kind === "weezmo" && Array.isArray(d)) d = d[0];
+  if (kind === "weezmo" && d && d.receipt) d = d.receipt;
+  if (!d || !Array.isArray(d.items)) return null;
+  // deno-lint-ignore no-explicit-any
+  const items: RcItem[] = d.items.slice(0, 300).map((it: any) => {
+    // מוצר במשקל (Pairzon): weight בגרמים, price למחיר לק"ג, בלי quantity
+    const kg = kind === "pairzon" && rnum(it.weight) > 0 && !(rnum(it.quantity) > 0) ? Math.round(rnum(it.weight)) / 1000 : 0;
+    const qty = kg || rnum(it.quantity) || 1;
+    const tot = rnum(it.total), list = rnum(it.price);
+    const paid = qty ? Math.round(tot / qty * 100) / 100 : list;
+    // שם המבצע: Pairzon — additionalInfo[].key ("6 ב 20"); Weezmo — additionalData Discount
+    // deno-lint-ignore no-explicit-any
+    const dealTxt = kind === "pairzon" ? str((Array.isArray(it.additionalInfo) ? it.additionalInfo : []).map((x: any) => x && x.key).filter(Boolean).join(" · "), 40) : "";
+    const row: RcItem = { name: str(it.name, 60), qty, price: paid || list, total: tot, barcode: /^\d{4,20}$/.test(String(it.code || it.itemCode || "")) ? String(it.code || it.itemCode) : "" };
+    if (kg) row.unit = "ק״ג";
+    if (list > 0 && paid > 0 && Math.abs(list - paid) >= 0.01) { row.list_price = list; row.discount = Math.round((list * qty - tot) * 100) / 100; row.deal = dealTxt || "מבצע"; }
+    return row;
+  }).filter((x: RcItem) => x.name);
+  const store = kind === "pairzon" ? str(d.store?.business?.name || d.store?.alias, 40) : str(d.tBusiness?.businessName, 40);
+  const branch = kind === "pairzon" ? str(d.store?.name, 120) : str(d.tBranch?.branchName, 120);
+  const rc: Receipt = { store, branch, date: day(d.createdDate || d.uploadedDate), total: rnum(d.total), items };
+  rc.check = { ...checkReceipt(rc, 1), verified: true } as ReceiptCheck;
+  return rc;
+}
+async function fetchKnownReceipt(u: URL): Promise<LinkResult | null> {
+  const k = knownReceiptApi(u);
+  if (!k) return null;
+  const site = k.kind === "pairzon" ? "Pairzon" : "Weezmo";
+  try {
+    const r = await fetch(k.api, { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Mobile Safari/537.36", "Referer": u.toString() }, signal: AbortSignal.timeout(15000) });
+    if (r.status === 404) return { ok: false, error: "gone", text: "הקבלה לא נמצאה בקישור — אולי פג התוקף שלו." };
+    if (!r.ok) { console.error("receipt api", site, r.status); return null; }
+    const rc = receiptFromJson(k.kind, await r.json());
+    if (!rc || !rc.items.length) return null;
+    return { ok: true, kind: "receipt", receipt: rc, host: u.hostname };
+  } catch (e) {
+    console.error("receipt api", site, String(e).slice(0, 200));
+    return null; // ממשיכים לקריאה הרגילה של הדף
+  }
+}
 async function fetchReceiptLink(raw: string, depth = 0): Promise<LinkResult> {
   const BAD = { ok: false as const, error: "bad_url", text: "הקישור לא תקין — מעתיקים את כל הקישור של הקבלה (מתחיל ב-https://)" };
   let u: URL;
   try { u = new URL(String(raw).trim().slice(0, 2000)); } catch { return BAD; }
+  if (depth === 0) { const known = await fetchKnownReceipt(u); if (known) return known; }
   const ua = { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Mobile Safari/537.36", "Accept": "text/html,application/pdf,image/*;q=0.9,*/*;q=0.5", "Accept-Language": "he-IL,he;q=0.9" };
   let res: Response | null = null;
   try {

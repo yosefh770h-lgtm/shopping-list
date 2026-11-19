@@ -1990,6 +1990,13 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
     RC.store = 'אושר-עד בעמ'; openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/zzz'; document.querySelector('#upUrlGo').click();
     for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
     res.store2 = document.querySelector('#urStore') && document.querySelector('#urStore').value;
+    // אתר קבלות מוכר (Pairzon / Weezmo): השרת מחזיר קבלה מסודרת — ישר למסך האישור, בלי קריאה של הבינה המלאכותית
+    closeSheet(); calls.length = 0;
+    const known = sb.functions.invoke; sb.functions.invoke = (n, o) => { calls.push(o.body); return Promise.resolve({ data: { fetched: { kind: 'receipt', host: 'osher.pairzon.com', receipt: { store: 'אושר עד', branch: 'בת הדר', date: '2026-11-17', total: 24, items: [{ name: 'אגוז קלוף במשקל', qty: 0.2, unit: 'ק״ג', price: 70, total: 14, barcode: '' }, { name: 'חלב 3%', qty: 2, price: 5, total: 10, barcode: '7290004131074' }], check: { ok: true, passes: 1, verified: true } } } }, error: null }); };
+    openUpload('receipt'); document.querySelector('#upUrl').value = 'https://osher.pairzon.com/x.html?id=1&p=2'; document.querySelector('#upUrlGo').click();
+    for (let k = 0; k < 40 && !document.querySelector('#upOut .rctbl'); k++) await new Promise((r) => setTimeout(r, 100));
+    res.knownCalls = calls.length; res.knownRows = document.querySelectorAll('#upOut .rctbl tr[data-ur]').length; res.knownStore = (document.querySelector('#urStore') || {}).value;
+    sb.functions.invoke = known;
     // שיתוף הודעת SMS עם קישור לקבלה אל האפליקציה — נפתחת העלאת קבלה והקישור נקרא לבד
     closeSheet(); calls.length = 0;
     paste20('תודה שקנית באושר עד! לצפייה בקבלה:\nhttps://receipts.example.co.il/r/xyz');
@@ -2005,6 +2012,7 @@ await test('🧾 קבלה מקישור + 📷 צילום ישיר + 🛍️ תמ
   assert(r.read === 'receipt' && /חלב/.test(r.txt || '') && r.rows === 1, 'קריאה מהקישור: ' + JSON.stringify(r));
   assert(r.shared === 'https://receipts.example.co.il/r/xyz' && r.sharedRows === 1, 'שיתוף מה-SMS: ' + JSON.stringify(r));
   assert(r.closed && r.store2 === 'אושר עד', 'שם החנות לפי האתר: ' + JSON.stringify(r));
+  assert(r.knownCalls === 1 && r.knownRows === 2 && r.knownStore === 'אושר עד', 'קבלה מאתר מוכר: ' + JSON.stringify(r));
   assert(r.listAdded === 3, 'רשימה עם קישור: ' + r.listAdded);
   if (SHOTS) { await page.evaluate(() => { document.querySelector('#v8SheetBody').scrollTop = 0; }); await page.screenshot({ path: SHOTS + '/2-קבלה-נקראה-מהקישור.png' }); }
   if (SHOTS) { await page.evaluate(() => { closeSheet(); openUpload('receipt'); document.querySelector('#upUrl').value = 'https://receipts.example.co.il/r/abc123'; }); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + '/1-העלאת-קבלה-צילום-וקישור.png' }); }

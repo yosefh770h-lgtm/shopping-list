@@ -134,6 +134,10 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
       try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r.data&&r.data.error)||r.code||'error')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}
       return;}
     rcLinkHost=String(f.host||'').toLowerCase().replace(/^www\./,'');
+    /* אתר קבלות מוכר (אושר עד / Pairzon, Weezmo): השרת כבר קרא את הנתונים המסודרים — ישר למסך האישור, בלי בינה מלאכותית */
+    if(f.kind==='receipt'&&f.receipt&&Array.isArray(f.receipt.items)){inp.value='';
+      st.innerHTML='<p class="rclok">✅ '+T('הקבלה נקראה מהקישור','The receipt was read from the link')+' <small dir="ltr">'+esc(f.host||'')+'</small></p>';
+      upResult={receipt:f.receipt};showUploadReview();return;}
     if(f.kind==='text'){const t=$r('#upText');if(t)t.value=String(f.text||'');
       st.innerHTML='<p class="rclok">✅ '+T('הקבלה מהקישור נקלטה','The receipt was fetched')+' <small dir="ltr">'+esc(f.host||'')+'</small> <button type="button" class="mini" id="upUrlX" aria-label="'+T('ביטול הקבלה מהקישור','Remove the linked receipt')+'">✕</button></p>';}
     else{const room=rcMaxParts()-upImgs.length;if(room<=0){st.innerHTML='<p class="muted-note">⚠️ '+T('אין מקום לעוד חלקים בקבלה הזו — מוחקים תמונה ומנסים שוב','No room — remove a photo and try again')+'</p>';return;}
