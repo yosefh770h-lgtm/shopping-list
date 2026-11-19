@@ -1197,3 +1197,65 @@ def test_api_history(built, monkeypatch):
     assert days[-8]["min"] == 7.1 and days[-1]["min"] == 6.5  # לפני שבוע היה יקר יותר
     assert c.get("/history", params={"code": "7290004131074", "exclude": "SHUFERSAL,RAMI_LEVY"}).status_code == 404
     assert c.get("/history", params={"code": "abc"}).status_code == 422
+
+
+# ---------- קבלה מקישור (מזהים מומצאים בלבד — קישורי קבלה אמיתיים הם פרטיים) ----------
+FAKE_PZ = "https://shop.pairzon.com/r.html?id=00000000-0000-4000-8000-000000000001&p=1"
+FAKE_WZ = "https://receipts.weezmo.com/?q=00000000-0000-4000-8000-000000000002"
+
+
+def test_receipt_known_sites():
+    from yam import receipts as R
+    assert R.api_for(FAKE_PZ) == ("pairzon", "https://shop.pairzon.com/v1.0/documents/00000000-0000-4000-8000-000000000001?p=1")
+    assert R.api_for(FAKE_WZ)[0] == "weezmo"
+    for bad in ("http://shop.pairzon.com/r.html?id=00000000-0000-4000-8000-000000000001&p=1",
+                "https://shop.pairzon.com.evil.com/r.html?id=00000000-0000-4000-8000-000000000001&p=1",
+                "https://shop.pairzon.com/r.html?id=../../x&p=1", "https://receipts.weezmo.com/?q=abc"):
+        assert R.api_for(bad) is None
+    pz = {"items": [{"name": "חלב", "code": "7290004131074", "price": 6.5, "quantity": 2, "total": 13},
+                    {"name": "עגבניות", "price": 10, "weight": 1500, "total": 15},
+                    {"name": "במבה", "price": 5, "quantity": 6, "total": 20, "additionalInfo": [{"key": "6 ב 20"}]}],
+          "store": {"name": "סניף לדוגמה", "business": {"name": "רשת לדוגמה"}}, "createdDate": "2026-11-18T10:00:00", "total": 48}
+    rc = R.to_receipt("pairzon", pz)
+    assert rc["store"] == "רשת לדוגמה" and rc["branch"] == "סניף לדוגמה" and rc["date"] == "2026-11-18"
+    assert rc["items"][1]["qty"] == 1.5 and rc["items"][1]["unit"] == "ק״ג"
+    assert rc["items"][2]["deal"] == "6 ב 20" and rc["items"][2]["discount"] == 10
+    assert rc["check"]["ok"] is True
+    wz = [{"items": [{"name": "לחם", "price": 8, "quantity": 1, "total": 8, "itemCode": "123456"}],
+           "tBusiness": {"businessName": "רשת"}, "tBranch": {"branchName": "סניף"}, "total": 8}]
+    assert R.to_receipt("weezmo", wz)["items"][0]["barcode"] == "123456"
+
+
+def test_receipt_any_link_guards(monkeypatch):
+    """לא מעבר לרשת פנימית, לשרת הזה או לכתובת המטא-דאטה של הענן"""
+    from urllib.parse import urlsplit
+    from yam import receipts as R
+    for u in ("https://www.yamshopping.com/x", "https://localhost/x", "https://user:pw@shop.example.com/", "ftp://shop.example.com/",
+              "https://shop.example.com:8080/"):
+        assert not R.public_host(urlsplit(u))
+    monkeypatch.setattr(R.socket, "getaddrinfo", lambda h, p, **k: [(0, 0, 0, "", ("169.254.169.254", 443))])
+    assert not R.public_host(urlsplit("https://shop.example.com/r"))
+    monkeypatch.setattr(R.socket, "getaddrinfo", lambda h, p, **k: [(0, 0, 0, "", ("93.184.216.34", 443))])
+    assert R.public_host(urlsplit("https://shop.example.com/r"))
+    page = "<html><body><table><tr><td>חלב</td><td>6.50</td></tr></table></body></html>"
+    assert "חלב | 6.50" in R.html_to_text(page)
+
+
+def test_receipt_endpoint(built, monkeypatch):
+    _, api = built
+    from fastapi.testclient import TestClient
+    from yam import receipts as R
+    monkeypatch.setattr(R, "fetch", lambda u, timeout=12: ({"kind": "text", "text": "x", "host": "shop.example.com"}, None))
+    c = TestClient(api.app)
+    site = {"Referer": "https://www.yamshopping.com/"}
+    assert c.get("/receipt", params={"u": "https://shop.example.com/r.aspx?id=1"}).status_code == 403  # רק דרך האתר
+    r = c.get("/receipt", params={"u": "https://shop.example.com/r.aspx?id=1"}, headers=site)
+    assert r.status_code == 200 and r.json()["kind"] == "text"
+    assert "no-store" in r.headers["cache-control"]
+    monkeypatch.setattr(R, "fetch", lambda u, timeout=12: (None, (404, "לא נמצאה")))
+    r = c.get("/receipt", params={"u": "https://shop.example.com/r2"}, headers=site)
+    assert r.status_code == 404 and r.json()["error"] == "לא נמצאה"
+    monkeypatch.setattr(api, "RECEIPT_RATE", 1)
+    api._rc_daily.clear()
+    codes = [c.get("/receipt", params={"u": "https://shop.example.com/r3"}, headers=dict(site, **{"x-real-ip": "1.1.1.1"})).status_code for _ in range(3)]
+    assert 429 in codes

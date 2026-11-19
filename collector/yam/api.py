@@ -28,7 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import chains as C
-from . import db, watch, xmlparse
+from . import db, receipts, watch, xmlparse
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.environ.get("DATA_DIR", "/var/lib/yamshopping"), "prices.db"))
 ORIGINS = os.environ.get("ALLOWED_ORIGINS_REGEX", r"^https://(www\.)?yamshopping\.com$")
@@ -173,7 +173,8 @@ async def limits(req: Request, call_next):
     path = req.url.path
     ua = req.headers.get("user-agent", "")
     if not is_own(ip) and not is_own(peer):
-        if PROBE.search(path) or PROBE.search(req.url.query or ""):
+        # /receipt: בפרמטר יש קישור של קבלה (גם .php / .aspx של אתר הקבלות) — לא ניסיון פריצה
+        if PROBE.search(path) or (path != "/receipt" and PROBE.search(req.url.query or "")):
             shield_note("probe", ip, path + ("?" + req.url.query if req.url.query else ""), ua)
             _note(req, ip, peer, False, 403)
             return JSONResponse({"error": "הגישה נחסמה"}, status_code=403)
@@ -187,7 +188,9 @@ async def limits(req: Request, call_next):
         return JSONResponse({"error": bad[1]}, status_code=bad[0], headers={"Retry-After": "60"} if bad[0] == 429 else {})
     res = await call_next(req)
     _note(req, ip, peer, site, res.status_code)
-    if res.status_code == 200:
+    if path == "/receipt":
+        res.headers["Cache-Control"] = "private, no-store"  # קבלה אישית — לא נשמרת בשום מטמון
+    elif res.status_code == 200:
         res.headers["Cache-Control"] = "public, max-age=300"
     res.headers["X-Content-Type-Options"] = "nosniff"
     return res
@@ -730,6 +733,33 @@ def products(q: str = Query(..., min_length=2, max_length=80), limit: int = Quer
 
 
 HISTORY_SHOW_DAYS = 14  # כמו HISTORY_DAYS באוסף: היסטוריה ישנה יותר כבר נמחקה
+
+
+# ---------- 🔗 קבלה דיגיטלית מקישור (receipts.py) ----------
+RECEIPT_RATE = int(os.environ.get("RECEIPT_PER_MIN", "6"))     # לכל משתמש: מספיק לכמה קבלות ברצף, לא לשימוש כמעבר לאתרים אחרים
+RECEIPT_DAY = int(os.environ.get("RECEIPT_PER_DAY", "60"))
+_rc_daily = {}
+
+
+@app.get("/receipt")
+def receipt(req: Request, u: str = Query(..., min_length=10, max_length=2000)):
+    """הקישור של קבלה דיגיטלית ← הקבלה (אושר עד / Pairzon, Weezmo) או התוכן של הדף לקריאה. לא נשמר כלום"""
+    ip, peer, via = who(req)
+    if not via and not is_own(ip):
+        raise HTTPException(403, "רק דרך האתר")
+    t, day = time.monotonic(), watch.today()
+    with _lock:
+        if day not in _rc_daily:
+            _rc_daily.clear()
+            _rc_daily[day] = {}
+        used = _rc_daily[day].get(ip, 0)
+        if used >= RECEIPT_DAY or not _take("rc:" + ip, RECEIPT_RATE, t):
+            raise HTTPException(429, "יותר מדי קבלות מקישור — נסו שוב מאוחר יותר")
+        _rc_daily[day][ip] = used + 1
+    out, err = receipts.fetch(u)
+    if err:
+        return JSONResponse({"error": err[1]}, status_code=err[0])
+    return out
 
 
 @app.get("/history")

@@ -161,7 +161,7 @@ Deno.serve(withOriginCheck(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
-  let reqBody: { ping?: boolean; messages?: ChatTurn[]; context?: string; diag?: boolean; vision?: string; images?: string[]; text?: string; webprices?: { query?: string; city?: string }; nearby?: { where?: string; kind?: string }; categorize?: { items?: unknown[]; cats?: unknown[] }; receiptUrl?: string } = {};
+  let reqBody: { ping?: boolean; messages?: ChatTurn[]; context?: string; diag?: boolean; vision?: string; images?: string[]; text?: string; webprices?: { query?: string; city?: string }; nearby?: { where?: string; kind?: string }; categorize?: { items?: unknown[]; cats?: unknown[] } } = {};
   try { reqBody = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
   // "חימום": האתר שולח ping כשפותחים את יאמי, כדי שהשאלה עצמה לא תחכה להפעלה של השרת
   if (reqBody.ping) return json({ ok: true });
@@ -255,13 +255,6 @@ Deno.serve(withOriginCheck(async (req) => {
   }
 
   const body = reqBody;
-
-  // 🔗 קבלה דיגיטלית מקישור: השרת מביא את הדף פעם אחת (בשביל המשתמש, עם הקישור שלו) ומחזיר טקסט / PDF / תמונה.
-  // לא שומרים את הקישור ולא את התוכן — הקריאה עצמה נעשית אחר כך כמו קבלה רגילה, והמשתמש מאשר לפני שמשהו נשמר
-  if (typeof body.receiptUrl === "string") {
-    const r = await fetchReceiptLink(body.receiptUrl);
-    return json(r.ok ? { fetched: r } : { error: r.error, text: r.text }, r.ok ? 200 : 422);
-  }
 
   // הצעת קטגוריה למוצרים חדשים שלא במאגר (המשתמש מאשר או משנה)
   if (body.categorize && typeof body.categorize === "object") {
@@ -958,104 +951,3 @@ async function readReceipt(provider: string, apiKey: string, cfg: Record<string,
   return best;
 }
 
-// ---------- קבלה דיגיטלית מקישור ----------
-// רק כתובות ציבוריות (לא שרתים פנימיים), עד 4 הפניות, עד 6MB ו-12 שניות
-const LINK_MAX_BYTES = 6_000_000;
-const privIp = (h: string) => {
-  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])];
-    return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
-  }
-  const x = h.replace(/^\[|\]$/g, "").toLowerCase();
-  if (x.includes(":")) return x === "::" || x === "::1" || /^(fc|fd|fe8|fe9|fea|feb)/.test(x) || /^::ffff:/.test(x);
-  return false;
-};
-async function linkHostOk(u: URL): Promise<boolean> {
-  if (u.protocol !== "https:" && u.protocol !== "http:") return false;
-  if (u.username || u.password || (u.port && u.port !== "443" && u.port !== "80")) return false;
-  const h = u.hostname.toLowerCase();
-  if (!h.includes(".") || /(^|\.)(localhost|local|internal|lan|home|corp|supabase\.co|supabase\.in)$/.test(h) || privIp(h)) return false;
-  // גם השם צריך להצביע לכתובת ציבורית (לא לשרת פנימי)
-  try {
-    const ips = [...await Deno.resolveDns(h, "A").catch(() => [] as string[]), ...await Deno.resolveDns(h, "AAAA").catch(() => [] as string[])];
-    if (ips.some(privIp)) return false;
-  } catch { /* אין בדיקת DNS בסביבה הזו */ }
-  return true;
-}
-const b64 = (u8: Uint8Array) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
-const decodeEnt = (s: string) => s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
-  .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n) || 32)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16) || 32));
-function htmlToText(html: string): string {
-  // נתונים שמוטמעים בדף (אתרים שבונים את הקבלה בדפדפן שומרים אותה לפעמים כ-JSON בתוך הדף)
-  const data = [...html.matchAll(/<script\b[^>]*type=["']?application\/(?:ld\+)?json["']?[^>]*>([\s\S]*?)<\/script>/gi), ...html.matchAll(/<script\b[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/gi)]
-    .map((m) => m[1].trim()).filter((x) => x.length > 40).join("\n").slice(0, 8000);
-  const body = html.replace(/<(script|style|noscript|svg|head)\b[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<br\s*\/?>/gi, "\n").replace(/<\/(tr|p|div|li|h[1-6]|table|section)>/gi, "\n").replace(/<\/t[dh]>/gi, " | ")
-    .replace(/<[^>]+>/g, " ");
-  const t = decodeEnt(body).split("\n").map((l) => l.replace(/[ \t\u00a0]+/g, " ").replace(/^\s*\|\s*|\s*\|\s*$/g, "").trim()).filter(Boolean).join("\n");
-  return (t + (data ? "\n\nנתונים מהדף:\n" + data : "")).slice(0, 16000);
-}
-type LinkResult = { ok: true; kind: "pdf" | "image" | "text"; data?: string; mime?: string; text?: string; host: string } | { ok: false; error: string; text: string };
-async function fetchReceiptLink(raw: string, depth = 0): Promise<LinkResult> {
-  const BAD = { ok: false as const, error: "bad_url", text: "הקישור לא תקין — מעתיקים את כל הקישור של הקבלה (מתחיל ב-https://)" };
-  let u: URL;
-  try { u = new URL(String(raw).trim().slice(0, 2000)); } catch { return BAD; }
-  const ua = { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Mobile Safari/537.36", "Accept": "text/html,application/pdf,image/*;q=0.9,*/*;q=0.5", "Accept-Language": "he-IL,he;q=0.9" };
-  let res: Response | null = null;
-  try {
-    for (let hop = 0; hop < 5; hop++) {
-      if (!(await linkHostOk(u))) return BAD;
-      res = await fetch(u, { redirect: "manual", headers: ua, signal: AbortSignal.timeout(12000) });
-      const loc = res.headers.get("location");
-      if (res.status >= 300 && res.status < 400 && loc) { await res.body?.cancel(); u = new URL(loc, u); res = null; continue; }
-      break;
-    }
-  } catch (e) {
-    console.error("receipt link", String(e).slice(0, 200));
-    return { ok: false, error: "fetch_failed", text: "לא הצלחתי לפתוח את הקישור (האתר לא ענה). נסו שוב, או שמרו את הקבלה כ-PDF והעלו אותה." };
-  }
-  if (!res) return { ok: false, error: "redirects", text: "הקישור מפנה יותר מדי פעמים — נסו לפתוח אותו בדפדפן ולהעתיק את הכתובת הסופית." };
-  if (res.status === 401 || res.status === 403) return { ok: false, error: "blocked", text: "האתר של הקבלה לא מאפשר לפתוח אותה מכאן (צריך כניסה לחשבון או שהוא חוסם). אפשר לשמור את הקבלה כ-PDF ולהעלות." };
-  if (res.status === 404 || res.status === 410) return { ok: false, error: "gone", text: "הקבלה לא נמצאה בקישור — אולי פג התוקף שלו." };
-  if (!res.ok) return { ok: false, error: "http_" + res.status, text: "האתר של הקבלה החזיר שגיאה (" + res.status + "). נסו שוב מאוחר יותר." };
-  // קוראים עד 6MB
-  const reader = res.body?.getReader();
-  const chunks: Uint8Array[] = []; let n = 0;
-  if (reader) {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      n += value.length; if (n > LINK_MAX_BYTES) { await reader.cancel(); return { ok: false, error: "too_big", text: "הקובץ בקישור גדול מדי." }; }
-      chunks.push(value);
-    }
-  }
-  const buf = new Uint8Array(n); let off = 0; for (const c of chunks) { buf.set(c, off); off += c.length; }
-  const ct = (res.headers.get("content-type") || "").toLowerCase();
-  const host = u.hostname;
-  const isPdf = ct.includes("application/pdf") || (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46);
-  if (isPdf) return { ok: true, kind: "pdf", data: b64(buf), host };
-  const img = ct.match(/^image\/(jpeg|png|webp)/);
-  if (img) return { ok: true, kind: "image", data: b64(buf), mime: "image/" + img[1], host };
-  if (!ct.includes("html") && !ct.includes("text") && !ct.includes("json") && ct) return { ok: false, error: "type", text: "בקישור יש קובץ שאני לא יודעת לקרוא (" + ct.split(";")[0] + ")." };
-  const cs = (ct.match(/charset=([\w-]+)/) || [])[1] || (new TextDecoder("latin1").decode(buf.subarray(0, 3000)).match(/<meta[^>]+charset=["']?([\w-]+)/i) || [])[1] || "utf-8";
-  let html = "";
-  try { html = new TextDecoder(cs).decode(buf); } catch { html = new TextDecoder().decode(buf); }
-  if (ct.includes("json")) return { ok: true, kind: "text", text: html.slice(0, 16000), host };
-  // הקבלה עצמה בתוך מסגרת / הפניה בדף / קישור ל-PDF — הולכים אליה פעם אחת
-  if (depth < 1) {
-    const next = (html.match(/<meta[^>]+http-equiv=["']?refresh["']?[^>]+url=([^"'>\s]+)/i) || [])[1]
-      || (html.match(/<iframe\b[^>]+src=["']([^"']+)["']/i) || [])[1]
-      || (html.match(/href=["']([^"']+\.pdf(?:\?[^"']*)?)["']/i) || [])[1];
-    const text0 = htmlToText(html);
-    if (next && text0.length < 400) {
-      try { const r = await fetchReceiptLink(new URL(decodeEnt(next), u).toString(), depth + 1); if (r.ok) return r; } catch { /* */ }
-    }
-  }
-  const text = htmlToText(html);
-  // דף שבונה את הקבלה רק בדפדפן (בלי מחירים בקוד של הדף) — אין מה לקרוא מכאן
-  if (text.replace(/\s/g, "").length < 120 || !/\d+[.,]\d{2}/.test(text)) {
-    return { ok: false, error: "no_content", text: "האתר של הקבלה בונה אותה רק בתוך הדפדפן, ולכן אי אפשר לקרוא אותה מהקישור. הדרך הכי מהירה: פותחים את הקישור בכרום ← ⋮ ← שיתוף ← הדפסה ← שמירה כ-PDF, ומעלים כאן את ה-PDF — כל הקבלה בקובץ אחד, בלי צילומי מסך." };
-  }
-  return { ok: true, kind: "text", text, host };
-}
