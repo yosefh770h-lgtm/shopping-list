@@ -2027,6 +2027,8 @@ function setTab(t){tab=t;
   document.querySelector('#inputRow').classList.toggle('on',t!=='hist'&&t!=='prices'&&t!=='stores');
   if(t==='prices')renderPrices();
   if(t==='stores')openStoresTab();
+  if(t==='hist'&&paneStale.hist){paneStale.hist=0;renderHist();}
+  if(t==='home'&&paneStale.home){paneStale.home=0;renderHome();}
   state.lastTab=t;save(true);}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
 function sendCurrent(){const v=document.querySelector('#inText').value.trim();if(!v)return;
