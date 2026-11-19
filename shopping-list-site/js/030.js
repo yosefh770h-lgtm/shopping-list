@@ -125,13 +125,12 @@ async function rcLink(){if(rcLinking)return;const inp=$r('#upUrl'),st=$r('#upUrl
   const key='url|'+url;if(rcHas(key)){flash(T('ℹ️ הקבלה מהקישור הזה כבר נמצאת','ℹ️ This receipt is already added'));return;}
   rcLinking=true;const btn=$r('#upUrlGo');if(btn)btn.disabled=true;
   st.innerHTML='<div class="empty">🔗 '+T('פותחת את הקבלה מהקישור…','Opening the receipt link…')+'</div>';
-  const send=async()=>{let data=null,error=null;try{({data,error}=await sb.functions.invoke('ai-chat',{body:{receiptUrl:url}}));}catch(e){error=e;}
-    const code=error&&error.context&&error.context.status;if(error&&error.context&&typeof error.context.json==='function'){try{data=await error.context.json();}catch(e){}}return {data,code,error};};
-  try{let r=await send();if(r.code===401){try{const {data:rs}=await sb.auth.refreshSession();if(rs&&rs.session)r=await send();}catch(e){}}
+  /* כל הקישורים נפתחים בשרת שלנו בארץ — אתרי קבלות כמו אושר עד לא עונים לשרתים בחו"ל */
+  try{let r=null,data=null;try{r=await fetch((typeof PRICE_API!=='undefined'?PRICE_API:'/api/prices')+'/receipt?u='+encodeURIComponent(url),{cache:'no-store'});data=await r.json();}catch(e){data=null;}
     if($r('#upUrlSt')!==st||upMode!=='receipt')return;
-    const f=r.data&&r.data.fetched;
-    if(!f){st.innerHTML='<p class="muted-note">⚠️ '+esc((r.data&&r.data.text)||(r.data&&r.data.disabled?T('קריאת קבלות צריכה את הבינה המלאכותית — היא עוד לא מופעלת באתר.','Reading needs the AI.'):T('לא הצלחתי לפתוח את הקישור 🙁','Could not open the link 🙁')))+'</p>';
-      try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r.data&&r.data.error)||r.code||'error')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}
+    const f=r&&r.ok&&data&&data.kind?data:null;
+    if(!f){st.innerHTML='<p class="muted-note">⚠️ '+esc((data&&data.error)||T('לא הצלחתי לפתוח את הקישור 🙁 נסו שוב, או שמרו את הקבלה כ-PDF והעלו אותה.','Could not open the link 🙁'))+'</p>';
+      try{sb.rpc('log_client_error',{p_msg:('קבלה מקישור נכשלה: '+((r&&r.status)||'network')+' · '+(()=>{try{return new URL(url).hostname;}catch(e){return '';}})()).slice(0,300),p_src:'rcLink',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}
       return;}
     rcLinkHost=String(f.host||'').toLowerCase().replace(/^www\./,'');
     /* אתר קבלות מוכר (אושר עד / Pairzon, Weezmo): השרת כבר קרא את הנתונים המסודרים — ישר למסך האישור, בלי בינה מלאכותית */
