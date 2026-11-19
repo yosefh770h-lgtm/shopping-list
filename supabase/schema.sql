@@ -3058,16 +3058,11 @@ create policy "errors admin" on public.client_errors for select using (public.is
 drop policy if exists "errors admin del" on public.client_errors;
 create policy "errors admin del" on public.client_errors for delete using (public.is_admin());
 revoke insert, update on public.client_errors from anon, authenticated;
-create or replace function public.log_client_error(p_msg text, p_src text default '', p_ua text default '', p_ver text default '') returns void
-language plpgsql security definer set search_path = public as $$
-begin
-  -- לכל היותר 20 תקלות בדקה ממשתמש אחד, ו-300 בדקה בסך הכול (שלא יציפו)
-  if auth.uid() is not null and (select count(*) from public.client_errors where user_id = auth.uid() and created_at > now() - interval '1 minute') >= 20 then return; end if;
-  if (select count(*) from public.client_errors where created_at > now() - interval '1 minute') >= 300 then return; end if;
-  insert into public.client_errors(user_id, msg, src, ua, ver) values (auth.uid(), left(coalesce(p_msg,''),500), left(coalesce(p_src,''),300), left(coalesce(p_ua,''),200), left(coalesce(p_ver,''),12));
-end $$;
-revoke all on function public.log_client_error(text, text, text, text) from public;
-grant execute on function public.log_client_error(text, text, text, text) to anon, authenticated;
+-- נובמבר 2026: גם גרסת האפליקציה, דגם הטלפון ומזהה המכשיר האנונימי — כדי לראות אם תקלה קורית רק בגרסה / בדגם מסוים
+alter table public.client_errors add column if not exists app_ver text not null default '' check (char_length(app_ver) <= 12);
+alter table public.client_errors add column if not exists device text not null default '' check (char_length(device) <= 60);
+alter table public.client_errors add column if not exists dev text not null default '' check (char_length(dev) <= 36);
+-- (הפונקציה log_client_error — למטה, בחלק "v19: security fixes")
 delete from public.client_errors where created_at < now() - interval '60 days';
 
 -- =====================================================================
@@ -3772,21 +3767,6 @@ $$;
 revoke all on function public.cloth_vote_counts() from public;
 grant execute on function public.cloth_vote_counts() to anon, authenticated;
 
--- ---------- 14. יומן תקלות: פחות הצפה, ניקוי אוטומטי ----------
-create or replace function public.log_client_error(p_msg text, p_src text default '', p_ua text default '', p_ver text default '') returns void
-language plpgsql security definer set search_path = public as $$
-begin
-  -- לכל היותר 20 תקלות בדקה ממשתמש מחובר, 60 בדקה מאורחים, ו-120 בדקה בסך הכול
-  if auth.uid() is not null and (select count(*) from public.client_errors where user_id = auth.uid() and created_at > now() - interval '1 minute') >= 20 then return; end if;
-  if auth.uid() is null and (select count(*) from public.client_errors where user_id is null and created_at > now() - interval '1 minute') >= 60 then return; end if;
-  if (select count(*) from public.client_errors where created_at > now() - interval '1 minute') >= 120 then return; end if;
-  if random() < 0.01 then delete from public.client_errors where created_at < now() - interval '30 days'; end if;
-  insert into public.client_errors(user_id, msg, src, ua, ver)
-  values (auth.uid(), left(coalesce(p_msg, ''), 500), left(coalesce(p_src, ''), 300), left(coalesce(p_ua, ''), 200), left(coalesce(p_ver, ''), 12));
-end $$;
-revoke all on function public.log_client_error(text, text, text, text) from public;
-grant execute on function public.log_client_error(text, text, text, text) to anon, authenticated;
-
 -- ---------- 15. פרסומות: צפייה/לחיצה נספרת פעם אחת ליום לכל משתמש ----------
 create table if not exists public.ad_event_seen (
   ad_id uuid not null references public.ads(id) on delete cascade,
@@ -4414,7 +4394,11 @@ begin
   insert into public.activity_log(user_id, name, action, detail)
   values (auth.uid(), coalesce((select name from public.profiles where id = auth.uid()), ''), left(coalesce(p_action, ''), 40), left(coalesce(p_detail, ''), 300));
 end $$;
-create or replace function public.log_client_error(p_msg text, p_src text default '', p_ua text default '', p_ver text default '') returns void
+-- גרסת האפליקציה (למשל 2.1), דגם הטלפון (למשל SM-S901B · Android 14) ומזהה המכשיר האנונימי נשמרים בנפרד,
+-- כדי שבבק אופיס יראו תקלות לפי גרסה ולפי דגם, ושהתראה תצא כשאותה תקלה קורית בכמה מכשירים שונים
+drop function if exists public.log_client_error(text, text, text, text);
+create or replace function public.log_client_error(p_msg text, p_src text default '', p_ua text default '', p_ver text default '',
+                                                   p_app text default '', p_device text default '', p_dev text default '') returns void
 language plpgsql security definer set search_path = public as $$
 begin
   -- נעילה אחת לכולם (יש גם תקרה כללית); לכל היותר 20 בדקה ממשתמש, 60 מאורחים, 120 בסך הכול
@@ -4423,11 +4407,14 @@ begin
   if auth.uid() is null and (select count(*) from public.client_errors where user_id is null and created_at > now() - interval '1 minute') >= 60 then return; end if;
   if (select count(*) from public.client_errors where created_at > now() - interval '1 minute') >= 120 then return; end if;
   if random() < 0.01 then delete from public.client_errors where created_at < now() - interval '30 days'; end if;
-  insert into public.client_errors(user_id, msg, src, ua, ver)
-  values (auth.uid(), left(coalesce(p_msg, ''), 500), left(coalesce(p_src, ''), 300), left(coalesce(p_ua, ''), 200), left(coalesce(p_ver, ''), 12));
+  insert into public.client_errors(user_id, msg, src, ua, ver, app_ver, device, dev)
+  values (auth.uid(), left(coalesce(p_msg, ''), 500), left(coalesce(p_src, ''), 300), left(coalesce(p_ua, ''), 200), left(coalesce(p_ver, ''), 12),
+          left(regexp_replace(coalesce(p_app, ''), '[^0-9.]', '', 'g'), 12),
+          left(regexp_replace(coalesce(p_device, ''), '[^[:alnum:][:space:]·./()_-]', '', 'g'), 60),
+          case when coalesce(p_dev, '') ~ '^[0-9a-f-]{36}$' then p_dev else '' end);
 end $$;
-revoke all on function public.log_client_error(text, text, text, text) from public;
-grant execute on function public.log_client_error(text, text, text, text) to anon, authenticated;
+revoke all on function public.log_client_error(text, text, text, text, text, text, text) from public;
+grant execute on function public.log_client_error(text, text, text, text, text, text, text) to anon, authenticated;
 create or replace function public.my_products_cap() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -4677,6 +4664,8 @@ exception when duplicate_object then null; end $$;
 --   (ד) הרבה כתובות IP שונות מנסות להיכנס לאותו מייל (גניבת סיסמאות)   (ה) כתובת IP אחת מנסה הרבה מיילים שונים
 -- את הספים אפשר לשנות ב-site_config 'security' (0 = בלי הבדיקה הזו; alerts_off=true מכבה הכל):
 --   alert_login_fail 30, alert_signup_blocked 20, alert_errors 50, alert_stuffing_ips 10, alert_spray_emails 15, alert_every_hours 6
+--   (ז) alert_error_devices 3: אותה תקלה בדיוק קרתה ב-24 השעות האחרונות ב-3 מכשירים שונים או יותר — התראה נפרדת לכל תקלה
+--       (לכל היותר פעם ב-3 ימים לאותה תקלה), עם גרסת האפליקציה ודגמי הטלפון. כך מגלים תקלה לפני שמשתמש מתלונן. 0 = בלי.
 --   (ו) alert_scrape 1: התראה נפרדת על כל כתובת שנראית כמו העתקה של המחירים (ניקוד 3 ומעלה ב-scrape_watch),
 --       עם מיקום, ספק וחשבון אם ידוע. 0 = בלי.
 create table if not exists public.admin_alerts_sent (
@@ -4695,7 +4684,7 @@ declare
   since timestamptz := now() - interval '1 hour';
   sent int := 0;
   a record; r record;
-  lim_login int; lim_signup int; lim_err int; lim_ips int; lim_spray int; lim_scrape int;
+  lim_login int; lim_signup int; lim_err int; lim_ips int; lim_spray int; lim_scrape int; lim_dev int;
 begin
   if coalesce(c->>'alerts_off', '') = 'true' then return 0; end if;
   -- ספים (מספר לא תקין → ברירת המחדל)
@@ -4705,6 +4694,7 @@ begin
   lim_ips    := case when coalesce(c->>'alert_stuffing_ips', '')   ~ '^\d{1,6}$' then (c->>'alert_stuffing_ips')::int   else 10 end;
   lim_spray  := case when coalesce(c->>'alert_spray_emails', '')   ~ '^\d{1,6}$' then (c->>'alert_spray_emails')::int   else 15 end;
   lim_scrape := case when coalesce(c->>'alert_scrape', '')         ~ '^\d{1,6}$' then (c->>'alert_scrape')::int         else 1 end;
+  lim_dev    := case when coalesce(c->>'alert_error_devices', '')  ~ '^\d{1,6}$' then (c->>'alert_error_devices')::int  else 3 end;
   every := make_interval(hours => case when coalesce(c->>'alert_every_hours', '') ~ '^\d{1,3}$' then greatest(1, least(168, (c->>'alert_every_hours')::int)) else 6 end);
 
   for r in
@@ -4731,14 +4721,26 @@ begin
             public.scrape_summary(w.ip), '/#admin-scrapers'
        from public.scrape_watch w where w.ip <> '*' and not w.own and w.score >= 3 and w.updated_at > since and w.day >= current_date - 1
        order by w.score desc, w.n desc limit 5)
+    union all
+    -- (ז) אותה תקלה בכמה מכשירים שונים (מכשיר = משתמש מחובר, או מזהה המכשיר האנונימי, או ה-User-Agent)
+    (select 'err:' || left(md5(e.msg || '|' || e.src), 12), lim_dev,
+            count(distinct coalesce(e.user_id::text, nullif(e.dev, ''), e.ua))::int, count(*)::int,
+            left(e.msg, 140)
+              || coalesce(' · אפליקציה ' || string_agg(distinct nullif(e.app_ver, ''), ', '), ' · באתר')
+              || coalesce(' · ' || left(string_agg(distinct nullif(e.device, ''), ', '), 120), ''),
+            '/#admin-errors'
+       from public.client_errors e where e.created_at > now() - interval '24 hours' and e.ver <> 'collector'
+       group by e.msg, e.src order by 3 desc limit 3)
   loop
     continue when r.lim <= 0 or r.cnt < r.lim;
-    continue when exists (select 1 from public.admin_alerts_sent s where s.kind = r.k and s.sent_at > now() - every);
+    continue when exists (select 1 from public.admin_alerts_sent s where s.kind = r.k
+                           and s.sent_at > now() - case when r.k like 'err:%' then interval '3 days' else every end);
     insert into public.admin_alerts_sent(kind, sent_at, n) values (r.k, now(), r.cnt)
       on conflict (kind) do update set sent_at = excluded.sent_at, n = excluded.n;
     for a in select distinct id from public.admin_ids() id loop
       perform public.push_enqueue(a.id, 'staff',
-        case when r.k like 'scrape:%' then '🕵️ מעתיקים מחירים: ' || substr(r.k, 8) || ' (' || r.extra || ' בקשות)' else
+        case when r.k like 'scrape:%' then '🕵️ מעתיקים מחירים: ' || substr(r.k, 8) || ' (' || r.extra || ' בקשות)'
+             when r.k like 'err:%' then '🐞 אותה תקלה ב-' || r.cnt || ' מכשירים שונים (24 שעות)' else
         case r.k
           when 'login_fail'     then '⚠️ ' || r.cnt || ' ניסיונות כניסה כושלים בשעה האחרונה'
           when 'signup_blocked' then '⚠️ ' || r.cnt || ' הרשמות נחסמו בשעה האחרונה'
@@ -4747,7 +4749,8 @@ begin
           when 'scrape'         then '🕵️ ' || r.cnt || ' כתובות נראות כמו העתקה של המחירים'
           else                       '⚠️ IP אחד ניסה להיכנס ל-' || r.cnt || ' מיילים שונים'
         end end,
-        case when r.k like 'scrape:%' then left(r.info, 300) else
+        case when r.k like 'scrape:%' then left(r.info, 300)
+             when r.k like 'err:%' then left(r.info, 300) || ' — כדאי להציץ ביומן התקלות לפני שמשתמשים יתלוננו.' else
         case r.k
           when 'login_fail'     then case when r.extra > 0 then 'מתוכם ' || r.extra || ' חסימות זמניות. ' else '' end || 'כדאי להציץ ביומן האבטחה.'
           when 'signup_blocked' then 'אולי בוט מנסה להירשם. כדאי להציץ ביומן האבטחה.'

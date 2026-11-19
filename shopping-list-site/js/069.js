@@ -46,7 +46,7 @@ if(typeof pullSecondary15==='function'){const _hmPull=pullSecondary15;
   pullSecondary15=async function(){homeFix=null;const r=await _hmPull.apply(this,arguments);
     try{if(homeFix&&Object.keys(homeFix).length){const f=homeFix;homeFix=null;Object.keys(f).forEach(k=>hmPut(k,f[k]));save(true);if(document.querySelector('#paneHome.on'))renderHome();}}catch(e){}
     return r;};}
-const _hmLogout=doLogout;doLogout=async function(){const r=await _hmLogout.apply(this,arguments);state.homeMod={};return r;};
+onLogout('reset',()=>{state.homeMod={};});
 
 /* ---------- מחיקה מ"הבית שלי" ---------- */
 function homeDelete(names){const ks=new Set((names||[]).map(pkey).filter(Boolean));

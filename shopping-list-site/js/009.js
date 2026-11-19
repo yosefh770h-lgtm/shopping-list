@@ -9,7 +9,7 @@ applyRemote=function(remote,replace){_v9ApplyRemote(remote,replace);if(!remote)r
   if(remote.stock&&typeof remote.stock==='object')state.stock=replace?remote.stock:Object.assign({},state.stock||{},remote.stock);
   if(Array.isArray(remote.missingHome))state.missingHome=replace?remote.missingHome:Array.from(new Set((state.missingHome||[]).concat(remote.missingHome))).filter(n=>!pantryHas(n));
   if(Array.isArray(remote.templates)){const ids=new Set((state.templates||[]).map(t=>t.id));state.templates=replace?remote.templates:(state.templates||[]).concat(remote.templates.filter(t=>!ids.has(t.id)));}};
-const _v9Logout=doLogout;doLogout=async function(){const r=await _v9Logout();state.stock={};state.missingHome=[];state.templates=[];return r;};
+onLogout('reset',()=>{state.stock={};state.missingHome=[];state.templates=[];});
 
 /* ---------- מלאי הבית בכמויות ---------- */
 const pkey=n=>NORMP[norm(n)]||norm(n);
@@ -155,7 +155,7 @@ async function readUpload(){
       :httpSt===504||httpSt===408||sec>=140?T('הקריאה לקחה יותר מדי זמן — נסו שוב, או פחות תמונות.','It took too long — try again or with fewer photos.')
       :!httpSt&&error?T('החיבור לשרת נקטע באמצע השליחה (אינטרנט חלש או סינון). נסו שוב.','The connection was cut while sending. Try again.')
       :T('לא הצלחתי לקרוא 🙁','Could not read 🙁')+' ('+T('קוד','code')+' '+code+')';
-    try{sb.rpc('log_client_error',{p_msg:('קריאת '+(mode==='receipt'?'קבלה':'רשימה')+' נכשלה: '+code+(gw401?' · נחסם לפני הפונקציה (Verify JWT?)':'')+(httpSt===401?' · חידוש כניסה: '+(refreshed?'הצליח':'נכשל')+(selfChk?' · הכניסה במכשיר: '+selfChk:''):'')+' · '+String((data&&(data.detail||data.message||data.msg||data.error))||(error&&error.message)||'').slice(0,160)).slice(0,500),p_src:'readUpload · '+nImg+' חלקים · '+kb+'KB · '+sec+' שנ׳ · '+(/YamShoppingApp|; wv\)/.test(navigator.userAgent)?'אפליקציה':'אתר'),p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}}
+    try{sb.rpc('log_client_error',{p_msg:('קריאת '+(mode==='receipt'?'קבלה':'רשימה')+' נכשלה: '+code+(gw401?' · נחסם לפני הפונקציה (Verify JWT?)':'')+(httpSt===401?' · חידוש כניסה: '+(refreshed?'הצליח':'נכשל')+(selfChk?' · הכניסה במכשיר: '+selfChk:''):'')+' · '+String((data&&(data.detail||data.message||data.msg||data.error))||(error&&error.message)||'').slice(0,160)).slice(0,500),p_src:'readUpload · '+nImg+' חלקים · '+kb+'KB · '+sec+' שנ׳ · '+(/YamShoppingApp|; wv\)/.test(navigator.userAgent)?'אפליקציה':'אתר'),p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}}
   if(!data||data.disabled||(!data[upMode])){out.innerHTML='<p class="muted-note">⚠️ '+esc(why||(data&&data.text)||(data&&data.disabled?T('קריאת קבלות ורשימות צריכה את הבינה המלאכותית — היא עוד לא מופעלת באתר.','Reading needs the AI, which is not enabled.'):T('לא הצלחתי לקרוא 🙁','Could not read 🙁')))+(isAdmin()&&data&&(data.detail||data.reason)?' ('+esc(data.detail||data.reason)+')':'')+'</p>'+(upMode==='list'?'<p class="muted-note">'+T('בינתיים אפשר להדביק את הרשימה כטקסט.','Meanwhile you can paste the list as text.')+'</p>':'');
     /* הכניסה במכשיר הזה כבר לא תקפה בשרת (וגם החידוש נכשל) — כפתור שמוציא ומחזיר למסך הכניסה */
     if(httpSt===401&&!gw401&&!refreshed){out.insertAdjacentHTML('beforeend','<button class="btn" id="upRelogin" style="width:100%;margin-top:6px">🔑 '+T('להתחבר מחדש','Sign in again')+'</button>');

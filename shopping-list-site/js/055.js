@@ -41,7 +41,7 @@ function bdMerge(a,b){a=bdClean(a);b=bdClean(b);const o={...a};
 function bdTidy(){const b=B(),old=nowTs()-60*864e5,far=nowTs()-800*864e5;b.exp=b.exp.filter(x=>!(x.del&&x.mt<old)&&x.ts>far);}
 const _bdApply=applyRemote;
 applyRemote=function(remote,replace){const r=_bdApply.apply(this,arguments);try{if(remote&&remote.budget&&typeof remote.budget==='object')state.budget=replace?bdClean(remote.budget):bdMerge(B(),remote.budget);}catch(e){}return r;};
-const _bdLogout=doLogout;doLogout=async function(){const r=await _bdLogout.apply(this,arguments);state.budget=bdClean({});return r;};
+onLogout('reset',()=>{state.budget=bdClean({});});
 function bdSave(){bdTidy();save();try{bdAlerts();}catch(e){}}
 
 /* ---------- החישוב לחודש ---------- */

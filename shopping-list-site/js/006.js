@@ -771,15 +771,31 @@ async function safeSignOut(){
   ['yam_myprod_v1','yam_geo_cache_v1','yam_inbox_seen','yamh_mid','yam_me_keep_v1'].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
   try{myProd={};}catch(e){}try{geoCache={};}catch(e){}try{seen16=new Set();}catch(e){}
 }
+/* יציאה מהחשבון: כל קובץ שצריך לנקות משהו נרשם כאן פעם אחת עם onLogout(שלב, פונקציה), במקום לעטוף את doLogout שוב ושוב.
+   guard  — לפני הכול; אם מחזירה false היציאה מתבטלת
+   before — לפני הניתוק (החשבון עוד מחובר)
+   reset  — מיד אחרי איפוס state, לפני השמירה והציור (כדי שהמסך לא יצויר עם שדות חסרים)
+   after  — בסוף
+   תקלה בפונקציה אחת לא עוצרת את היציאה. */
+const LOGOUT_HOOKS={guard:[],before:[],reset:[],after:[]};
+function onLogout(phase,fn){LOGOUT_HOOKS[phase].push(fn);}
+async function runLogoutHooks(phase){
+  for(const f of LOGOUT_HOOKS[phase]){try{if((await f())===false&&phase==='guard')return false;}catch(e){console.warn('logout '+phase,e);}}
+  return true;
+}
 async function doLogout(){
+  if(!(await runLogoutHooks('guard')))return;
+  await runLogoutHooks('before');
   document.querySelector('#hMenu').classList.remove('open');
   stopCloud();
   await safeSignOut();
   authUser=null;signedInId=null;myRole=null;myStore=null;repScores={};follows=new Set();storePosts=[];feedPrices=[];feedSeenAt=null;storesView='feed';storeType='';openChain='';postImg='';dtCache=null;dtShown=new Set();updateStoresBadge();applyAdminUi();hideAds();
-  const dark=state.dark,gender=state.gender;state=defState();state.dark=dark;state.gender=gender;state.active=state.lists[0].id;save(true);
+  const dark=state.dark,gender=state.gender;state=defState();state.dark=dark;state.gender=gender;state.active=state.lists[0].id;
+  await runLogoutHooks('reset');save(true);
   document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));
   setTab('list');render();setLoginMode('login');showLogin();
   flash(appTxt('👋 יצאת מהאתר'));
+  await runLogoutHooks('after');
 }
 document.querySelector('#miLogout').onclick=async ()=>{if((await uiConfirm(T('לצאת מהחשבון?','Sign out?'))))doLogout();};
 document.querySelector('#btnUser').onclick=async ()=>{
@@ -1645,7 +1661,7 @@ function vidFailed(v,w,orig,blobTried){if(w)w.classList.add('fail');
   if(inf&&!inf.textContent.includes('לא נטען בתצוגה')){const code=v.error&&v.error.code||0;
     inf.textContent=(inf.style.color?inf.textContent+' ':'')+'⚠️ הסרטון לא נטען בתצוגה המקדימה. 🔎 בודק למה...';inf.style.color='#c0392b';
     adVidDiag(orig,code,blobTried).then(t=>{inf.textContent=inf.textContent.replace('🔎 בודק למה...','🔎 '+t+' מי שלא רואה את הסרטון יראה את האימוג\'י או התמונה.');
-      try{sb.rpc('log_client_error',{p_msg:('סרטון פרסומת לא מתנגן: '+t).slice(0,500),p_src:'ybPreview · קוד '+code+(blobTried?' · גם מהזיכרון':''),p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}});}
+      try{sb.rpc('log_client_error',{p_msg:('סרטון פרסומת לא מתנגן: '+t).slice(0,500),p_src:'ybPreview · קוד '+code+(blobTried?' · גם מהזיכרון':''),p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...(window.errCtx?errCtx():{})}).then(()=>{},()=>{});}catch(e){}});}
   else if(v.closest('#ybTop'))v.remove();}
 /* למה סרטון לא מתנגן: שואלים את השרת ישירות מה הוא מחזיר בכתובת של הסרטון */
 async function adVidDiag(u,code,blobTried){

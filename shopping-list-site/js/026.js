@@ -17,6 +17,10 @@ function errExplain(r){const msg=String(r.msg||''),src=String(r.src||''),ua=Stri
   /* אוסף המחירים בשרת (לא תקלה באתר אצל משתמש) — ההודעה עצמה כבר כתובה בעברית */
   if(r.ver==='collector'||/^server\./.test(ua)||/^collector /.test(src)){const cm=src.match(/^collector (\w+) · (.+)$/);
     return {what:msg.replace(/^אוסף המחירים · /,'')||'תקלה באוסף המחירים',where:'🏷️ אוסף המחירים בשרת'+(cm&&cm[2]!=='_summary'?' (רשת '+cm[2]+')':''),tip:'זו לא תקלה באתר. הפירוט בבק אופיס ← איסוף מחירים. בדרך כלל זמני (הרשת לא פרסמה קובץ באותו יום).',who:'השרת (אוסף המחירים)'};}
+  /* 💥 קריסה של האפליקציה לאנדרואיד עצמה (לא של האתר) — נשלחת בפתיחה שאחריה, ההודעה כבר בעברית */
+  if(/^native · /.test(src))return {what:msg.replace(/^💥 /,''),where:'📱 הקוד של האפליקציה לאנדרואיד ('+src.replace(/^native · /,'').split(' · ')[0].slice(0,80)+')',
+    tip:/חלון האתר|חסר זיכרון/.test(msg)?'בדרך כלל טלפון חלש שנגמר לו הזיכרון. האפליקציה כבר טענה את האתר מחדש. אם זה חוזר הרבה באותו דגם — לבדוק מה היה פתוח (למשל סריקה במצלמה).':'תיקון כזה נכנס רק בגרסת APK הבאה. לבדוק באיזה דגם ובאיזו גרסה זה קורה.',
+    who:'אפליקציה לאנדרואיד'+(r.device?' · '+r.device:'')};
   const bot=(window.YAM_BOT_RX||/Googlebot|bingbot|crawler|spider/i).test(ua);
   if(/^קובץ קוד לא נטען/.test(msg)){what='קובץ מהקוד של האתר לא נטען אצל המשתמש ('+msg.replace(/^קובץ קוד לא נטען: /,'')+'). לרוב קליטה חלשה או סינון. האתר הראה למשתמש כפתור "לטעון מחדש".';tip='אם זה קורה אצל משתמש אחד — חיבור / סינון אצלו. אם אצל רבים — לבדוק שהקובץ קיים בשרת.';}
   else if(/before initialization/.test(msg)){what='חלק מהקוד רץ לפני שחלק אחר הספיק להיטען. לרוב תוצאה של קובץ קוד שלא נטען (חיבור חלש / סינון), ולא תקלה בפני עצמה.';tip='לבדוק אם באותה דקה יש תקלות "חסר רכיב בקוד" — זה אותו מקרה.';}
@@ -35,8 +39,17 @@ function errExplain(r){const msg=String(r.msg||''),src=String(r.src||''),ua=Stri
   const os=/iPhone|iPad/.test(ua)?'אייפון':/Android/.test(ua)?'אנדרואיד':/Windows/.test(ua)?'מחשב Windows':/Mac OS/.test(ua)?'מק':/Linux/.test(ua)?'לינוקס':'';
   const br=/Edg\//.test(ua)?'Edge':/SamsungBrowser/.test(ua)?'דפדפן סמסונג':/CriOS|Chrome\//.test(ua)?'כרום':/FxiOS|Firefox/.test(ua)?'פיירפוקס':/Safari\//.test(ua)?'ספארי':'';
   if(bot){tip='🤖 זה בוט של מנוע חיפוש, לא משתמש אמיתי — אפשר להתעלם.';}
-  return {what,where:/^קובץ קוד לא נטען/.test(msg)?'📦 טעינת האתר':where,tip,who:bot?'🤖 בוט של מנוע חיפוש':[os,br].filter(Boolean).join(' · ')||'מכשיר לא ידוע'};}
+  return {what,where:/^קובץ קוד לא נטען/.test(msg)?'📦 טעינת האתר':where,tip,who:bot?'🤖 בוט של מנוע חיפוש':/YamShoppingApp\//.test(ua)||r.app_ver?'אפליקציה לאנדרואיד'+(r.app_ver?' '+r.app_ver:''):[os,br].filter(Boolean).join(' · ')||'מכשיר לא ידוע'};}
 window.errExplain=errExplain;
+/* 📱 עם כל תקלה: גרסת האפליקציה (YamShoppingApp/2.1), דגם הטלפון ומזהה המכשיר האנונימי — כדי שבבק אופיס יראו
+   אם תקלה קורית רק בגרסה או בדגם מסוים, ושתצא התראה כשאותה תקלה קורית בכמה מכשירים שונים. הדגם מופיע רק באפליקציה
+   (כרום באתר מסתיר אותו). לא שם, לא מספר טלפון ולא מזהה קבוע של הטלפון */
+function errCtx(){const ua=navigator.userAgent||'';const app=(ua.match(/YamShoppingApp\/([0-9.]+)/)||[])[1]||'';
+  const m=ua.match(/Android ([0-9.]+)?[^;)]*; ([^;)]+?)(?: Build\/[^;)]*)?[;)]/);let md=m?m[2].replace(/[^A-Za-z0-9 ._()-]/g,'').trim().slice(0,30):'';if(/^(K|wv|Linux)$/.test(md))md='';
+  const ios=ua.match(/(?:iPhone|iPad).*? OS (\d+)_/),av=m&&m[1]?'Android '+m[1]:ios?'iOS '+ios[1]:'';
+  let dev='';try{dev=typeof guestId27==='function'?guestId27():'';}catch(e){}
+  return {p_app:app,p_device:[md,av].filter(Boolean).join(' · ').slice(0,60),p_dev:dev};}
+window.errCtx=errCtx;
 /* ---------- 🐞 יומן תקלות: שגיאה אצל משתמש נרשמת לבק אופיס (עד 10 בכל כניסה, בלי כפילויות) ---------- */
 (function(){const seen=new Set();let n=0;
   const IGN=/ResizeObserver loop|^Script error\.?$|Non-Error promise rejection|AbortError|Load failed|Failed to fetch|NetworkError|extension:\/\//i;
@@ -48,11 +61,14 @@ window.errExplain=errExplain;
   const jsFail=()=>{const f=window.__jsFail;if(!f||!f.length||failSent)return;failSent=true;post('קובץ קוד לא נטען: '+Array.from(new Set(f)).join(', '),'script load');};
   const send=(msg,src)=>{if(window.__jsFail&&window.__jsFail.length){jsFail();if(CASC.test(String(msg||'')))return;}post(msg,src);};
   const post=(msg,src)=>{if(isBot)return;msg=String(msg||'').slice(0,500);src=String(src||'').slice(0,300);if(!msg||IGN.test(msg)||IGN.test(src))return;const k=msg+'|'+src;if(seen.has(k)||++n>10)return;seen.add(k);
-    try{if(sb)sb.rpc('log_client_error',{p_msg:msg,p_src:src,p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')}).then(()=>{},()=>{});}catch(e){}};
+    try{if(sb)sb.rpc('log_client_error',{p_msg:msg,p_src:src,p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...errCtx()}).then(()=>{},()=>{});}catch(e){}};
   const fnOf=st=>{const l=String(st||'').split('\n').map(x=>x.trim()).find(x=>/^at \S+ \(|^[\w$.]+@/.test(x))||'';const m=l.match(/^at (\S+) \(/)||l.match(/^([\w$.]+)@/);return m?m[1].replace(/^Object\.|^HTMLButtonElement\./,''):'';};
   window.addEventListener('error',e=>{if(e&&e.filename&&!e.filename.startsWith(location.origin))return;const fn=fnOf(e&&e.error&&e.error.stack);send(e.message,(fn?fn+' · ':'')+(e.filename||'').replace(location.origin,'')+':'+(e.lineno||0)+':'+(e.colno||0));});
   window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const fn=r&&r.stack?fnOf(r.stack):'';send((r&&(r.message||r))||'promise',r&&r.stack?(fn?fn+' · ':'')+(String(r.stack).split('\n')[1]||'').trim():'');});
   window.logClientError=send;
+  /* 💥 אפליקציה מגרסה 2.2: אם האפליקציה עצמה קרסה (או שחלון האתר קרס) — בפתיחה הבאה זה נשלח ליומן התקלות, פעם אחת */
+  setTimeout(()=>{try{const y=window.YamApp,c=y&&typeof y.lastCrash==='function'?y.lastCrash():'';if(!c)return;const o=JSON.parse(c);
+    post(String(o.msg||'💥 האפליקציה נסגרה בגלל תקלה'),'native · '+String(o.where||'')+(o.at?' · '+new Date(+o.at).toISOString().slice(0,16).replace('T',' '):''));}catch(e){}},6000);
   /* קובץ שלא נטען בלי תקלה אחריו — נרשם בסוף הטעינה. והמשתמש מקבל כפתור לטעון מחדש (אחרת חלק מהכפתורים פשוט לא עובדים) */
   const jsFailBar=()=>{const f=window.__jsFail;if(!f||!f.length||isBot||document.getElementById('jsFailBar'))return;jsFail();
     const tt=(he,en)=>typeof T==='function'?T(he,en):he;
