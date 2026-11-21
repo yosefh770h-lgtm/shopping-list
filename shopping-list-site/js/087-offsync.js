@@ -33,7 +33,7 @@ async function zip(json){const raw=new TextEncoder().encode(json);
 async function unzip(t){const k=t[0],b=ub64u(t.slice(1));if(k==='j')return new TextDecoder().decode(b);
   if(typeof DecompressionStream!=='function')throw new Error('old');return new TextDecoder().decode(await pipe(b,new DecompressionStream('deflate')));}
 async function pack(){
-  const o={v:1,dev:devId(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
+  const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
     lists:state.lists,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:(state.history||[]).slice(0,30)};
   if(OFF_APP){const ai=appInfo();o.ver=String(ai.ver||'');o.model=String(ai.model||'');o.android=String(ai.android||'');
     if(diagOk()==='1'){const d=jget(LS_DIAG,[]);if(Array.isArray(d)&&d.length)o.diag=d.slice(-20);}}
@@ -55,11 +55,12 @@ async function merge(code,via,peer){
   /* רק נתוני רשימה עוברים (לא "האזור האישי", לא הגדרות, לא שיחות), ודרך אותו ניקוי של הענן */
   const remote={lists:o.lists.slice(0,60),tomb:o.tomb,pantry:obj(o.pantry),customPantry:arr(o.customPantry).filter(s=>typeof s==='string'&&s.length<=60).slice(0,500),
     plans:obj(o.plans),history:arr(o.history).filter(h=>h&&typeof h==='object').slice(0,30)};
+  align(remote);
   const a=snap();
   try{applyRemote(remote,false);}catch(e){flash(T('⚠️ המיזוג נכשל','⚠️ Merge failed'));try{window.logClientError&&logClientError('offsync merge: '+e.message,'087');}catch(x){}return null;}
   save();try{render();}catch(e){}
   const b=snap();let add=0,upd=0,del=0;for(const k in b){if(!(k in a))add++;else if(b[k]!==a[k])upd++;}for(const k in a)if(!(k in b))del++;
-  const name=String(peer||o.model||'').replace(/[<>]/g,'').slice(0,40);
+  const name=String(peer||o.name||o.model||'').replace(/[<>]/g,'').slice(0,40);
   const peers=obj(jget(LS_PEERS,{}));peers[String(o.dev||'?').slice(0,40)]={at:Date.now(),via,name,off:o.off?1:0};ls.set(LS_PEERS,JSON.stringify(peers));ls.set(LS_LAST,String(Date.now()));
   /* הצד השני מחובר לאינטרנט וקיבל את התקלות שלנו — אפשר למחוק אותן מהטלפון */
   if(OFF_APP&&o.net)ls.del(LS_DIAG);
@@ -67,6 +68,25 @@ async function merge(code,via,peer){
   try{window.YamApp&&typeof YamApp.buzz==='function'&&YamApp.buzz(80);}catch(e){}
   return {add,upd,del,name,off:!!o.off};}
 window.offMerge=merge;
+
+/* 🧠 "אותה רשימה" ו"אותו מוצר" גם כשנוצרו בנפרד בשני הטלפונים לפני שהם סונכרנו (למשל "סופר" ו"חלב" בשניהם).
+   בלי זה היו שתי רשימות "סופר" ושני "חלב". מאחדים לפי השם, למזהה הקטן מבין השניים — כך ששני הטלפונים מגיעים
+   לאותם מזהים, ומאז כל סנכרון (גם אחרי כמה ימים) מזהה הכל לפי מזהה: מה שנוסף — נוסף, מה שהשתנה — מתעדכן לפי
+   השינוי האחרון, ומה שנמחק — נמחק גם בצד השני ולא חוזר (tomb, 30 יום). המזהה הישן נקבר, כדי שגם הענן לא יחזיר אותו */
+function align(remote){
+  const tomb=cleanTomb(state.tomb),lid=new Set(state.lists.map(l=>l.id)),rid=new Set(remote.lists.map(l=>l&&l.id));
+  remote.lists.forEach(rl=>{if(!rl||!rl.id||lid.has(rl.id)||tomb.lists[rl.id])return;
+    const ll=state.lists.find(l=>!rid.has(l.id)&&norm(l.name)===norm(rl.name));if(!ll)return;
+    const id=rl.id<ll.id?rl.id:ll.id;
+    if(ll.id!==id){tombAdd('lists',[Object.assign({},ll)]);if(state.active===ll.id)state.active=id;ll.id=id;}
+    rl.id=id;lid.add(id);rid.add(id);});
+  remote.lists.forEach(rl=>{const ll=rl&&state.lists.find(l=>l.id===rl.id);if(!ll||!Array.isArray(rl.items))return;
+    const lids=new Set((ll.items||[]).map(i=>i.id)),rids=new Set(rl.items.map(i=>i&&i.id));
+    rl.items.forEach(ri=>{if(!ri||ri.done||!ri.id||lids.has(ri.id)||tomb.items[ri.id])return;
+      const li=(ll.items||[]).find(i=>!i.done&&!rids.has(i.id)&&norm(i.n)===norm(ri.n));if(!li)return;
+      const id=ri.id<li.id?ri.id:li.id;
+      if(li.id!==id){tombAdd('items',[{id:li.id,ts:li.ts}]);li.id=id;}
+      ri.id=id;lids.add(id);rids.add(id);});});}
 
 /* האפליקציה האופליין "נראתה" + התקלות שלה → לבק אופיס, דרך הטלפון הזה (שיש בו אינטרנט) */
 function relay(o){if(!sb||navigator.onLine===false)return;
@@ -159,7 +179,7 @@ window.offBt=function(e){if(!e||typeof e!=='object')return;
   if(e.t!=='state')return;
   bt.st=e.s;if(e.code)bt.code=e.code;
   if(e.s==='live'){bt.live=true;bt.retry=0;clearTimeout(bt.rt);bt.addr=e.addr||bt.addr;if(!bt.name)bt.name=e.name||'';
-    const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:String(ai.model||(OFF_APP?T('טלפון אופליין','Offline phone'):T('הטלפון של','Phone')))});btPush();}
+    const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:myName()||String(ai.model||T('הטלפון השני','The other phone'))});btPush();}
   else if(e.s==='lost'||e.s==='away'){bt.live=false;btLater();}
   else if(e.s!=='try'&&e.s!=='search')bt.live=false;
   btShow();};
@@ -215,7 +235,7 @@ function open(tab,note){
 window.offSyncOpen=open;
 
 document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
-  if(t.closest('#shOff,.offpill')){e.preventDefault();open();return;}
+  if(t.closest('#shOff,.offpill,#miOff')){e.preventDefault();const m=$o('#hMenu');if(m)m.classList.remove('open');const r=$o('#shareRow');if(r)r.classList.remove('open');open();return;}
   if(!t.closest('.offsync'))return;
   const tb=t.closest('[data-offt]');if(tb){open(tb.dataset.offt);return;}
   if(t.closest('#offDl')){try{sb&&sb.rpc('apk_log',{p_kind:'download',p_src:'offline',p_device:'',p_dev:devId(),p_ver:''}).then(()=>{},()=>{});}catch(er){}return;}
@@ -231,12 +251,26 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
 },true);
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='offDiagCb'){ls.set(LS_OK,e.target.checked?'1':'0');if(!e.target.checked)ls.del(LS_DIAG);}});
 
-/* 📴 באפליקציה האופליין אין חשבון ואין כניסה — נכנסים ישר לרשימה, והכל נשמר בטלפון */
-if(OFF_APP&&!(state.user&&state.user.offline&&!state.user.guest)){state.user={name:'',email:'',offline:true};save();
-  try{hideLogin();afterEnter();}catch(e){}}
+/* 📴 מסך הפתיחה באפליקציה האופליין: אותו מסך כניסה של האתר (לוגו ועיצוב), אבל רק "מה השם שלך?" ונכנסים.
+   אין חשבון ואין סיסמה — השם נשמר רק בטלפון, ומוצג לטלפון השני בסנכרון ("מחובר ל..."). הוא לא נשלח אלינו */
+function offWelcome(){const lc=$o('#login .lcard');if(!lc)return;$o('#login').classList.add('offw');const le=$o('#loginErr');if(le)le.textContent='';
+  if(!$o('#offName')){const h=lc.querySelector('h1'),p=lc.querySelector('p');
+    if(h)h.textContent=T('רשימת קניות אופליין','Offline shopping list');
+    if(p)p.textContent=T('רשימת קניות לכל הבית — בלי אינטרנט בכלל. מסנכרנים עם המשפחה בבלוטות\', בקוד QR או בקוד שיתוף.','A shopping list with no internet at all. Sync with family by Bluetooth, QR or a share code.');
+    (p||h||lc).insertAdjacentHTML('afterend','<div class="offwel"><label class="il" for="offName">'+T('מה השם שלך?','What is your name?')+'</label>'+
+      '<input id="offName" maxlength="40" autocomplete="name" placeholder="'+T('למשל: משפחת כהן','e.g. The Cohens')+'"><button id="offEnter" class="btn" type="button">'+T('כניסה','Enter')+'</button></div>');
+    const go=()=>{const n=String($o('#offName').value||'').replace(/[<>]/g,'').trim().slice(0,40);
+      if(!n){flash(T('כותבים שם — כך יראו אותך בטלפון השני בסנכרון','Type a name'));$o('#offName').focus();return;}
+      state.user={name:n,email:'',offline:true};save();try{hideLogin();afterEnter();}catch(e){}try{mount();}catch(e){}};
+    $o('#offEnter').onclick=go;$o('#offName').onkeydown=e=>{if(e.key==='Enter')go();};}
+  try{showLogin();}catch(e){}}
+if(OFF_APP&&!(state.user&&state.user.offline&&state.user.name))offWelcome();
+const myName=()=>String((state.user&&state.user.name)||'').slice(0,40);
 
 /* ---------- כפתור הכניסה: בשורת "שיתוף עם המשפחה וגיבוי", ובאפליקציה האופליין גם פס קבוע מעל הרשימה ---------- */
 function mount(){const k=$o('#shKeep');if(k&&!$o('#shOff'))k.insertAdjacentHTML('beforeend','<button id="shOff">📡 '+T('סנכרון בלי אינטרנט','Offline sync')+'</button>');
+  /* גם בתפריט (⚙️), ליד "מצב קנייה בחנות" — שלא יצטרכו לחפש בחלון השיתוף */
+  const an=$o('#miShop26')||$o('#miFinish');if(an&&!$o('#miOff'))an.insertAdjacentHTML('beforebegin','<button id="miOff">📡<span>'+T('סנכרון בלי אינטרנט (בלוטות\', QR, קוד)','Offline sync (Bluetooth, QR, code)')+'</span></button>');
   if(!OFF_APP)return;const pane=$o('#paneList');if(!pane)return;let p=$o('.offpill');
   if(!p){pane.insertAdjacentHTML('afterbegin','<button class="offpill" type="button"></button>');p=$o('.offpill');}
   const last=+ls.get(LS_LAST)||0,pn=pendingN();p.textContent=bt.live?'🟢 '+T('מחובר ל'+(bt.name||'הטלפון השני')+' · סנכרון חי','Live sync with '+(bt.name||'the other phone')):'📡 '+T('סנכרון','Sync')+' · '+ago(last)+(pn&&last?' · '+T(pn+' שינויים ממתינים',pn+' pending'):'');}
@@ -253,6 +287,11 @@ document.head.insertAdjacentHTML('beforeend','<style id="offsync87">'+
   '.offbtst{min-height:1.4em;font-size:14px;margin:6px 0}.offbig{font:700 44px/1.1 monospace;letter-spacing:10px;text-align:center;margin:6px 0 4px;color:var(--hdr2)}'+
   '.offcodein{font:700 24px monospace;letter-spacing:8px;text-align:center}'+
   '.offdiag{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:14px}'+
+  /* מסך הפתיחה: לוגו, כותרת, משפט אחד, ו"מה השם שלך?" — בלי שאר חלקי הכניסה (מייל, גוגל, בקשת אישור) */
+  'html.offapp #login.offw .lcard>*{display:none!important}html.offapp #login.offw .lcard>#loginLogo{display:flex!important;order:-3;margin-top:auto!important}'+
+  'html.offapp #login.offw#login .lcard>h1{display:block!important;order:-2}html.offapp #login.offw#login .lcard>p{display:block!important;order:-1}'+
+  'html.offapp #login.offw .lcard>.offwel{display:flex!important;order:0;margin-bottom:auto!important}html.offapp #login.offw #btnLoginReq#btnLoginReq#btnLoginReq{display:none!important}'+
+  '.offwel{flex-direction:column;gap:10px;margin-top:8px}.offwel input{font-size:18px}'+
   '.offpill{display:block;width:100%;margin:0 0 8px;padding:8px 12px;border:1px solid var(--chipbr);border-radius:14px;background:var(--inputbg);color:var(--text);font:inherit;font-size:14px;text-align:start;cursor:pointer}'+
   '@media (prefers-color-scheme:dark){.offsync .offok{background:#12301f;color:#c9f0d6;border-color:#2f6b47}}'+
   /* 📴 באפליקציה האופליין: מסתירים את מה שדורש אינטרנט (מחירים, וואטסאפ, ג׳ימייל) */

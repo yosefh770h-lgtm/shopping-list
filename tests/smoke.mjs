@@ -2346,7 +2346,7 @@ await test('📡 סנכרון בלי אינטרנט: אפליקציה אופלי
   // הקוד המוצג נקרא באמת: מפענחים את ה-QR שעל המסך
   await A.page.evaluate(() => offSyncOpen('qr'));
   await A.page.waitForSelector('#offQr svg');
-  const dec = await A.page.evaluate(async () => { const Z = await loadZxing(); const svg = document.querySelector('#offQr svg'); const w = +svg.getAttribute('viewBox').split(' ')[2] * 6; const img = new Image(); img.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML.replace('<svg ', '<svg width="' + w + '" height="' + w + '" '));
+  const dec = await A.page.evaluate(async () => { const Z = await loadZxing(); const svg = document.querySelector('#offQr svg'); const w = +svg.getAttribute('viewBox').split(' ')[2] * 4; const img = new Image(); img.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML.replace('<svg ', '<svg width="' + w + '" height="' + w + '" '));
     await img.decode(); const c = document.createElement('canvas'); c.width = c.height = w; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, w);
     const bm = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(c))); return new Z.QRCodeReader().decode(bm).getText(); });
   assert(/^Y1:[a-z0-9]{4}:\d+:\d+:|^YAM1/.test(dec), 'ה-QR לא נקרא: ' + dec.slice(0, 30));
@@ -2389,6 +2389,37 @@ await test('📡 סנכרון בלי אינטרנט: אפליקציה אופלי
   const before = await names(A);
   await A.page.evaluate(async (c) => { await offMerge('YAM1zAAAAAAAAAAAAAAAA', 'code'); await offMerge(c, 'code'); }, await A.page.evaluate(() => offPack()));
   assert((await names(A)) === before, 'קוד לא תקין שינה את הרשימה');
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
+await test('🧠 סנכרון חוזר אחרי כמה ימים: בלי כפילויות, רשימה חדשה מזוהה, מחיקות ועריכות עוברות ולא חוזרות', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.0';
+  const A = await newPage({ userAgent: OFFUA });
+  const B = await newPage();
+  const sync = async () => { const a = await A.page.evaluate(() => offPack()); const b = await B.page.evaluate(() => offPack());
+    const rb = await B.page.evaluate((c) => offMerge(c, 'code'), a); const ra = await A.page.evaluate((c) => offMerge(c, 'code'), b); return [ra, rb]; };
+  const view = (pg) => pg.page.evaluate(() => state.lists.map((l) => l.name + ':' + l.items.map((i) => i.n + (i.done ? '✓' : '') + (i.q ? '×' + i.q : '')).sort().join(',')).sort().join(' | '));
+  // יום ראשון: בכל טלפון רשימת "סופר" משלו, ו"חלב" בשניהם
+  await A.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); });
+  await B.page.evaluate(() => { addItem('חלב', ''); addItem('ביצים', ''); });
+  await sync(); await sync();
+  const v1 = await view(A);
+  assert(v1 === await view(B), 'הטלפונים לא זהים: ' + v1 + ' ≠ ' + (await view(B)));
+  assert(v1 === 'סופר:ביצים,חלב,לחם', 'כפילות אחרי הסנכרון הראשון: ' + v1);
+  // באמצע השבוע: באופליין מוחקים לחם ומסמנים חלב; באתר מוסיפים אורז, משנים כמות, ופותחים רשימה חדשה
+  await A.page.evaluate(() => { const l = state.lists[0]; const i = l.items.findIndex((x) => x.n === 'לחם'); tombAdd('items', [l.items[i]]); l.items.splice(i, 1);
+    const m = l.items.find((x) => x.n === 'חלב'); m.done = true; m.ts = Date.now() + 5; save(); });
+  await B.page.evaluate(() => { addItem('אורז', ''); const e = state.lists[0].items.find((x) => x.n === 'ביצים'); e.q = '2'; e.ts = Date.now() + 5;
+    state.lists.push({ id: uid(), name: 'פסח', items: [{ id: uid(), n: 'מצות', q: '', c: 'אחר', e: '🛒', done: false, ts: Date.now() }], created: Date.now() }); save(); });
+  // יום שלישי: מסנכרנים שוב
+  await A.page.waitForTimeout(50); await sync();
+  const v2 = await view(A);
+  assert(v2 === await view(B), 'אחרי הסנכרון השני הטלפונים לא זהים: ' + v2 + ' ≠ ' + (await view(B)));
+  assert(v2 === 'סופר:אורז,ביצים×2,חלב✓ | פסח:מצות', 'מצב שגוי אחרי יום שלישי: ' + v2);
+  // סנכרון נוסף בלי שינויים: כלום לא זז
+  const [ra, rb] = await sync();
+  assert(!ra.add && !ra.upd && !ra.del && !rb.add && !rb.upd && !rb.del, 'סנכרון בלי שינויים שינה משהו: ' + JSON.stringify([ra, rb]));
   assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
   await A.ctx.close(); await B.ctx.close();
 });
