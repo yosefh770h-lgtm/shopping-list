@@ -875,18 +875,24 @@ public class AppActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void btHost(String pkg) {
-            onOurPage(() -> bt.host(pkg));
+        public void btListen(String code, boolean visible) {
+            onOurPage(() -> bt.listen(code, visible));
         }
 
         @JavascriptInterface
-        public void btFind(String pkg) {
-            onOurPage(() -> bt.find(pkg));
+        public void btJoin(String code) {
+            onOurPage(() -> bt.join(code));
         }
 
         @JavascriptInterface
-        public void btConnect(String addr, String pkg) {
-            onOurPage(() -> bt.connect(addr, pkg));
+        public void btConnect(String addr, String code) {
+            onOurPage(() -> bt.connect(addr, code));
+        }
+
+        /** הודעה בערוץ הפתוח לטלפון השני (סנכרון חי) */
+        @JavascriptInterface
+        public boolean btSend(String text) {
+            return bt.send(text);
         }
 
         @JavascriptInterface

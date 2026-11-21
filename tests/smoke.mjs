@@ -2313,10 +2313,12 @@ await test('📈 גרף מחיר למוצר: "היה זול יותר בשבוע 
 
 await test('📡 סנכרון בלי אינטרנט: אפליקציה אופליין ↔ אתר (קוד, QR בכמה חלקים, בלוטות׳, תקלות)', async () => {
   const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.0';
-  const BT = () => { window.__bt = []; window.YamApp = { appInfo: () => JSON.stringify({ offline: true, offApp: true, ver: '1.0', model: 'Qin3Ultra', android: '11' }), btState: () => '{"has":true,"on":true}',
-    btHost: (p) => window.__bt.push(['host', p]), btFind: (p) => window.__bt.push(['find', p]), btConnect: (a, p) => window.__bt.push(['connect', a, p]), btStop: () => {}, shareText: (t) => window.__bt.push(['sms', t]) }; };
+  // גשר בלוטות' מדומה: מה שנשלח נאסף ב-__out, והבדיקה מעבירה אותו לטלפון השני
+  const BT = () => { window.__bt = []; window.__out = []; const off = /Offline/.test(navigator.userAgent); window.YamApp = { appInfo: () => JSON.stringify(off ? { offline: true, offApp: true, ver: '1.0', model: 'Qin3Ultra', android: '11' } : { ver: '2.2', model: 'Galaxy' }), btState: () => '{"has":true,"on":true}',
+    btListen: (c, v) => window.__bt.push(['listen', c, v]), btJoin: (c) => window.__bt.push(['join', c]), btConnect: (a, c) => window.__bt.push(['connect', a, c]), btSend: (t) => { window.__out.push(t); return true; }, btStop: () => window.__bt.push(['stop']), shareText: (t) => window.__bt.push(['sms', t]) }; };
   const A = await newPage({ userAgent: OFFUA, init: BT });
-  const B = await newPage();
+  const B = await newPage({ init: BT });
+  const pump = async () => { for (const [x, y] of [[A, B], [B, A]]) { const m = await x.page.evaluate(() => window.__out.splice(0)); for (const d of m) await y.page.evaluate((d) => offBt({ t: 'msg', data: d }), d); } };
   const names = (pg) => pg.page.evaluate(() => state.lists.flatMap((l) => l.items.map((i) => i.n)).sort().join(','));
   // האפליקציה האופליין: בלי ענן, בלי מחירים, עם פס סנכרון
   assert(await A.page.evaluate(() => OFF_APP && document.documentElement.classList.contains('offapp') && sb === null && isOffline()), 'מצב אופליין לא הופעל');
@@ -2344,19 +2346,36 @@ await test('📡 סנכרון בלי אינטרנט: אפליקציה אופלי
   // הקוד המוצג נקרא באמת: מפענחים את ה-QR שעל המסך
   await A.page.evaluate(() => offSyncOpen('qr'));
   await A.page.waitForSelector('#offQr svg');
-  const dec = await A.page.evaluate(async () => { const Z = await loadZxing(); const svg = document.querySelector('#offQr svg'); const img = new Image(); img.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
-    await img.decode(); const w = +svg.getAttribute('viewBox').split(' ')[2] * 6; const c = document.createElement('canvas'); c.width = c.height = w; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, w);
+  const dec = await A.page.evaluate(async () => { const Z = await loadZxing(); const svg = document.querySelector('#offQr svg'); const w = +svg.getAttribute('viewBox').split(' ')[2] * 6; const img = new Image(); img.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML.replace('<svg ', '<svg width="' + w + '" height="' + w + '" '));
+    await img.decode(); const c = document.createElement('canvas'); c.width = c.height = w; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, w);
     const bm = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(c))); return new Z.QRCodeReader().decode(bm).getText(); });
   assert(/^Y1:[a-z0-9]{4}:\d+:\d+:|^YAM1/.test(dec), 'ה-QR לא נקרא: ' + dec.slice(0, 30));
-  // 🔵 בלוטות': סימון באופליין עובר לאתר
-  await A.page.evaluate(() => { const i = state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב'); i.done = true; i.ts = Date.now() + 1000; save(); });
+  // 🔵 בלוטות' חי עם קוד של 4 ספרות: יוצרים קוד באופליין, מקלידים באתר, ואז כל שינוי עובר מיד לשני הכיוונים
   await A.page.evaluate(() => offSyncOpen('bt'));
-  await A.page.click('#offBtHost');
-  await A.page.waitForTimeout(300);
-  const sent = await A.page.evaluate(() => window.__bt.find((x) => x[0] === 'host'));
-  assert(sent && /^YAM1/.test(sent[1]), 'לא נשלחה חבילה לבלוטות׳');
-  await B.page.evaluate((c) => offMerge(c, 'bt', 'Qin'), sent[1]);
-  assert(await B.page.evaluate(() => state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב').done), 'הסימון "נקנה" לא עבר');
+  await A.page.click('#offBtNew');
+  const code = await A.page.evaluate(() => (window.__bt.find((x) => x[0] === 'listen') || [])[1]);
+  assert(/^\d{4}$/.test(code) && (await A.page.locator('#offBtSt .offbig').innerText()).trim() === code, 'הקוד לא מוצג: ' + code);
+  await B.page.evaluate(() => offSyncOpen('bt'));
+  await B.page.click('#offBtType'); await B.page.fill('#offBtCode', code); await B.page.click('#offBtGo');
+  assert(await B.page.evaluate((c) => window.__bt.some((x) => x[0] === 'join' && x[1] === c), code), 'האתר לא חיפש עם הקוד');
+  await A.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'Galaxy', addr: '11:22' }));
+  await B.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'Qin', addr: 'AA:BB' }));
+  await A.page.waitForTimeout(300); await pump(); await A.page.waitForTimeout(400);
+  assert(await A.page.locator('.offpill').innerText().then((t) => /סנכרון חי/.test(t)), 'הפס לא מראה סנכרון חי');
+  await A.page.evaluate(() => { const i = state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב'); i.done = true; i.ts = Date.now() + 1000; save(); addItem('גבינה', ''); });
+  await A.page.waitForTimeout(1500); await pump(); await B.page.waitForTimeout(400);
+  assert(await B.page.evaluate(() => { const it = state.lists.flatMap((l) => l.items); return it.find((x) => x.n === 'חלב').done && it.some((x) => x.n === 'גבינה'); }), 'שינוי באופליין לא עבר בסנכרון החי');
+  await B.page.evaluate(() => addItem('אורז', '')); await B.page.waitForTimeout(1500); await pump(); await A.page.waitForTimeout(400);
+  assert((await names(A)).includes('אורז'), 'שינוי באתר לא עבר לאופליין');
+  await A.page.waitForTimeout(1500); await pump();
+  assert(await A.page.evaluate(() => window.__out.length === 0) && await B.page.evaluate(() => window.__out.length === 0), 'הטלפונים ממשיכים לשלוח זה לזה בלי סוף');
+  // נשמר: בפעם הבאה מתחברים לבד (מי שהקליד — לכתובת, מי שיצר — מחכה)
+  assert(await B.page.evaluate((c) => { const p = JSON.parse(localStorage.getItem('yam_off_bt')); return p.code === c && p.role === 'join' && p.addr === 'AA:BB'; }, code), 'החיבור לא נשמר');
+  await B.page.evaluate(() => { window.__bt.length = 0; offBt({ t: 'state', s: 'lost' }); document.dispatchEvent(new Event('visibilitychange')); });
+  assert(await B.page.evaluate((c) => window.__bt.some((x) => x[0] === 'connect' && x[1] === 'AA:BB' && x[2] === c), code), 'אין חיבור מחדש לבד');
+  // קוד לא נכון מהצד השני — מתנתקים
+  await A.page.evaluate(() => offBt({ t: 'msg', data: JSON.stringify({ k: 'hi', code: '0000', dev: 'x' }) }));
+  assert(await A.page.evaluate(() => window.__bt.some((x) => x[0] === 'stop')), 'קוד לא נכון לא ניתק');
   // 🐞 תקלה באופליין (בהסכמה) עוברת ליומן דרך האתר, ונמחקת אחרי סנכרון עם טלפון מחובר
   await A.page.evaluate(() => { localStorage.setItem('yam_off_diag_ok', '1'); logClientError('בדיקת תקלה אופליין', 'test.js:1'); });
   const codeA2 = await A.page.evaluate(() => offPack());

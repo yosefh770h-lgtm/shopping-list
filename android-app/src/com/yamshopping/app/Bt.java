@@ -20,33 +20,39 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * 📡 סנכרון בבלוטות' בין שני טלפונים, בלי אינטרנט (האפליקציה האופליין, ומגרסה 2.2 גם האפליקציה הרגילה).
- * בלוטות' רגיל (RFCOMM) — בלי שירותי גוגל, כך שעובד גם בטלפונים כשרים כמו Qin.
- * טלפון אחד "מחכה" (host), השני מחפש ומתחבר (connect). כל צד שולח את חבילת הסנכרון שלו (הטקסט YAM1... מ-js/087-offsync.js)
- * ומקבל את של השני, והאתר ממזג. הלקוח שולח ראשון ואז קורא, המארח קורא ואז שולח — כך אף צד לא נתקע.
- * האירועים חוזרים לאתר כ-window.offBt({t:...}).
+ * 📡 סנכרון חי בבלוטות' בין שני טלפונים, בלי אינטרנט ובלי SMS ("רשימת קניות אופליין", ומגרסה 2.2 גם האפליקציה הרגילה).
+ * בלוטות' רגיל (RFCOMM) — בלי שירותי גוגל, כך שעובד גם בטלפונים כשרים ובנגנים.
+ *
+ * חיבור עם קוד קצר: טלפון אחד "יוצר קוד" (listen) — 4 ספרות שמוצגות על המסך — והשני מקליד אותו (join).
+ * הקוד הופך למזהה השירות (UUID), כך שהטלפון השני מוצא לבד את הטלפון הנכון מבין הקרובים, בלי לבחור מרשימה.
+ * אחרי החיבור הערוץ נשאר פתוח: כל צד שולח הודעות (send) והאתר (js/087-offsync.js) מסנכרן כל שינוי מיד,
+ * כל עוד הטלפונים קרובים. בפעם הבאה מתחברים ישר לכתובת שנשמרה (connect), בלי קוד ובלי חיפוש.
+ * האירועים חוזרים לאתר כ-window.offBt({t:'state'|'msg', ...}).
  */
 final class Bt {
     interface Out {
         void js(String json);
     }
 
-    static final UUID ID = UUID.fromString("6f1c2a4e-3b7d-4e55-9a10-59a8d3c1f0b7");
-    static final String NAME = "YamShoppingSync";
     static final int REQ_PERM = 7301, REQ_ON = 7302, REQ_DISC = 7303;
-    static final int MAX = 2 * 1024 * 1024;
+    static final int MAX = 2 * 1024 * 1024, MAGIC = 0x59414d31; // "YAM1"
 
     private final Activity a;
     private final Out out;
     private final BluetoothAdapter ad;
     private volatile BluetoothServerSocket server;
     private volatile BluetoothSocket sock;
+    private volatile DataOutputStream dos;
+    private volatile int gen; // כל פעולה חדשה מבטלת את הקודמת
     private BroadcastReceiver rx;
-    private String action = "", pkg = "", addr = "";
+    private String action = "", code = "", addr = "";
+    private boolean visible, asked;
 
     @SuppressWarnings("deprecation")
     Bt(Activity a, Out out) {
@@ -60,6 +66,10 @@ final class Bt {
         ad = x;
     }
 
+    static UUID uuidFor(String code) {
+        return UUID.nameUUIDFromBytes(("yamshopping-sync-" + code).getBytes(StandardCharsets.UTF_8));
+    }
+
     private void emit(String t, String... kv) {
         try {
             JSONObject o = new JSONObject();
@@ -70,14 +80,14 @@ final class Bt {
         }
     }
 
-    private String[] perms() {
+    private String[] missing() {
         List<String> l = new ArrayList<>();
         if (Build.VERSION.SDK_INT >= 31) {
             l.add(Manifest.permission.BLUETOOTH_CONNECT);
             l.add(Manifest.permission.BLUETOOTH_SCAN);
-            l.add(Manifest.permission.BLUETOOTH_ADVERTISE);
-        } else if ("find".equals(action)) {
-            l.add(Manifest.permission.ACCESS_FINE_LOCATION); // עד אנדרואיד 11 — החיפוש של טלפונים קרובים דורש הרשאת מיקום
+            if (visible) l.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+        } else if ("join".equals(action)) {
+            l.add(Manifest.permission.ACCESS_FINE_LOCATION); // עד אנדרואיד 11 — חיפוש טלפונים קרובים דורש הרשאת מיקום
         }
         List<String> miss = new ArrayList<>();
         for (String p : l) if (a.checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) miss.add(p);
@@ -89,40 +99,44 @@ final class Bt {
             JSONObject o = new JSONObject();
             o.put("has", ad != null);
             o.put("on", ad != null && ad.isEnabled());
+            o.put("live", sock != null && dos != null);
             return o.toString();
         } catch (Exception e) {
             return "{}";
         }
     }
 
-    void host(String p) {
-        start("host", p, "");
+    /** יוצרים קוד: מחכים לטלפון השני. visible = לבקש מהמערכת שהטלפון ייראה לטלפונים קרובים (בפעם הראשונה) */
+    void listen(String c, boolean vis) {
+        start("listen", c, "", vis);
     }
 
-    void find(String p) {
-        start("find", p, "");
+    /** מקלידים קוד: מחפשים את הטלפון שמחכה עם הקוד הזה */
+    void join(String c) {
+        start("join", c, "", false);
     }
 
-    void connect(String address, String p) {
-        start("connect", p, address);
+    /** מתחברים ישר לטלפון שכבר הוצמד (הכתובת נשמרה באתר) */
+    void connect(String address, String c) {
+        start("connect", c, address, false);
     }
 
-    private void start(String act, String p, String address) {
+    private void start(String act, String c, String address, boolean vis) {
         stop();
         action = act;
-        pkg = p == null ? "" : p;
+        code = c == null ? "" : c.replaceAll("[^0-9]", "");
         addr = address == null ? "" : address;
+        visible = vis;
+        asked = false;
+        if (code.length() < 4) { emit("state", "s", "fail", "m", "code"); return; }
         go();
     }
 
-    private boolean asked;
-
     private void go() {
         if (ad == null) { emit("state", "s", "none"); return; }
-        String[] miss = perms();
+        String[] miss = missing();
         if (miss.length > 0 && !asked) { asked = true; a.requestPermissions(miss, REQ_PERM); return; }
-        asked = false;
-        if (miss.length > 0 && Build.VERSION.SDK_INT >= 31) { emit("state", "s", "perm"); return; }
+        if (miss.length > 0 && (Build.VERSION.SDK_INT >= 31 || "join".equals(action))) { emit("state", "s", "perm"); return; }
         if (!ad.isEnabled()) {
             try {
                 a.startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQ_ON);
@@ -131,8 +145,8 @@ final class Bt {
             }
             return;
         }
-        if ("host".equals(action)) doHost();
-        else if ("find".equals(action)) doFind(miss.length == 0);
+        if ("listen".equals(action)) doListen();
+        else if ("join".equals(action)) doJoin();
         else if ("connect".equals(action)) doConnect();
     }
 
@@ -146,67 +160,64 @@ final class Bt {
             if (ad != null && ad.isEnabled()) go(); else emit("state", "s", "off");
             return true;
         }
-        return code == REQ_DISC; // גלוי לשלוש דקות, או שסירבו — ממשיכים לחכות בכל מקרה (טלפון מצומד עדיין יכול להתחבר)
+        return code == REQ_DISC; // גלוי לחמש דקות, או שסירבו — ממשיכים לחכות בכל מקרה
     }
 
     @SuppressWarnings("MissingPermission")
-    private void doHost() {
-        try {
-            Intent d = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-            d.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 180);
-            a.startActivityForResult(d, REQ_DISC);
-        } catch (Exception ignored) {
+    private void doListen() {
+        final int g = gen;
+        if (visible) {
+            try {
+                Intent d = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+                d.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+                a.startActivityForResult(d, REQ_DISC);
+            } catch (Exception ignored) {
+            }
         }
-        final String mine = pkg;
+        final UUID id = uuidFor(code);
         new Thread(() -> {
             BluetoothServerSocket s = null;
             try {
-                s = ad.listenUsingInsecureRfcommWithServiceRecord(NAME, ID);
+                s = ad.listenUsingInsecureRfcommWithServiceRecord("YamShoppingSync", id);
                 server = s;
                 String n = "";
                 try { n = ad.getName(); } catch (Exception ignored) { }
-                emit("state", "s", "wait", "name", n == null ? "" : n);
-                BluetoothSocket c = s.accept(180000);
-                closeQuiet(s);
-                server = null;
-                sock = c;
-                String peer = name(c.getRemoteDevice());
-                emit("state", "s", "busy", "name", peer);
-                String got = read(new DataInputStream(c.getInputStream()));
-                write(new DataOutputStream(c.getOutputStream()), mine);
-                try { Thread.sleep(400); } catch (InterruptedException ignored) { }
-                emit("got", "data", got, "name", peer);
+                emit("state", "s", "wait", "code", code, "name", n == null ? "" : n);
+                BluetoothSocket c = s.accept(visible ? 300000 : 3600000);
+                if (g != gen) { closeQuiet(c); return; }
+                live(c, g);
             } catch (IOException e) {
-                if (server != null || sock != null) emit("state", "s", "fail", "m", String.valueOf(e.getMessage()));
-                else emit("state", "s", "stopped");
+                if (g == gen) emit("state", "s", "fail", "m", "timeout");
             } catch (SecurityException e) {
                 emit("state", "s", "perm");
             } finally {
                 closeQuiet(s);
-                server = null;
-                closeQuiet(sock);
-                sock = null;
+                if (server == s) server = null;
             }
-        }, "bt-host").start();
+        }, "bt-listen").start();
     }
 
     @SuppressWarnings("MissingPermission")
-    private void doFind(boolean canScan) {
+    private void doJoin() {
+        final int g = gen;
+        final Map<String, BluetoothDevice> found = new LinkedHashMap<>();
         try {
-            for (BluetoothDevice d : ad.getBondedDevices()) emit("dev", "name", name(d), "addr", d.getAddress(), "paired", "1");
+            for (BluetoothDevice d : ad.getBondedDevices()) found.put(d.getAddress(), d);
         } catch (SecurityException e) {
             emit("state", "s", "perm");
             return;
         }
-        if (!canScan) { emit("state", "s", "found", "scan", "0"); return; }
         rx = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
                 if (BluetoothDevice.ACTION_FOUND.equals(i.getAction())) {
                     BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    if (d != null) emit("dev", "name", name(d), "addr", d.getAddress(), "paired", "0");
+                    if (d != null) synchronized (found) { found.put(d.getAddress(), d); }
                 } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(i.getAction())) {
-                    emit("state", "s", "found", "scan", "1");
+                    unregister();
+                    final List<BluetoothDevice> all;
+                    synchronized (found) { all = new ArrayList<>(found.values()); }
+                    new Thread(() -> tryAll(all, g), "bt-join").start();
                 }
             }
         };
@@ -214,65 +225,101 @@ final class Bt {
         f.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         a.registerReceiver(rx, f);
         try {
-            ad.startDiscovery();
+            if (!ad.startDiscovery()) throw new SecurityException();
             emit("state", "s", "search");
         } catch (SecurityException e) {
-            emit("state", "s", "found", "scan", "0");
+            unregister();
+            final List<BluetoothDevice> all = new ArrayList<>(found.values());
+            new Thread(() -> tryAll(all, g), "bt-join").start();
         }
+    }
+
+    /** מנסים כל טלפון קרוב: רק מי שמחכה עם אותו קוד יענה */
+    @SuppressWarnings("MissingPermission")
+    private void tryAll(List<BluetoothDevice> all, int g) {
+        UUID id = uuidFor(code);
+        for (BluetoothDevice d : all) {
+            if (g != gen) return;
+            emit("state", "s", "try", "name", name(d));
+            BluetoothSocket c = null;
+            try {
+                c = d.createInsecureRfcommSocketToServiceRecord(id);
+                sock = c;
+                c.connect();
+                live(c, g);
+                return;
+            } catch (IOException | SecurityException e) {
+                closeQuiet(c);
+                if (sock == c) sock = null;
+            }
+        }
+        if (g == gen) emit("state", "s", "notfound");
     }
 
     @SuppressWarnings("MissingPermission")
     private void doConnect() {
-        final String mine = pkg, to = addr;
-        try { ad.cancelDiscovery(); } catch (Exception ignored) { }
+        final int g = gen;
+        final String to = addr;
         new Thread(() -> {
             BluetoothSocket c = null;
             try {
                 BluetoothDevice d = ad.getRemoteDevice(to);
-                String peer = name(d);
-                emit("state", "s", "busy", "name", peer);
-                try {
-                    c = d.createInsecureRfcommSocketToServiceRecord(ID);
-                    sock = c;
-                    c.connect();
-                } catch (IOException first) {
-                    closeQuiet(c);
-                    // חלק מהטלפונים מסכימים רק לחיבור מוצפן — אז אנדרואיד מציג חלון צימוד, ואחריו ממשיכים
-                    c = d.createRfcommSocketToServiceRecord(ID);
-                    sock = c;
-                    c.connect();
-                }
-                write(new DataOutputStream(c.getOutputStream()), mine);
-                String got = read(new DataInputStream(c.getInputStream()));
-                emit("got", "data", got, "name", peer);
-            } catch (IOException e) {
-                if (sock != null) emit("state", "s", "fail", "m", String.valueOf(e.getMessage()));
-            } catch (SecurityException e) {
-                emit("state", "s", "perm");
-            } catch (IllegalArgumentException e) {
-                emit("state", "s", "fail", "m", "bad address");
-            } finally {
+                emit("state", "s", "try", "name", name(d));
+                c = d.createInsecureRfcommSocketToServiceRecord(uuidFor(code));
+                sock = c;
+                c.connect();
+                live(c, g);
+            } catch (IOException | SecurityException | IllegalArgumentException e) {
                 closeQuiet(c);
-                sock = null;
+                if (sock == c) sock = null;
+                if (g == gen) emit("state", "s", "away");
             }
         }, "bt-connect").start();
     }
 
-    private static void write(DataOutputStream o, String s) throws IOException {
-        byte[] b = (s == null ? "" : s).getBytes(StandardCharsets.UTF_8);
-        o.writeInt(0x59414d31); // "YAM1"
-        o.writeInt(b.length);
-        o.write(b);
-        o.flush();
+    /** הערוץ פתוח: קוראים הודעות עד שהחיבור נקטע (הטלפונים התרחקו / כיבו בלוטות') */
+    private void live(BluetoothSocket c, int g) throws IOException {
+        sock = c;
+        DataInputStream in = new DataInputStream(c.getInputStream());
+        dos = new DataOutputStream(c.getOutputStream());
+        emit("state", "s", "live", "name", name(c.getRemoteDevice()), "addr", c.getRemoteDevice().getAddress());
+        try {
+            while (g == gen) {
+                if (in.readInt() != MAGIC) throw new IOException("not ours");
+                int n = in.readInt();
+                if (n < 0 || n > MAX) throw new IOException("too big");
+                byte[] b = new byte[n];
+                in.readFully(b);
+                emit("msg", "data", new String(b, StandardCharsets.UTF_8));
+            }
+        } catch (IOException e) {
+            if (g == gen) emit("state", "s", "lost");
+        } finally {
+            dos = null;
+            closeQuiet(c);
+            if (sock == c) sock = null;
+        }
     }
 
-    private static String read(DataInputStream in) throws IOException {
-        if (in.readInt() != 0x59414d31) throw new IOException("not ours");
-        int n = in.readInt();
-        if (n < 0 || n > MAX) throw new IOException("too big");
-        byte[] b = new byte[n];
-        in.readFully(b);
-        return new String(b, StandardCharsets.UTF_8);
+    /** שולח הודעה בערוץ הפתוח (מהאתר). false = אין חיבור */
+    boolean send(String s) {
+        final DataOutputStream o = dos;
+        if (o == null || s == null) return false;
+        final byte[] b = s.getBytes(StandardCharsets.UTF_8);
+        if (b.length > MAX) return false;
+        new Thread(() -> {
+            try {
+                synchronized (o) {
+                    o.writeInt(MAGIC);
+                    o.writeInt(b.length);
+                    o.write(b);
+                    o.flush();
+                }
+            } catch (IOException e) {
+                closeQuiet(sock); // הקורא יקבל שגיאה וידווח "lost"
+            }
+        }, "bt-send").start();
+        return true;
     }
 
     @SuppressWarnings("MissingPermission")
@@ -290,19 +337,22 @@ final class Bt {
         try { c.close(); } catch (Exception ignored) { }
     }
 
+    private void unregister() {
+        if (rx == null) return;
+        try { a.unregisterReceiver(rx); } catch (Exception ignored) { }
+        rx = null;
+    }
+
     @SuppressWarnings("MissingPermission")
     void stop() {
-        if (rx != null) {
-            try { a.unregisterReceiver(rx); } catch (Exception ignored) { }
-            rx = null;
-        }
+        gen++;
+        unregister();
         try { if (ad != null) ad.cancelDiscovery(); } catch (Exception ignored) { }
-        BluetoothServerSocket s = server;
+        closeQuiet(server);
         server = null;
-        closeQuiet(s);
-        BluetoothSocket c = sock;
+        closeQuiet(sock);
         sock = null;
-        closeQuiet(c);
+        dos = null;
         action = "";
     }
 }

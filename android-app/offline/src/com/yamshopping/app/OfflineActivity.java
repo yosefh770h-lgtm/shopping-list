@@ -250,18 +250,24 @@ public class OfflineActivity extends Activity implements Bt.Out {
         }
 
         @JavascriptInterface
-        public void btHost(String pkg) {
-            runOnUiThread(() -> bt.host(pkg));
+        public void btListen(String code, boolean visible) {
+            runOnUiThread(() -> bt.listen(code, visible));
         }
 
         @JavascriptInterface
-        public void btFind(String pkg) {
-            runOnUiThread(() -> bt.find(pkg));
+        public void btJoin(String code) {
+            runOnUiThread(() -> bt.join(code));
         }
 
         @JavascriptInterface
-        public void btConnect(String addr, String pkg) {
-            runOnUiThread(() -> bt.connect(addr, pkg));
+        public void btConnect(String addr, String code) {
+            runOnUiThread(() -> bt.connect(addr, code));
+        }
+
+        /** הודעה בערוץ הפתוח לטלפון השני (סנכרון חי) */
+        @JavascriptInterface
+        public boolean btSend(String text) {
+            return bt.send(text);
         }
 
         @JavascriptInterface
