@@ -32,7 +32,7 @@
   {const _s=onSignedIn;onSignedIn=async function(){const r=await _s.apply(this,arguments);setTimeout(()=>{claim();ping();},3000);return r;};}
 
   /* ---------- בבק אופיס ---------- */
-  const SRC={login:'מסך הכניסה',menu:'התפריט',link:'קישור #apk',install:'—'};
+  const SRC={login:'מסך הכניסה',menu:'התפריט',link:'קישור #apk',install:'—',offline:'📴 האפליקציה האופליין'};
   const VIA=v=>v==='site'?'<small class="muted">🌐 הורד מהאתר שלנו</small>':v==='other'?'<span class="kd55 x">🔗 ממקום אחר</span>':'<small class="muted">מקור לא ידוע</small>';
   const when55=t=>{const d=new Date(t);return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});};
   const place=(r,adm)=>{const g=r.geo||{};const city=[g.city,g.region&&g.region!==g.city?g.region:'',g.country||(r.country==='IL'?'ישראל':r.country)].filter(Boolean).join(', ');
@@ -62,21 +62,21 @@
       const dl=rows.filter(r=>r.kind==='download'),op=rows.filter(r=>r.kind==='open');
       const people=new Set(dl.map(r=>r.user_id||r.ip||r.id)).size;
       const kp='<div class="k55"><div><b>'+dl.length+'</b><small>⬇️ הורדות</small></div><div><b>'+people+'</b><small>👥 אנשים / מכשירים שהורידו</small></div>'+
-        '<div><b>'+op.length+'</b><small>📲 הותקנה ונפתחה (טלפונים)</small></div><div><b>'+op.filter(r=>r.via==='other').length+'</b><small>🔗 מזה הורידו ממקום אחר (למשל אוגן פליי)</small></div><div><b>'+new Set(rows.filter(r=>r.user_id).map(r=>r.user_id)).size+'</b><small>👤 מזה רשומים (ידוע מי)</small></div>'+
+        '<div><b>'+op.length+'</b><small>📲 הותקנה ונפתחה (טלפונים)</small></div><div><b>'+rows.filter(r=>r.kind==='off_open').length+'</b><small>📴 אפליקציה אופליין (נראו בסנכרון)</small></div><div><b>'+op.filter(r=>r.via==='other').length+'</b><small>🔗 מזה הורידו ממקום אחר (למשל אוגן פליי)</small></div><div><b>'+new Set(rows.filter(r=>r.user_id).map(r=>r.user_id)).size+'</b><small>👤 מזה רשומים (ידוע מי)</small></div>'+
         (plat!=null?'<div><b>'+plat+'</b><small>📱 משתמשים שנכנסו מהאפליקציה (מאז ומעולם)</small></div>':'')+
         (fol!=null?'<div><b>'+fol+'</b><small>🔔 עוקבים אחרי עדכוני האפליקציה (מייל + פעמון)</small></div>':'')+'</div>';
       /* גרף לפי ימים (או לפי שעות כשבוחרים "היום") */
       const nb=days===1?24:Math.min(days,90),step=days===1?36e5:Math.ceil(days/nb)*864e5,end=days===1?Math.ceil(Date.now()/36e5)*36e5:new Date(new Date().toDateString()).getTime()+864e5;
-      const bins=Array.from({length:nb},()=>[0,0]);rows.forEach(r=>{const i=nb-1-Math.floor((end-new Date(r.at))/step);if(i>=0&&i<nb)bins[i][r.kind==='open'?1:0]++;});
+      const bins=Array.from({length:nb},()=>[0,0]);rows.forEach(r=>{const i=nb-1-Math.floor((end-new Date(r.at))/step);if(i>=0&&i<nb)bins[i][r.kind==='download'?0:1]++;});
       const mx=Math.max(1,...bins.map(b=>b[0]+b[1]));
       const lab=t=>{const d=new Date(t);return days===1?d.getHours()+':00':d.getDate()+'/'+(d.getMonth()+1);};
       const chart='<div class="ch55" role="img" aria-label="גרף הורדות">'+bins.map((b,i)=>'<span title="'+lab(end-(nb-i)*step)+': '+b[0]+' הורדות, '+b[1]+' פתיחות"><i style="height:'+(b[0]/mx*100)+'%"></i><i class="o" style="height:'+(b[1]/mx*100)+'%"></i></span>').join('')+'</div>'+
         '<div class="chx55"><span>'+lab(end-nb*step)+'</span><span>'+lab(end-Math.ceil(nb/2)*step)+'</span><span>'+(days===1?'עכשיו':'היום')+'</span></div><div class="lg55"><i></i>הורדות <i class="o"></i>הותקנה ונפתחה</div>';
       if(!list.length){box.className='';box.innerHTML=kp+chart+'<p class="muted">אין הורדות בטווח הזה.</p>';return;}
       box.className='';box.innerHTML=kp+chart+'<div class="tw" tabindex="0" role="region" aria-label="הורדות"><table><thead><tr><th>מתי</th><th>מה</th><th>מי</th><th>מאיפה</th><th>מכשיר</th><th>לחצו ב</th></tr></thead><tbody>'+
-        list.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+'</td><td>'+(r.kind==='open'?'<span class="kd55 o">📲 הותקנה ונפתחה</span>'+(r.via?'<br>'+VIA(r.via):'')+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):'<span class="kd55">⬇️ הורדה</span>')+'</td>'+
+        list.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+'</td><td>'+(r.kind==='off_open'?'<span class="kd55 o">📴 אופליין — נראתה בסנכרון</span>'+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):r.kind==='open'?'<span class="kd55 o">📲 הותקנה ונפתחה</span>'+(r.via?'<br>'+VIA(r.via):'')+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):'<span class="kd55">⬇️ הורדה</span>')+'</td>'+
           '<td>'+(r.user_id?'<b>'+esc(r.name||'משתמש/ת')+'</b>'+(r.guest?' <small class="muted">(הוריד/ה כאורח ונרשם/ה אחר כך)</small>':'')+(r.email?'<br><small class="muted" dir="ltr">'+esc(r.email)+'</small>':''):'<span class="muted">אורח/ת (לא מחובר)</span>')+'</td>'+
-          '<td data-l="מאיפה">'+place(r,adm)+'</td><td data-l="מכשיר"><small>'+esc(r.device||'')+'</small></td>'+(r.kind==='open'?'<td class="nol55"></td>':'<td data-l="לחצו ב"><small>'+esc(SRC[r.src]||r.src||'—')+'</small></td>')+'</tr>').join('')+'</tbody></table></div>'+
+          '<td data-l="מאיפה">'+place(r,adm)+'</td><td data-l="מכשיר"><small>'+esc(r.device||'')+'</small></td>'+(r.kind!=='download'?'<td class="nol55"></td>':'<td data-l="לחצו ב"><small>'+esc(SRC[r.src]||r.src||'—')+'</small></td>')+'</tr>').join('')+'</tbody></table></div>'+
         '<p class="muted" style="margin-top:6px">'+list.length+' שורות</p>';};
     let act=null,latest='';
     if(window.apkVer57)apkVer57().then(x=>{if(x&&x.version){latest=String(x.version);drawU();}});

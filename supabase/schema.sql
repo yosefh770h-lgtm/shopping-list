@@ -7618,7 +7618,7 @@ revoke all on function public.scrape_summary(text) from public, anon, authentica
 create table if not exists public.apk_downloads (
   id bigserial primary key,
   at timestamptz not null default now(),
-  kind text not null default 'download' check (kind in ('download', 'open')),
+  kind text not null default 'download' check (kind in ('download', 'open', 'off_open')),
   user_id uuid references auth.users(id) on delete set null,
   dev text not null default '',
   ip text not null default '',
@@ -7632,6 +7632,11 @@ create index if not exists apk_downloads_at on public.apk_downloads (at desc);
 create index if not exists apk_downloads_ip on public.apk_downloads (ip, at desc);
 create index if not exists apk_downloads_nogeo on public.apk_downloads (id) where geo is null and ip <> '';
 create unique index if not exists apk_downloads_open_once on public.apk_downloads (dev) where kind = 'open' and dev <> '';
+-- 📴 נובמבר 2026: "רשימת קניות אופליין" (בלי אינטרנט) — טלפון מחובר שסנכרן איתה מדווח עליה פעם אחת לכל מכשיר (kind = off_open,
+--    הכתובת והמדינה הן של הטלפון המדווח). הורדה של האפליקציה האופליין מהאתר = download עם src = offline
+alter table public.apk_downloads drop constraint if exists apk_downloads_kind_check;
+alter table public.apk_downloads add constraint apk_downloads_kind_check check (kind in ('download', 'open', 'off_open'));
+create unique index if not exists apk_downloads_offopen_once on public.apk_downloads (dev) where kind = 'off_open' and dev <> '';
 alter table public.apk_downloads enable row level security;
 revoke all on public.apk_downloads from anon, authenticated;
 -- כתובת ה-IP של מי שקרא לפונקציה — באותו סדר אמינות כמו ב-auth-guard
@@ -7649,7 +7654,7 @@ create or replace function public.apk_log(p_kind text, p_src text default '', p_
 language plpgsql volatile security definer set search_path = public as $$
 declare v_ip text := public.req_ip(); h jsonb; cc text := ''; d text := ''; ok boolean;
 begin
-  if p_kind not in ('download', 'open') then return false; end if;
+  if p_kind not in ('download', 'open', 'off_open') then return false; end if;
   if coalesce(p_dev, '') ~ '^[0-9a-f-]{36}$' then d := p_dev; end if;
   -- הגבלה: עד 10 בשעה מאותה כתובת, ועד 500 בשעה בסך הכל
   if (v_ip <> '' and (select count(*) from public.apk_downloads a where a.ip = v_ip and a.at > now() - interval '1 hour') >= 10)
@@ -7661,7 +7666,7 @@ begin
   values (p_kind, auth.uid(), d, v_ip, case when cc ~ '^[A-Z]{2}$' then cc else '' end,
           left(regexp_replace(coalesce(p_device, ''), '[^[:alnum:][:space:]·./()_-]', '', 'g'), 60),
           left(regexp_replace(coalesce(p_ver, ''), '[^0-9.]', '', 'g'), 12),
-          case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail') then p_src else '' end)
+          case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail', 'offline') then p_src else '' end)
   on conflict do nothing;
   ok := found;  -- נשמר לפני הניקוי: ה-delete משנה את found, ואז פעם ב-100 הכניסה דווחה כלא נרשמה
   if random() < 0.01 then delete from public.apk_downloads where at < now() - interval '1 year'; end if;

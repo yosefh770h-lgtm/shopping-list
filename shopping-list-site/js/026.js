@@ -61,7 +61,9 @@ window.errCtx=errCtx;
   const jsFail=()=>{const f=window.__jsFail;if(!f||!f.length||failSent)return;failSent=true;post('קובץ קוד לא נטען: '+Array.from(new Set(f)).join(', '),'script load');};
   const send=(msg,src)=>{if(window.__jsFail&&window.__jsFail.length){jsFail();if(CASC.test(String(msg||'')))return;}post(msg,src);};
   const post=(msg,src)=>{if(isBot)return;msg=String(msg||'').slice(0,500);src=String(src||'').slice(0,300);if(!msg||IGN.test(msg)||IGN.test(src))return;const k=msg+'|'+src;if(seen.has(k)||++n>10)return;seen.add(k);
-    try{if(sb)sb.rpc('log_client_error',{p_msg:msg,p_src:src,p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...errCtx()}).then(()=>{},()=>{});}catch(e){}};
+    try{if(sb)sb.rpc('log_client_error',{p_msg:msg,p_src:src,p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:''),...errCtx()}).then(()=>{},()=>{});
+      /* 📴 באפליקציה האופליין: נשמר בטלפון, ועובר ליומן בסנכרון הבא עם טלפון מחובר (אם הסכימו) */
+      else if(window.offDiagAdd)offDiagAdd(msg,src);}catch(e){}};
   const fnOf=st=>{const l=String(st||'').split('\n').map(x=>x.trim()).find(x=>/^at \S+ \(|^[\w$.]+@/.test(x))||'';const m=l.match(/^at (\S+) \(/)||l.match(/^([\w$.]+)@/);return m?m[1].replace(/^Object\.|^HTMLButtonElement\./,''):'';};
   window.addEventListener('error',e=>{if(e&&e.filename&&!e.filename.startsWith(location.origin))return;const fn=fnOf(e&&e.error&&e.error.stack);send(e.message,(fn?fn+' · ':'')+(e.filename||'').replace(location.origin,'')+':'+(e.lineno||0)+':'+(e.colno||0));});
   window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const fn=r&&r.stack?fnOf(r.stack):'';send((r&&(r.message||r))||'promise',r&&r.stack?(fn?fn+' · ':'')+(String(r.stack).split('\n')[1]||'').trim():'');});

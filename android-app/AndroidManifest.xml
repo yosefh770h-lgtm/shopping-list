@@ -31,12 +31,20 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 📳 רטט קצר כשסריקת ברקוד מצליחה (2.0) -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 📡 2.2: סנכרון בבלוטות' עם "רשימת קניות אופליין" (בלי אינטרנט). עד אנדרואיד 11 — BLUETOOTH / BLUETOOTH_ADMIN
+         (והחיפוש משתמש בהרשאת המיקום שכבר יש); מאנדרואיד 12 — "מכשירים בקרבת מקום". מתבקש רק כשלוחצים על סנכרון בבלוטות' -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <!-- 🔴 מספר על אייקון האפליקציה במסך הבית של הואווי ואונור -->
     <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <!-- מאנדרואיד 11 צריך להצהיר מראש על זיהוי הדיבור של הטלפון, אחרת האפליקציה לא רואה אותו -->
     <queries>

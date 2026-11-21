@@ -236,7 +236,8 @@ function scanUi(){
 }
 async function onScanned(code,isQr){
   const now=Date.now();if(scanState.closing||(code===scanState.last&&now-scanState.lastAt<1800))return;scanState.last=code;scanState.lastAt=now;beep();
-  if(isQr){closeBarcodeScanner();onScannedQr(code);return;}
+  if(isQr){/* 📡 קוד סנכרון (js/087-offsync.js): כמה קודים ברצף — המצלמה נשארת פתוחה עד שכולם נקלטו */
+    const off=window.offQrTake?offQrTake(code):null;if(off==='more')return;closeBarcodeScanner();if(!off)onScannedQr(code);return;}
   /* 2.0: רטט קצר + "✓ נסרק: ..." ירוק ומסגרת ירוקה, ורק אז המצלמה נסגרת */
   if(!scanState.cont){scanOk20(code);scanState.closing=true;setTimeout(()=>{scanState.closing=false;closeBarcodeScanner();scanCb&&scanCb(code);},550);return;}
   scanOk20(code);

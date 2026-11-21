@@ -2311,6 +2311,69 @@ await test('📈 גרף מחיר למוצר: "היה זול יותר בשבוע 
   await ctx.close();
 });
 
+await test('📡 סנכרון בלי אינטרנט: אפליקציה אופליין ↔ אתר (קוד, QR בכמה חלקים, בלוטות׳, תקלות)', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.0';
+  const BT = () => { window.__bt = []; window.YamApp = { appInfo: () => JSON.stringify({ offline: true, offApp: true, ver: '1.0', model: 'Qin3Ultra', android: '11' }), btState: () => '{"has":true,"on":true}',
+    btHost: (p) => window.__bt.push(['host', p]), btFind: (p) => window.__bt.push(['find', p]), btConnect: (a, p) => window.__bt.push(['connect', a, p]), btStop: () => {}, shareText: (t) => window.__bt.push(['sms', t]) }; };
+  const A = await newPage({ userAgent: OFFUA, init: BT });
+  const B = await newPage();
+  const names = (pg) => pg.page.evaluate(() => state.lists.flatMap((l) => l.items.map((i) => i.n)).sort().join(','));
+  // האפליקציה האופליין: בלי ענן, בלי מחירים, עם פס סנכרון
+  assert(await A.page.evaluate(() => OFF_APP && document.documentElement.classList.contains('offapp') && sb === null && isOffline()), 'מצב אופליין לא הופעל');
+  assert(!(await A.page.locator('.tab[data-t="prices"]').isVisible()), 'לשונית המחירים מופיעה באופליין');
+  assert(await A.page.locator('.offpill').isVisible(), 'אין פס סנכרון באופליין');
+  await A.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); });
+  await B.page.evaluate(() => { addItem('ביצים', ''); });
+  // ✉️ קוד: אופליין → אתר
+  const codeA = await A.page.evaluate(() => offPack());
+  assert(/^YAM1[zj][A-Za-z0-9_-]+$/.test(codeA), 'קוד לא תקין: ' + codeA.slice(0, 20));
+  const r1 = await B.page.evaluate((c) => offMerge('📡 הקוד:\n' + c + '\n', 'code'), codeA);
+  assert(r1 && r1.add === 2 && r1.off, 'מיזוג באתר: ' + JSON.stringify(r1));
+  assert((await names(B)).includes('חלב') && (await names(B)).includes('ביצים'), 'חסר מוצר באתר: ' + (await names(B)));
+  // 🔳 QR בכמה חלקים: אתר → אופליין (רשימה ארוכה), כולל חלק שנקלט פעמיים ובסדר הפוך
+  await B.page.evaluate(() => { for (let i = 0; i < 150; i++) addItem('מוצר בדיקה ארוך מאוד מספר ' + i, ''); });
+  const parts = await B.page.evaluate(async () => { const c = (await offPack()).slice(4), n = Math.ceil(c.length / 800); return Array.from({ length: n }, (_, i) => 'Y1:t3st:' + (i + 1) + ':' + n + ':' + c.slice(i * 800, (i + 1) * 800)); });
+  assert(parts.length > 1, 'ציפיתי לכמה חלקים');
+  const seq = [parts[1], parts[1], ...parts.slice(2).reverse(), parts[0]];
+  const res = await A.page.evaluate((s) => s.map((x) => offQrTake(x)), seq);
+  assert(res[res.length - 1] === 'done' && res.slice(0, -1).every((x) => x === 'more'), 'רצף QR: ' + res.join(','));
+  await A.page.waitForTimeout(500);
+  const na = await names(A);
+  assert(na.includes('ביצים') && na.includes('מוצר בדיקה ארוך מאוד מספר 149'), 'האופליין לא קיבל הכל');
+  assert(await A.page.locator('#v8SheetBody .offok').isVisible(), 'אין הודעת "סונכרן" אחרי סריקה');
+  // הקוד המוצג נקרא באמת: מפענחים את ה-QR שעל המסך
+  await A.page.evaluate(() => offSyncOpen('qr'));
+  await A.page.waitForSelector('#offQr svg');
+  const dec = await A.page.evaluate(async () => { const Z = await loadZxing(); const svg = document.querySelector('#offQr svg'); const img = new Image(); img.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+    await img.decode(); const w = +svg.getAttribute('viewBox').split(' ')[2] * 6; const c = document.createElement('canvas'); c.width = c.height = w; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, w);
+    const bm = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(c))); return new Z.QRCodeReader().decode(bm).getText(); });
+  assert(/^Y1:[a-z0-9]{4}:\d+:\d+:|^YAM1/.test(dec), 'ה-QR לא נקרא: ' + dec.slice(0, 30));
+  // 🔵 בלוטות': סימון באופליין עובר לאתר
+  await A.page.evaluate(() => { const i = state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב'); i.done = true; i.ts = Date.now() + 1000; save(); });
+  await A.page.evaluate(() => offSyncOpen('bt'));
+  await A.page.click('#offBtHost');
+  await A.page.waitForTimeout(300);
+  const sent = await A.page.evaluate(() => window.__bt.find((x) => x[0] === 'host'));
+  assert(sent && /^YAM1/.test(sent[1]), 'לא נשלחה חבילה לבלוטות׳');
+  await B.page.evaluate((c) => offMerge(c, 'bt', 'Qin'), sent[1]);
+  assert(await B.page.evaluate(() => state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב').done), 'הסימון "נקנה" לא עבר');
+  // 🐞 תקלה באופליין (בהסכמה) עוברת ליומן דרך האתר, ונמחקת אחרי סנכרון עם טלפון מחובר
+  await A.page.evaluate(() => { localStorage.setItem('yam_off_diag_ok', '1'); logClientError('בדיקת תקלה אופליין', 'test.js:1'); });
+  const codeA2 = await A.page.evaluate(() => offPack());
+  const calls = await B.page.evaluate(async (c) => { const got = []; const o = sb; sb = { rpc: (n, a) => { got.push([n, a]); return Promise.resolve({ data: null, error: null }); } }; await offMerge(c, 'qr'); sb = o; return got; }, codeA2);
+  assert(calls.some((c) => c[0] === 'log_client_error' && /בדיקת תקלה/.test(c[1].p_msg) && c[1].p_app === '1.0'), 'התקלה לא הועברה: ' + JSON.stringify(calls).slice(0, 200));
+  assert(calls.some((c) => c[0] === 'apk_log' && c[1].p_kind === 'off_open' && /Qin3Ultra/.test(c[1].p_device)), 'האפליקציה האופליין לא נרשמה ב"מי הוריד"');
+  const codeB = await B.page.evaluate(async () => { const o = sb; sb = { rpc: () => Promise.resolve({}) }; const c = await offPack(); sb = o; return c; });
+  await A.page.evaluate((c) => offMerge(c, 'qr'), codeB);
+  assert(await A.page.evaluate(() => !localStorage.getItem('yam_off_diag')), 'התקלות לא נמחקו אחרי שהגיעו');
+  // 🔒 קוד זבל / קוד של עצמו לא משנים כלום
+  const before = await names(A);
+  await A.page.evaluate(async (c) => { await offMerge('YAM1zAAAAAAAAAAAAAAAA', 'code'); await offMerge(c, 'code'); }, await A.page.evaluate(() => offPack()));
+  assert((await names(A)) === before, 'קוד לא תקין שינה את הרשימה');
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
 const failed = results.filter((r) => r[0] === '❌').length;

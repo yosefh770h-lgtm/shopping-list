@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 📴 "רשימת קניות אופליין": אפליקציה נפרדת בלי הרשאת אינטרנט, לטלפונים כשרים ולמי שאין לו אינטרנט.
+     נבנית מאותו קוד: ./build.sh offline (package הוא com.yamshopping.app בשביל R, ובבנייה משתנה ל-com.yamshopping.offline).
+     אין כאן INTERNET בכוונה — אל תוסיפו. הסנכרון בלי אינטרנט: QR, בלוטות' או קוד שיתוף (SMS). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.yamshopping.app"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
+
+    <!-- סריקת קוד QR של הסנכרון (וברקוד של מוצר) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 📳 רטט קצר כשהסריקה מצליחה -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 📡 סנכרון בבלוטות' עם טלפון אחר. עד אנדרואיד 11: BLUETOOTH / BLUETOOTH_ADMIN, והחיפוש של טלפונים קרובים דורש מיקום
+         (רק לחיפוש — אנחנו לא משתמשים במיקום). מאנדרואיד 12: הרשאות "מכשירים בקרבת מקום" -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+
+    <application
+        android:label="רשימת קניות אופליין"
+        android:icon="@mipmap/ic_launcher_mint"
+        android:roundIcon="@mipmap/ic_launcher_mint"
+        android:theme="@style/AppTheme"
+        android:supportsRtl="true"
+        android:allowBackup="false">
+
+        <activity
+            android:name="com.yamshopping.app.OfflineActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
