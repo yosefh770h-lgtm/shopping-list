@@ -2431,6 +2431,44 @@ await test('🧠 סנכרון חוזר אחרי כמה ימים: בלי כפיל
   await A.ctx.close(); await B.ctx.close();
 });
 
+await test('🕰️ סנכרון חי עם אופליין ששעונו זז: סימון עובר, מה שנמחק באתר לא חוזר (גם רשימה שנמחקה מזמן)', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.1';
+  const BT = () => { window.__out = []; const off = /Offline/.test(navigator.userAgent);
+    // טלפון בלי אינטרנט: השעון שלו מאחר בשלוש שעות
+    if (off && !window.__skewed) { window.__skewed = 1; const n = Date.now.bind(Date); Date.now = () => n() - 3 * 3600e3; }
+    window.YamApp = { appInfo: () => JSON.stringify(off ? { offline: true, offApp: true, ver: '1.1' } : { ver: '2.2' }), btState: () => '{"has":true,"on":true}',
+      btListen() {}, btJoin() {}, btConnect() {}, btStop() {}, btSend: (t) => { window.__out.push(t); return true; } }; };
+  const A = await newPage({ userAgent: OFFUA, init: BT });
+  const B = await newPage({ init: BT });
+  // האתר "מחובר לאינטרנט" (בבדיקות אין ענן) — כמו באמת
+  await B.page.evaluate(() => { sb = sb || {}; });
+  const pump = async () => { for (let k = 0; k < 3; k++) { for (const [x, y] of [[A, B], [B, A]]) { const m = await x.page.evaluate(() => window.__out.splice(0)); for (const d of m) await y.page.evaluate((d) => offBt({ t: 'msg', data: d }), d); } await A.page.waitForTimeout(1500); } };
+  const names = (pg) => pg.page.evaluate(() => state.lists.map((l) => l.name + ':' + l.items.map((i) => i.n + (i.done ? '✓' : '')).sort().join(',')).sort().join(' | '));
+  await B.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); state.lists.push({ id: uid(), name: 'ישנה', items: [{ id: uid(), n: 'קמח', q: '', c: 'אחר', e: '🛒', done: false, ts: Date.now() - 60 * 864e5 }], created: Date.now() - 60 * 864e5 }); save(); });
+  await A.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'Galaxy', addr: '11:22' }));
+  await B.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'Qin', addr: 'AA:BB' }));
+  await pump();
+  assert((await names(A)) === (await names(B)), 'אחרי החיבור לא זהים: ' + (await names(A)) + ' ≠ ' + (await names(B)));
+  // השעון באופליין תוקן לפי האתר
+  const skew = await A.page.evaluate(() => Math.abs(Number(localStorage.getItem('yam_off_clock')) - 3 * 3600e3));
+  assert(skew < 60e3, 'השעון באופליין לא תוקן: ' + skew);
+  // באופליין מסמנים "חלב" (כמו בלחיצה) — עובר לאתר
+  await A.page.evaluate(() => { const i = state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב'); i.done = !i.done; i.ts = Date.now(); save(); });
+  await pump();
+  assert(/חלב✓/.test(await names(B)), 'סימון באופליין לא עבר לאתר: ' + (await names(B)));
+  // באתר מוחקים "לחם", ואת "ישנה" מחקו מזמן (המחיקה כבר נשכחה) — אף אחד מהם לא חוזר
+  await B.page.evaluate(() => { const l = state.lists.find((x) => x.items.some((i) => i.n === 'לחם')); removeItem(l.items.find((i) => i.n === 'לחם').id);
+    const old = state.lists.find((x) => x.name === 'ישנה'); state.lists = state.lists.filter((x) => x !== old); delete state.tomb.lists[old.id]; save(); });
+  await A.page.evaluate(() => { addItem('אורז', ''); });
+  await pump();
+  const vb = await names(B), va = await names(A);
+  assert(!/לחם/.test(vb) && !/לחם/.test(va), 'מוצר שנמחק באתר חזר: ' + vb + ' / ' + va);
+  assert(!/ישנה/.test(vb), 'רשימה שנמחקה מזמן חזרה לאתר: ' + vb);
+  assert(/אורז/.test(vb), 'הוספה באופליין לא עברה: ' + vb);
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
 await test('🎤🏠🔔 אפליקציה 2.2: כמה מוצרים בקול בלי פסיקים, וידג\'ט הרשימה, ומעקב מבצעים שעובר לאפליקציה', async () => {
   // הגשרים של 2.2 — כמו באפליקציה
   const init = () => { window.__w = []; window.__d = []; window.YamApp = { appInfo: () => JSON.stringify({ ver: '2.2', bg: true }), setWidget: (j) => window.__w.push(JSON.parse(j)), setDealWatch: (j) => window.__d.push(JSON.parse(j)) }; };

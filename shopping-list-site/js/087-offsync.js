@@ -32,7 +32,7 @@ async function zip(json){const raw=new TextEncoder().encode(json);
   return 'j'+b64u(raw);}
 async function unzip(t){const k=t[0],b=ub64u(t.slice(1));if(k==='j')return new TextDecoder().decode(b);
   if(typeof DecompressionStream!=='function')throw new Error('old');return new TextDecoder().decode(await pipe(b,new DecompressionStream('deflate')));}
-async function pack(){
+async function pack(){seenAdd();
   const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
     lists:state.lists,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:(state.history||[]).slice(0,30)};
   if(OFF_APP){const ai=appInfo();o.ver=String(ai.ver||'');o.model=String(ai.model||'');o.android=String(ai.android||'');
@@ -44,6 +44,25 @@ window.offPack=pack;
 const obj=x=>x&&typeof x==='object'&&!Array.isArray(x)?x:{};
 const arr=x=>Array.isArray(x)?x:[];
 function snap(){const m={};(state.lists||[]).forEach(l=>(l.items||[]).forEach(i=>{if(i)m[l.id+'|'+i.id]=(i.ts||0)+'|'+(i.done?1:0)+'|'+(i.q||'');}));return m;}
+/* 🕰️ שעון שזז: האופליין לא מתחבר לאינטרנט, אז השעון שלו יכול לזוז בשעות ובימים. בלי תיקון, "השינוי האחרון מנצח" בוחר לא נכון —
+   סימון באופליין לא עובר, ומה שנמחק חוזר. בבלוטות' וב-QR החבילה נוצרה לפני שניות, אז ההפרש בין השעה שבה היא נוצרה (at)
+   לשעה כאן הוא ההפרש בין השעונים. האופליין מתקן לפי טלפון שמחובר לאינטרנט: מעכשיו (Date.now, js/001.js), ומה שנשמר אצלו
+   "בעתיד" יורד לעכשיו. (לא מזיזים נתונים אחורה/קדימה בסיטונאות — חלק מהם הגיעו מהטלפון השני עם השעה הנכונה) */
+const LS_CLOCK='yam_off_clock',LS_SEEN='yam_off_seen',SKEW=90e3;
+function learnClock(o,via){if(!OFF_APP||!o.net||(via!=='bt'&&via!=='qr'))return;const at=Number(o.at);if(!isFinite(at)||at<=0)return;
+  const d=at-Date.now();if(Math.abs(d)<SKEW)return;
+  const off=(Number(ls.get(LS_CLOCK))||0)+d;if(Math.abs(off)>=4e11)return;ls.set(LS_CLOCK,String(off));
+  const _n=Date.now;Date.now=()=>_n()+d;const now=Date.now(),c=v=>{v=Number(v);return isFinite(v)&&v>now?now:v;};
+  (state.lists||[]).forEach(l=>{['created','nameTs','mtime'].forEach(k=>{if(l[k]!=null)l[k]=c(l[k]);});(l.items||[]).forEach(i=>{if(i&&i.ts)i.ts=c(i.ts);});});
+  const t=state.tomb;if(t&&typeof t==='object')['items','lists'].forEach(k=>{const m=t[k];if(m&&typeof m==='object')Object.keys(m).forEach(id=>{m[id]=c(m[id]);});});}
+/* 🧠 מה שכבר היה בטלפון הזה ואיננו — נמחק כאן. גם אחרי שהמחיקה נשכחה (30 יום) הוא לא חוזר מטלפון שלא סונכרן מאז */
+const seenGet=()=>{const a=jget(LS_SEEN,[]);return new Set(Array.isArray(a)?a:[]);};
+function seenAdd(){const s=seenGet();(state.lists||[]).forEach(l=>{s.delete('l:'+l.id);s.add('l:'+l.id);(l.items||[]).forEach(i=>{if(i&&i.id){s.delete('i:'+i.id);s.add('i:'+i.id);}});});
+  const a=[...s];ls.set(LS_SEEN,JSON.stringify(a.slice(-8000)));}
+function dropGone(remote){const s=seenGet();if(!s.size)return;const lids=new Set(),iids=new Set();
+  (state.lists||[]).forEach(l=>{lids.add(l.id);(l.items||[]).forEach(i=>i&&iids.add(i.id));});
+  remote.lists=remote.lists.filter(l=>!(l&&l.id&&s.has('l:'+l.id)&&!lids.has(l.id)));
+  remote.lists.forEach(l=>{if(l&&Array.isArray(l.items))l.items=l.items.filter(i=>!(i&&i.id&&s.has('i:'+i.id)&&!iids.has(i.id)));});}
 async function merge(code,via,peer){
   const m=String(code||'').replace(/\s+/g,'').match(/YAM1[zj][A-Za-z0-9_-]{8,}/);
   if(!m){flash(T('⚠️ זה לא קוד סנכרון של רשימת קניות','⚠️ This is not a shopping-list sync code'));return null;}
@@ -55,10 +74,12 @@ async function merge(code,via,peer){
   /* רק נתוני רשימה עוברים (לא "האזור האישי", לא הגדרות, לא שיחות), ודרך אותו ניקוי של הענן */
   const remote={lists:o.lists.slice(0,60),tomb:o.tomb,pantry:obj(o.pantry),customPantry:arr(o.customPantry).filter(s=>typeof s==='string'&&s.length<=60).slice(0,500),
     plans:obj(o.plans),history:arr(o.history).filter(h=>h&&typeof h==='object').slice(0,30)};
+  learnClock(o,via);
+  seenAdd();dropGone(remote);
   align(remote);
   const a=snap();
   try{applyRemote(remote,false);}catch(e){flash(T('⚠️ המיזוג נכשל','⚠️ Merge failed'));try{window.logClientError&&logClientError('offsync merge: '+e.message,'087');}catch(x){}return null;}
-  save();try{render();}catch(e){}
+  seenAdd();save();try{render();}catch(e){}
   const b=snap();let add=0,upd=0,del=0;for(const k in b){if(!(k in a))add++;else if(b[k]!==a[k])upd++;}for(const k in a)if(!(k in b))del++;
   const name=String(peer||o.name||o.model||'').replace(/[<>]/g,'').slice(0,40);
   const peers=obj(jget(LS_PEERS,{}));peers[String(o.dev||'?').slice(0,40)]={at:Date.now(),via,name,off:o.off?1:0};ls.set(LS_PEERS,JSON.stringify(peers));ls.set(LS_LAST,String(Date.now()));
