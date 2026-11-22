@@ -245,7 +245,8 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
   if(t.closest('#shOff,.offpill,#miOff,#btnOff')){e.preventDefault();const m=$o('#hMenu');if(m)m.classList.remove('open');const r=$o('#shareRow');if(r)r.classList.remove('open');open();return;}
   if(!t.closest('.offsync'))return;
   const tb=t.closest('[data-offt]');if(tb){open(tb.dataset.offt);return;}
-  if(t.closest('#offDl')){try{sb&&sb.rpc('apk_log',{p_kind:'download',p_src:'offline',p_device:'',p_dev:devId(),p_ver:''}).then(()=>{},()=>{});}catch(er){}return;}
+  if(t.closest('#offDl')){try{sb&&sb.rpc('apk_log',{p_kind:'download',p_src:'offline',p_device:'',p_dev:devId(),p_ver:''}).then(()=>{},()=>{});}catch(er){}
+    if(inAppSave()){e.preventDefault();appDl(t.closest('#offDl'));}return;}
   if(t.closest('#offScan')){scanQr();return;}
   if(t.closest('#offBtNew')){btCreate();return;}
   if(t.closest('#offBtType')){const j=$o('#offBtJoin');if(j){j.hidden=false;$o('#offBtCode').focus();}return;}
@@ -285,6 +286,24 @@ function dlSheet(){
     '<li>'+T('פותחים את "רשימת קניות אופליין", כותבים שם — ונכנסים.','Open the app, type a name, and you are in.')+'</li></ol>'+
     '<p class="muted-note">🔗 '+T('לשלוח למישהו: ','To share: ')+'<span dir="ltr">yamshopping.com/#offapk</span></p></div>');}
 window.offDlSheet=dlSheet;
+/* בתוך האפליקציה הרגילה קישור הורדה רגיל נשלח לדפדפן של הטלפון — ובטלפון מסונן בלי דפדפן הוא נתקע.
+   לכן שם מורידים את הקובץ כאן (מהאתר שלנו, עם התקדמות) ושומרים אותו ישר בתיקיית ההורדות (YamApp.saveFile) */
+const inAppSave=()=>{try{return !OFF_APP&&!!(window.YamApp&&typeof YamApp.saveFile==='function');}catch(e){return false;}};
+let dlBusy=false;
+async function appDl(a){if(dlBusy)return;dlBusy=true;const txt=a.textContent,set=s=>{a.textContent=s;};
+  try{set('⏳ '+T('מורידים...','Downloading...'));
+    const r=await fetch(a.getAttribute('href'),{cache:'no-cache'});if(!r.ok)throw new Error('http '+r.status);
+    const total=+r.headers.get('content-length')||0,rd=r.body&&r.body.getReader?r.body.getReader():null;let blob;
+    if(rd){const parts=[];let got=0;for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;if(total)set('⏳ '+T('מורידים... ','Downloading... ')+Math.min(99,Math.round(got/total*100))+'%');}
+      blob=new Blob(parts,{type:'application/vnd.android.package-archive'});}
+    else blob=await r.blob();
+    if(blob.size<100000)throw new Error('short');
+    const b64=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>{const d=String(fr.result);ok(d.slice(d.indexOf(',')+1));};fr.onerror=no;fr.readAsDataURL(blob);});
+    YamApp.saveFile(a.getAttribute('download')||'yamshopping-offline.apk','application/vnd.android.package-archive',b64);
+    set('✅ '+T('נשמר בתיקיית ההורדות','Saved to Downloads'));
+    const st=a.parentNode&&a.parentNode.querySelector('.offsteps');if(st&&!a.parentNode.querySelector('.offsaved'))st.insertAdjacentHTML('beforebegin','<p class="offok offsaved">📁 '+T('הקובץ yamshopping-offline.apk נמצא עכשיו בתיקיית "הורדות" (Downloads) של הטלפון. פותחים אותו מאפליקציית הקבצים כדי להתקין, או מעבירים אותו לטלפון השני.','The file is now in the phone\'s Downloads folder.')+'</p>');}
+  catch(er){set(txt);flash(T('⚠️ ההורדה לא הצליחה — בודקים חיבור ומנסים שוב','⚠️ Download failed — check the connection and try again'));}
+  finally{dlBusy=false;}}
 if(!OFF_APP&&(/^#offapk$/i.test(location.hash)||/[?&]offapk(=|&|$)/i.test(location.search)))setTimeout(dlSheet,700);
 
 /* ---------- כפתור הכניסה: בשורת "שיתוף עם המשפחה וגיבוי", ובאפליקציה האופליין גם פס קבוע מעל הרשימה ---------- */
@@ -294,8 +313,8 @@ function mount(){const k=$o('#shKeep');if(k&&!$o('#shOff'))k.insertAdjacentHTML(
   const hb=$o('#btnChat')||$o('#btnBell')||$o('#btnMenu');if(hb&&!$o('#btnOff'))hb.insertAdjacentHTML('beforebegin','<button class="hbtn" id="btnOff" type="button" title="'+T('סנכרון בלי אינטרנט','Offline sync')+'" aria-label="'+T('סנכרון בלי אינטרנט — בלוטות\', QR או קוד','Offline sync')+'">'+
     '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="7" height="14" rx="1.6"/><rect x="14.5" y="5" width="7" height="14" rx="1.6"/><path d="M10.5 10h3M12 8.5l1.5 1.5-1.5 1.5M13.5 14h-3M12 12.5L10.5 14l1.5 1.5"/></svg><i class="offdot" hidden></i></button>');
   {const d=$o('#btnOff .offdot');if(d)d.hidden=!bt.live;}
-  /* ⬇️ הורדת האפליקציה האופליין — בתפריט, ליד הורדת האפליקציה הרגילה (באתר בלבד) */
-  const ap=!/YamShoppingApp\//.test(navigator.userAgent||'')&&($o('#miApk53')||$o('#miInstall'));if(ap&&!$o('#miOffApk'))ap.insertAdjacentHTML('afterend','<button id="miOffApk">📴<span>'+T('הורדת האפליקציה האופליין (בלי אינטרנט)','Download the offline app (no internet)')+'</span></button>');
+  /* ⬇️ הורדת האפליקציה האופליין — בתפריט, ליד הורדת האפליקציה הרגילה (באתר ובאפליקציה הרגילה) */
+  const ap=!OFF_APP&&($o('#miApk53')||$o('#miInstall')||$o('#miShop26')||$o('#miFinish'));if(ap&&!$o('#miOffApk'))ap.insertAdjacentHTML('afterend','<button id="miOffApk">📴<span>'+T('הורדת האפליקציה האופליין (בלי אינטרנט)','Download the offline app (no internet)')+'</span></button>');
   const an=$o('#miShop26')||$o('#miFinish');if(an&&!$o('#miOff'))an.insertAdjacentHTML('beforebegin','<button id="miOff">📡<span>'+T('סנכרון בלי אינטרנט (בלוטות\', QR, קוד)','Offline sync (Bluetooth, QR, code)')+'</span></button>');
   if(!OFF_APP)return;const pane=$o('#paneList');if(!pane)return;let p=$o('.offpill');
   if(!p){pane.insertAdjacentHTML('afterbegin','<button class="offpill" type="button"></button>');p=$o('.offpill');}
