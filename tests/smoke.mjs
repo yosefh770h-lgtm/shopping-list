@@ -2311,6 +2311,152 @@ await test('📈 גרף מחיר למוצר: "היה זול יותר בשבוע 
   await ctx.close();
 });
 
+await test('📡 סנכרון בלי אינטרנט: אפליקציה אופליין ↔ אתר (קוד, QR בכמה חלקים, בלוטות׳, תקלות)', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.0';
+  // גשר בלוטות' מדומה: מה שנשלח נאסף ב-__out, והבדיקה מעבירה אותו לטלפון השני
+  const BT = () => { window.__bt = []; window.__out = []; const off = /Offline/.test(navigator.userAgent); window.YamApp = { appInfo: () => JSON.stringify(off ? { offline: true, offApp: true, ver: '1.0', model: 'Qin3Ultra', android: '11' } : { ver: '2.2', model: 'Galaxy' }), btState: () => '{"has":true,"on":true}',
+    btListen: (c, v) => window.__bt.push(['listen', c, v]), btJoin: (c) => window.__bt.push(['join', c]), btConnect: (a, c) => window.__bt.push(['connect', a, c]), btSend: (t) => { window.__out.push(t); return true; }, btStop: () => window.__bt.push(['stop']), shareText: (t) => window.__bt.push(['sms', t]) }; };
+  const A = await newPage({ userAgent: OFFUA, init: BT });
+  const B = await newPage({ init: BT });
+  const pump = async () => { for (const [x, y] of [[A, B], [B, A]]) { const m = await x.page.evaluate(() => window.__out.splice(0)); for (const d of m) await y.page.evaluate((d) => offBt({ t: 'msg', data: d }), d); } };
+  const names = (pg) => pg.page.evaluate(() => state.lists.flatMap((l) => l.items.map((i) => i.n)).sort().join(','));
+  // האפליקציה האופליין: בלי ענן, בלי מחירים, עם פס סנכרון
+  assert(await A.page.evaluate(() => OFF_APP && document.documentElement.classList.contains('offapp') && sb === null && isOffline()), 'מצב אופליין לא הופעל');
+  assert(!(await A.page.locator('.tab[data-t="prices"]').isVisible()), 'לשונית המחירים מופיעה באופליין');
+  assert(await A.page.locator('.offpill').isVisible(), 'אין פס סנכרון באופליין');
+  await A.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); });
+  await B.page.evaluate(() => { addItem('ביצים', ''); });
+  // ✉️ קוד: אופליין → אתר
+  const codeA = await A.page.evaluate(() => offPack());
+  assert(/^YAM1[zj][A-Za-z0-9_-]+$/.test(codeA), 'קוד לא תקין: ' + codeA.slice(0, 20));
+  const r1 = await B.page.evaluate((c) => offMerge('📡 הקוד:\n' + c + '\n', 'code'), codeA);
+  assert(r1 && r1.add === 2 && r1.off, 'מיזוג באתר: ' + JSON.stringify(r1));
+  assert((await names(B)).includes('חלב') && (await names(B)).includes('ביצים'), 'חסר מוצר באתר: ' + (await names(B)));
+  // 🔳 QR בכמה חלקים: אתר → אופליין (רשימה ארוכה), כולל חלק שנקלט פעמיים ובסדר הפוך
+  await B.page.evaluate(() => { for (let i = 0; i < 150; i++) addItem('מוצר בדיקה ארוך מאוד מספר ' + i, ''); });
+  const parts = await B.page.evaluate(async () => { const c = (await offPack()).slice(4), n = Math.ceil(c.length / 800); return Array.from({ length: n }, (_, i) => 'Y1:t3st:' + (i + 1) + ':' + n + ':' + c.slice(i * 800, (i + 1) * 800)); });
+  assert(parts.length > 1, 'ציפיתי לכמה חלקים');
+  const seq = [parts[1], parts[1], ...parts.slice(2).reverse(), parts[0]];
+  const res = await A.page.evaluate((s) => s.map((x) => offQrTake(x)), seq);
+  assert(res[res.length - 1] === 'done' && res.slice(0, -1).every((x) => x === 'more'), 'רצף QR: ' + res.join(','));
+  await A.page.waitForTimeout(500);
+  const na = await names(A);
+  assert(na.includes('ביצים') && na.includes('מוצר בדיקה ארוך מאוד מספר 149'), 'האופליין לא קיבל הכל');
+  assert(await A.page.locator('#v8SheetBody .offok').isVisible(), 'אין הודעת "סונכרן" אחרי סריקה');
+  // הקוד המוצג נקרא באמת: מפענחים את ה-QR שעל המסך
+  await A.page.evaluate(() => offSyncOpen('qr'));
+  await A.page.waitForSelector('#offQr svg');
+  const dec = await A.page.evaluate(async () => { const Z = await loadZxing(); const svg = document.querySelector('#offQr svg'); const w = +svg.getAttribute('viewBox').split(' ')[2] * 4; const img = new Image(); img.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML.replace('<svg ', '<svg width="' + w + '" height="' + w + '" '));
+    await img.decode(); const c = document.createElement('canvas'); c.width = c.height = w; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, w);
+    const bm = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(c))); return new Z.QRCodeReader().decode(bm).getText(); });
+  assert(/^Y1:[a-z0-9]{4}:\d+:\d+:|^YAM1/.test(dec), 'ה-QR לא נקרא: ' + dec.slice(0, 30));
+  // 🔵 בלוטות' חי עם קוד של 4 ספרות: יוצרים קוד באופליין, מקלידים באתר, ואז כל שינוי עובר מיד לשני הכיוונים
+  await A.page.evaluate(() => offSyncOpen('bt'));
+  await A.page.click('#offBtNew');
+  const code = await A.page.evaluate(() => (window.__bt.find((x) => x[0] === 'listen') || [])[1]);
+  assert(/^\d{4}$/.test(code) && (await A.page.locator('#offBtSt .offbig').innerText()).trim() === code, 'הקוד לא מוצג: ' + code);
+  await B.page.evaluate(() => offSyncOpen('bt'));
+  await B.page.click('#offBtType'); await B.page.fill('#offBtCode', code); await B.page.click('#offBtGo');
+  assert(await B.page.evaluate((c) => window.__bt.some((x) => x[0] === 'join' && x[1] === c), code), 'האתר לא חיפש עם הקוד');
+  await A.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'Galaxy', addr: '11:22' }));
+  await B.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'Qin', addr: 'AA:BB' }));
+  await A.page.waitForTimeout(300); await pump(); await A.page.waitForTimeout(400);
+  assert(await A.page.locator('.offpill').innerText().then((t) => /סנכרון חי/.test(t)), 'הפס לא מראה סנכרון חי');
+  await A.page.evaluate(() => { const i = state.lists.flatMap((l) => l.items).find((x) => x.n === 'חלב'); i.done = true; i.ts = Date.now() + 1000; save(); addItem('גבינה', ''); });
+  await A.page.waitForTimeout(1500); await pump(); await B.page.waitForTimeout(400);
+  assert(await B.page.evaluate(() => { const it = state.lists.flatMap((l) => l.items); return it.find((x) => x.n === 'חלב').done && it.some((x) => x.n === 'גבינה'); }), 'שינוי באופליין לא עבר בסנכרון החי');
+  await B.page.evaluate(() => addItem('אורז', '')); await B.page.waitForTimeout(1500); await pump(); await A.page.waitForTimeout(400);
+  assert((await names(A)).includes('אורז'), 'שינוי באתר לא עבר לאופליין');
+  await A.page.waitForTimeout(1500); await pump();
+  assert(await A.page.evaluate(() => window.__out.length === 0) && await B.page.evaluate(() => window.__out.length === 0), 'הטלפונים ממשיכים לשלוח זה לזה בלי סוף');
+  // נשמר: בפעם הבאה מתחברים לבד (מי שהקליד — לכתובת, מי שיצר — מחכה)
+  assert(await B.page.evaluate((c) => { const p = JSON.parse(localStorage.getItem('yam_off_bt')); return p.code === c && p.role === 'join' && p.addr === 'AA:BB'; }, code), 'החיבור לא נשמר');
+  await B.page.evaluate(() => { window.__bt.length = 0; offBt({ t: 'state', s: 'lost' }); document.dispatchEvent(new Event('visibilitychange')); });
+  assert(await B.page.evaluate((c) => window.__bt.some((x) => x[0] === 'connect' && x[1] === 'AA:BB' && x[2] === c), code), 'אין חיבור מחדש לבד');
+  // קוד לא נכון מהצד השני — מתנתקים
+  await A.page.evaluate(() => offBt({ t: 'msg', data: JSON.stringify({ k: 'hi', code: '0000', dev: 'x' }) }));
+  assert(await A.page.evaluate(() => window.__bt.some((x) => x[0] === 'stop')), 'קוד לא נכון לא ניתק');
+  // 🐞 תקלה באופליין (בהסכמה) עוברת ליומן דרך האתר, ונמחקת אחרי סנכרון עם טלפון מחובר
+  await A.page.evaluate(() => { localStorage.setItem('yam_off_diag_ok', '1'); logClientError('בדיקת תקלה אופליין', 'test.js:1'); });
+  const codeA2 = await A.page.evaluate(() => offPack());
+  const calls = await B.page.evaluate(async (c) => { const got = []; const o = sb; sb = { rpc: (n, a) => { got.push([n, a]); return Promise.resolve({ data: null, error: null }); } }; await offMerge(c, 'qr'); sb = o; return got; }, codeA2);
+  assert(calls.some((c) => c[0] === 'log_client_error' && /בדיקת תקלה/.test(c[1].p_msg) && c[1].p_app === '1.0'), 'התקלה לא הועברה: ' + JSON.stringify(calls).slice(0, 200));
+  assert(calls.some((c) => c[0] === 'apk_log' && c[1].p_kind === 'off_open' && /Qin3Ultra/.test(c[1].p_device)), 'האפליקציה האופליין לא נרשמה ב"מי הוריד"');
+  assert(calls.some((c) => c[0] === 'apk_log' && c[1].p_kind === 'off_sync' && c[1].p_src === 'site-qr'), 'החיבור לא נספר ב"כמה מחוברים": ' + JSON.stringify(calls).slice(0, 300));
+  const again = await B.page.evaluate(async (c) => { const got = []; const o = sb; sb = { rpc: (n, a) => { got.push([n, a]); return Promise.resolve({ data: null, error: null }); } }; await offMerge(c, 'qr'); sb = o; return got; }, codeA2);
+  assert(!again.some((c) => c[0] === 'apk_log'), 'אותו חיבור נספר פעמיים באותה כניסה');
+  const codeB = await B.page.evaluate(async () => { const o = sb; sb = { rpc: () => Promise.resolve({}) }; const c = await offPack(); sb = o; return c; });
+  await A.page.evaluate((c) => offMerge(c, 'qr'), codeB);
+  assert(await A.page.evaluate(() => !localStorage.getItem('yam_off_diag')), 'התקלות לא נמחקו אחרי שהגיעו');
+  // 🔒 קוד זבל / קוד של עצמו לא משנים כלום
+  const before = await names(A);
+  await A.page.evaluate(async (c) => { await offMerge('YAM1zAAAAAAAAAAAAAAAA', 'code'); await offMerge(c, 'code'); }, await A.page.evaluate(() => offPack()));
+  assert((await names(A)) === before, 'קוד לא תקין שינה את הרשימה');
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
+await test('🧠 סנכרון חוזר אחרי כמה ימים: בלי כפילויות, רשימה חדשה מזוהה, מחיקות ועריכות עוברות ולא חוזרות', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.0';
+  const A = await newPage({ userAgent: OFFUA });
+  const B = await newPage();
+  const sync = async () => { const a = await A.page.evaluate(() => offPack()); const b = await B.page.evaluate(() => offPack());
+    const rb = await B.page.evaluate((c) => offMerge(c, 'code'), a); const ra = await A.page.evaluate((c) => offMerge(c, 'code'), b); return [ra, rb]; };
+  const view = (pg) => pg.page.evaluate(() => state.lists.map((l) => l.name + ':' + l.items.map((i) => i.n + (i.done ? '✓' : '') + (i.q ? '×' + i.q : '')).sort().join(',')).sort().join(' | '));
+  // יום ראשון: בכל טלפון רשימת "סופר" משלו, ו"חלב" בשניהם
+  await A.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); });
+  await B.page.evaluate(() => { addItem('חלב', ''); addItem('ביצים', ''); });
+  await sync(); await sync();
+  const v1 = await view(A);
+  assert(v1 === await view(B), 'הטלפונים לא זהים: ' + v1 + ' ≠ ' + (await view(B)));
+  assert(v1 === 'סופר:ביצים,חלב,לחם', 'כפילות אחרי הסנכרון הראשון: ' + v1);
+  // באמצע השבוע: באופליין מוחקים לחם ומסמנים חלב; באתר מוסיפים אורז, משנים כמות, ופותחים רשימה חדשה
+  await A.page.evaluate(() => { const l = state.lists[0]; const i = l.items.findIndex((x) => x.n === 'לחם'); tombAdd('items', [l.items[i]]); l.items.splice(i, 1);
+    const m = l.items.find((x) => x.n === 'חלב'); m.done = true; m.ts = Date.now() + 5; save(); });
+  await B.page.evaluate(() => { addItem('אורז', ''); const e = state.lists[0].items.find((x) => x.n === 'ביצים'); e.q = '2'; e.ts = Date.now() + 5;
+    state.lists.push({ id: uid(), name: 'פסח', items: [{ id: uid(), n: 'מצות', q: '', c: 'אחר', e: '🛒', done: false, ts: Date.now() }], created: Date.now() }); save(); });
+  // יום שלישי: מסנכרנים שוב
+  await A.page.waitForTimeout(50); await sync();
+  const v2 = await view(A);
+  assert(v2 === await view(B), 'אחרי הסנכרון השני הטלפונים לא זהים: ' + v2 + ' ≠ ' + (await view(B)));
+  assert(v2 === 'סופר:אורז,ביצים×2,חלב✓ | פסח:מצות', 'מצב שגוי אחרי יום שלישי: ' + v2);
+  // סנכרון נוסף בלי שינויים: כלום לא זז
+  const [ra, rb] = await sync();
+  assert(!ra.add && !ra.upd && !ra.del && !rb.add && !rb.upd && !rb.del, 'סנכרון בלי שינויים שינה משהו: ' + JSON.stringify([ra, rb]));
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
+await test('🎤🏠🔔 אפליקציה 2.2: כמה מוצרים בקול בלי פסיקים, וידג\'ט הרשימה, ומעקב מבצעים שעובר לאפליקציה', async () => {
+  // הגשרים של 2.2 — כמו באפליקציה
+  const init = () => { window.__w = []; window.__d = []; window.YamApp = { appInfo: () => JSON.stringify({ ver: '2.2', bg: true }), setWidget: (j) => window.__w.push(JSON.parse(j)), setDealWatch: (j) => window.__d.push(JSON.parse(j)) }; };
+  const { ctx, page, errors } = await newPage({ userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2', init });
+  const said = async (t) => page.evaluate(async (t) => { curList().items = []; document.querySelector('#inText').value = t; sendCurrent(); await new Promise((r) => setTimeout(r, 700)); return curList().items.map((i) => i.n + (i.q && String(i.q) !== '1' ? '×' + i.q : '')).join('|'); }, t);
+  let r = await said('חלב ביצים לחם');
+  assert(r === 'חלב|ביצים|לחם', 'הקלטה בלי פסיקים: ' + r);
+  r = await said('שתי חלב שלוש ביצים');
+  assert(r === 'חלב×2|ביצים×3', 'כמויות בהקלטה: ' + r);
+  r = await said('גבינה צהובה עגבניות');
+  assert(r === 'גבינה צהובה|עגבניות', 'מוצר משתי מילים נשבר: ' + r);
+  r = await said('אפונה וגזר');
+  assert(r === 'אפונה וגזר', 'אפונה וגזר התפרק: ' + r);
+  // וידג'ט: אחרי שמירה — שם הרשימה, 4 מוצרים שלא נקנו ו"ועוד"
+  await page.evaluate(() => { curList().items = []; ['חלב', 'לחם', 'ביצים', 'אורז', 'סוכר', 'קמח'].forEach((n) => addItem(n, '')); curList().items[0].done = true; save(); });
+  await page.waitForTimeout(1900);
+  const w = await page.evaluate(() => window.__w[window.__w.length - 1]);
+  assert(w && w.items.length === 4 && w.more === 1 && !w.items.includes('חלב') && w.title, 'וידג\'ט: ' + JSON.stringify(w));
+  // מעקב מבצעים: ההגדרה עוברת לאפליקציה, והאתר לא בודק בעצמו
+  await page.evaluate(() => { state.dealWatch = { on: true, stores: [{ k: 'shufersal:12' }], what: 'words', words: 'במבה, חלב', seen: { 'shufersal:12': ['abc'] }, base: true }; save(); });
+  await page.waitForTimeout(1900);
+  const d = await page.evaluate(() => window.__d[window.__d.length - 1]);
+  assert(d && d.on && d.stores[0] === 'shufersal:12' && d.words.includes('במבה') && d.seen['shufersal:12'][0] === 'abc', 'מעקב מבצעים לא עבר: ' + JSON.stringify(d));
+  assert(await page.evaluate(async () => (await dwCheck85(true)) === 0), 'האתר בודק בעצמו גם כשהאפליקציה בודקת');
+  await page.evaluate(() => { state.dealWatch.on = false; save(); }); await page.waitForTimeout(1900);
+  assert(await page.evaluate(() => window.__d[window.__d.length - 1].on === false), 'כיבוי המעקב לא עבר לאפליקציה');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
 const failed = results.filter((r) => r[0] === '❌').length;

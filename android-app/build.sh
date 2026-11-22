@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # בונה את אפליקציית האנדרואיד (APK חתום) בלי Android Studio:
-#   KEYSTORE=/path/yamshopping.p12 KEYSTORE_PASSWORD=... ./build.sh
+#   KEYSTORE=/path/yamshopping.p12 KEYSTORE_PASSWORD=... ./build.sh           — האפליקציה הרגילה
+#   KEYSTORE=/path/yamshopping.p12 KEYSTORE_PASSWORD=... ./build.sh offline   — 📴 "רשימת קניות אופליין" (בלי אינטרנט, offline/)
 # צריך: Java 17+, Python 3, curl. הכלים יורדים פעם אחת לתיקייה .tools (ונבדקים לפי טביעת אצבע).
-# הפלט: dist/yamshopping-<version>.apk
+# הפלט: dist/yamshopping-<version>.apk (או dist/yamshopping-offline-<version>.apk)
 set -euo pipefail
 cd "$(dirname "$0")"
 TOOLS=.tools
@@ -33,7 +34,20 @@ fi
 : "${KEYSTORE:?KEYSTORE (קובץ המפתח) לא הוגדר}"
 : "${KEYSTORE_PASSWORD:?KEYSTORE_PASSWORD לא הוגדר}"
 ALIAS="${KEYSTORE_ALIAS:-yamshopping}"
-VERSION=$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' AndroidManifest.xml)
+FLAVOR="${1:-app}"
+if [ "$FLAVOR" = offline ]; then
+  MANIFEST=offline/AndroidManifest.xml
+  RENAME=(--rename-manifest-package com.yamshopping.offline)
+  # רק מה שהאפליקציה האופליין צריכה: בלי עדכונים מהאינטרנט, התראות או בדיקות ברקע
+  SRCS=(offline/src src/com/yamshopping/app/Offline.java src/com/yamshopping/app/Bt.java src/com/yamshopping/app/Crash.java src/com/yamshopping/app/Place.java)
+  NAME=yamshopping-offline
+else
+  MANIFEST=AndroidManifest.xml
+  RENAME=()
+  SRCS=(src)
+  NAME=yamshopping
+fi
+VERSION=$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' "$MANIFEST")
 
 rm -rf "$BUILD"/*
 # 🧳 2.1: עותק של האתר בתוך האפליקציה — נפתח רק כשאין אינטרנט ואין עותק שמור (Offline.java).
@@ -48,13 +62,13 @@ cp -r "$SITE/js" "$SITE/vendor" "$SITE/icons" "$OFF/"
 echo "🧩 משאבים"
 "$TOOLS/aapt2" compile --dir res -o "$BUILD/res.zip"
 mkdir -p "$BUILD/gen"
-"$TOOLS/aapt2" link -I "$TOOLS/android-framework.jar" --manifest AndroidManifest.xml \
+"$TOOLS/aapt2" link -I "$TOOLS/android-framework.jar" --manifest "$MANIFEST" "${RENAME[@]}" \
   -A "$BUILD/assets" --java "$BUILD/gen" -o "$BUILD/res.apk" "$BUILD/res.zip"
 
 echo "☕ קוד"
 mkdir -p "$BUILD/classes"
 javac -nowarn --release 8 -encoding UTF-8 -classpath "$TOOLS/android-all.jar" \
-  -d "$BUILD/classes" $(find src "$BUILD/gen" -name '*.java')
+  -d "$BUILD/classes" $(find "${SRCS[@]}" "$BUILD/gen" -name '*.java')
 mkdir -p "$BUILD/dex"
 java -cp "$TOOLS/r8lib.jar" com.android.tools.r8.D8 --release --min-api 24 --lib "$TOOLS/android-all.jar" \
   --output "$BUILD/dex" $(find "$BUILD/classes" -name '*.class')
@@ -62,6 +76,6 @@ java -cp "$TOOLS/r8lib.jar" com.android.tools.r8.D8 --release --min-api 24 --lib
 echo "📦 אריזה וחתימה"
 python3 tools/zipalign.py "$BUILD/res.apk" "$BUILD/dex/classes.dex" "$BUILD/unsigned.apk"
 javac -nowarn -cp "$TOOLS/apksig.jar" -d "$BUILD/signer" tools/Sign.java
-OUT="dist/yamshopping-$VERSION.apk"
+OUT="dist/$NAME-$VERSION.apk"
 java --add-exports java.base/sun.security.x509=ALL-UNNAMED --add-exports java.base/sun.security.pkcs=ALL-UNNAMED -cp "$TOOLS/apksig.jar:$BUILD/signer" Sign "$KEYSTORE" "$ALIAS" "$BUILD/unsigned.apk" "$OUT"
 echo "✅ $OUT"

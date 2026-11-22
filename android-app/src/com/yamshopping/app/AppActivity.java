@@ -63,7 +63,7 @@ public class AppActivity extends Activity {
     static final int MAX_DOWNLOAD_BYTES = 30 * 1024 * 1024;
 
     // בתוך האפליקציה הדפים מקבלים סימון בדפדפן, כדי שהאתר ידע (למשל להסביר שכניסה עם גוגל לא עובדת כאן)
-    static final String UA_MARK = " YamShoppingApp/2.1";
+    static final String UA_MARK = " YamShoppingApp/2.2";
 
     // החלון הפתוח כרגע — כדי שהתקנת העדכון (שרצה ברקע) תוכל לדווח לאתר איפה היא עומדת
     static volatile AppActivity current;
@@ -106,6 +106,7 @@ public class AppActivity extends Activity {
     WebChromeClient.FileChooserParams pendingChooser; // מחכה להרשאת מצלמה לפני "לצלם את הברקוד"
     PermissionRequest pendingWebPerm;
     Speech speech;
+    Bt bt; // 📡 2.2: סנכרון בבלוטות' עם "רשימת קניות אופליין" או עם טלפון אחר
     String pendingGeoOrigin;
     GeolocationPermissions.Callback pendingGeoCallback;
     String[] pendingSave; // name, mime, base64 — מחכה להרשאת אחסון (אנדרואיד 9 ומטה)
@@ -116,6 +117,7 @@ public class AppActivity extends Activity {
         current = this;
         Crash.install(this); // 🐞 2.2: קריסה של האפליקציה נשמרת ונשלחת ליומן התקלות בפתיחה הבאה
         speech = new Speech(this);
+        bt = new Bt(this, json -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript("window.offBt&&offBt(" + json + ")", null); }));
         Notifier.channels(this);
         CheckJob.schedule(this);
         Wake.arm(this); // 🔋 2.2: גיבוי לבדיקה ברקע
@@ -808,7 +810,9 @@ public class AppActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        if (code == Speech.REQ_MIC) {
+        if (code == Bt.REQ_PERM) {
+            bt.onPermission();
+        } else if (code == Speech.REQ_MIC) {
             speech.onPermission(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
         } else if (code == REQ_WEB_PERMS) {
             finishWebPerm();
@@ -832,6 +836,7 @@ public class AppActivity extends Activity {
     @Override
     protected void onActivityResult(int code, int result, Intent data) {
         if (code == Speech.REQ_INTENT) { speech.onActivityResult(result, data); return; }
+        if (bt.onResult(code)) return;
         if (code == REQ_CAPTURE) {
             ValueCallback<Uri[]> cb = fileCallback;
             fileCallback = null;
@@ -863,6 +868,65 @@ public class AppActivity extends Activity {
     // ---------- שמירת קבצים שהאתר מוריד ----------
 
     class Bridge {
+        /** 🏠 2.2: וידג'ט הרשימה במסך הבית (js/088-native22.js). רק מהאתר שלנו */
+        @JavascriptInterface
+        public void setWidget(String json) {
+            onOurPage(() -> Widget.set(getApplicationContext(), json));
+        }
+
+        /** 🔔 2.2: מעקב מבצעים גם כשהאפליקציה סגורה — ההגדרה מהאתר (js/085.js), והבדיקה ב-CheckJob פעם בשעה */
+        @JavascriptInterface
+        public void setDealWatch(String json) {
+            onOurPage(() -> Deals.set(getApplicationContext(), json));
+        }
+
+        /** 📡 2.2: סנכרון בלי אינטרנט (js/087-offsync.js) — בלוטות' ושליחת קוד הסנכרון. רק מהאתר שלנו */
+        @JavascriptInterface
+        public String btState() {
+            return bt.state();
+        }
+
+        @JavascriptInterface
+        public void btListen(String code, boolean visible) {
+            onOurPage(() -> bt.listen(code, visible));
+        }
+
+        @JavascriptInterface
+        public void btJoin(String code) {
+            onOurPage(() -> bt.join(code));
+        }
+
+        @JavascriptInterface
+        public void btConnect(String addr, String code) {
+            onOurPage(() -> bt.connect(addr, code));
+        }
+
+        /** הודעה בערוץ הפתוח לטלפון השני (סנכרון חי) */
+        @JavascriptInterface
+        public boolean btSend(String text) {
+            return bt.send(text);
+        }
+
+        @JavascriptInterface
+        public void btStop() {
+            runOnUiThread(() -> bt.stop());
+        }
+
+        @JavascriptInterface
+        public void shareText(String text) {
+            if (text == null || text.isEmpty()) return;
+            onOurPage(() -> {
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("text/plain");
+                i.putExtra(Intent.EXTRA_TEXT, text);
+                try {
+                    startActivity(Intent.createChooser(i, null));
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(AppActivity.this, "אין בטלפון אפליקציה לשליחה", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
         /** 🐞 2.2: הקריסה האחרונה של האפליקציה (JSON) או "" — האתר שולח אותה ליומן התקלות (js/026.js) */
         @JavascriptInterface
         public String lastCrash() {
@@ -955,6 +1019,8 @@ public class AppActivity extends Activity {
                 o.put("battery", Power.state(AppActivity.this)); // 2.1: "ok" / "ask" / "na"; 2.2: גם "blocked"
                 o.put("batLost", Power.lost(AppActivity.this)); // 2.2: היה "ללא הגבלות" והטלפון ביטל לבד
                 o.put("autostart", Power.xiaomi()); // 2.1: שיאומי — צריך גם "הפעלה אוטומטית"
+                o.put("widget", true); // 2.2: וידג'ט הרשימה
+                o.put("dealWatch", Deals.on(AppActivity.this)); // 2.2: מעקב מבצעים ברקע פעיל בטלפון
                 o.put("receiptJson", true); // 2.2: קבלת אושר עד נפתחת מהטלפון
                 o.put("splash", true); // 2.1: האתר מנגן את אנימציית הפתיחה (גם אחרי זמן ארוך ברקע)
                 o.put("offline", Offline.has(AppActivity.this)); // 2.1: עותק של האתר בתוך האפליקציה
@@ -1194,6 +1260,13 @@ public class AppActivity extends Activity {
     }
 
     @SuppressWarnings("deprecation")
+    void onOurPage(Runnable r) {
+        runOnUiThread(() -> {
+            String page = web == null ? null : web.getUrl();
+            if (page != null && isOurPage(Uri.parse(page))) r.run();
+        });
+    }
+
     void saveFile(String name, String mime, String base64) {
         String file = safeName(name);
         if (mime == null || mime.isEmpty()) mime = "application/octet-stream";
@@ -1325,6 +1398,7 @@ public class AppActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (bt != null) bt.stop();
         if (fileCallback != null) fileCallback.onReceiveValue(null);
         if (current == this) current = null;
         if (netBack != null) {

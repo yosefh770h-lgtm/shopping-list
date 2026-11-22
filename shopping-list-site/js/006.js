@@ -14,7 +14,7 @@ const MAIN_SITE='https://yamshopping.com';
   location.replace(MAIN_SITE+location.pathname+u);
 }catch(e){}})();
 let sb=null;
-try{if(window.supabase&&window.supabase.createClient)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}catch(e){console.error('supabase init failed',e);}
+try{if(!OFF_APP&&window.supabase&&window.supabase.createClient)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}catch(e){console.error('supabase init failed',e);}
 let authUser=null; /* המשתמש המחובר מ-Supabase */
 /* תפקידים: בעלים (המייל שלך) · מנהל נוסף · צוות פיקוח — נקבעים בשרת, כאן רק מחליטים מה להציג */
 let myRole=null;
@@ -949,13 +949,14 @@ save=function(localOnly){_localSave();if(!localOnly){if(authUser||(state.user&&s
    המיזוג (mergeLists) לפי זמן השינוי של כל מוצר — כך שמה שסימנתם בחנות לא נדרס, וגם שינויים של המשפחה נשמרים. */
 const OFF_KEY='yam_off_pending';
 let offPending=0,offRetryT=null,offOkT=null;try{offPending=+localStorage.getItem(OFF_KEY)||0;}catch(e){}
-function isOffline(){return navigator.onLine===false;}
+function isOffline(){return OFF_APP||navigator.onLine===false;}
 function offMark(n){const was=offPending;offPending=Math.max(0,n|0);try{offPending?localStorage.setItem(OFF_KEY,String(offPending)):localStorage.removeItem(OFF_KEY);}catch(e){}
   if(was&&!offPending&&!isOffline()){offBar(T('✅ חזרה הקליטה — הרשימה סונכרנה','✅ Back online — your list is synced'),true);return;}
   offBar();}
 function offBar(okMsg,ok){const b=document.querySelector('#offBar');if(!b)return;clearTimeout(offOkT);
   let m='';
   if(okMsg)m=okMsg;
+  else if(OFF_APP)m='';
   else if(isOffline())m=T('📴 אין אינטרנט — הכל עובד מהמכשיר. מחירים, צ׳אט ושיתוף יחזרו עם החיבור','📴 Offline — everything works from this device. Prices, chat and sharing return when online')+(offPending&&authUser?T(' · '+offPending+' שינויים יישלחו',' · '+offPending+' changes to sync'):'');
   else if(offPending&&authUser)m=T('⏳ '+offPending+' שינויים עוד לא נשלחו — מנסים שוב...','⏳ '+offPending+' changes not sent yet — retrying...');
   b.textContent=m;b.classList.toggle('on',!!m);b.classList.toggle('ok',!!ok);

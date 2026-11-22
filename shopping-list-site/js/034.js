@@ -230,16 +230,17 @@ function shortcut26(){let a='';try{const qp=new URLSearchParams(location.search)
 const _v26After=afterEnter;afterEnter=function(){const r=_v26After.apply(this,arguments);guestBar26();shortcut26();return r;};
 
 /* ---------- 📲 2.0 באפליקציה: קיצורי דרך באייקון, "שיתוף" אל האפליקציה, מסך דלוק במצב קנייה, סריקה ירוקה ---------- */
-/* ?a=new / scan / voice — מהלחיצה הארוכה על האייקון. ?a=paste&t=... — טקסט ששיתפו אל ים שופינג (כל שורה מוצר). ?a=cheap נשאר אצל shortcut26 */
+/* ?a=new / scan / voice / add ("+" בווידג'ט, 2.2) — מהלחיצה הארוכה על האייקון. ?a=paste&t=... — טקסט ששיתפו אל ים שופינג (כל שורה מוצר). ?a=cheap נשאר אצל shortcut26 */
 let app20={a:'',t:''};
 try{const qp=new URLSearchParams(location.search),a=qp.get('a')||'';
-  if(/^(new|scan|voice|paste)$/.test(a)){app20={a,t:a==='paste'?(qp.get('t')||'').slice(0,3000):''};qp.delete('a');qp.delete('t');history.replaceState(null,'',location.pathname+(qp.toString()?'?'+qp:'')+location.hash);}}catch(e){}
+  if(/^(new|scan|voice|add|paste)$/.test(a)){app20={a,t:a==='paste'?(qp.get('t')||'').slice(0,3000):''};qp.delete('a');qp.delete('t');history.replaceState(null,'',location.pathname+(qp.toString()?'?'+qp:'')+location.hash);}}catch(e){}
 function run20(){if(!app20.a||$26('#login.open'))return; /* לא מחובר — מחכים לכניסה, ואז afterEnter קורא שוב */
   const {a,t}=app20;app20={a:'',t:''};
   setTimeout(()=>{try{setTab('list');
     if(a==='new'){const b=document.querySelector('#chips [data-new]');if(b)b.click();}
     else if(a==='scan'){const b=$26('#btnScan45');if(b)b.click();}
     else if(a==='voice'){const b=$26('#btnMic');if(b)b.click();}
+    else if(a==='add'){const i=$26('#inText');if(i)i.focus();}
     else if(a==='paste')paste20(t);}catch(e){}},600);}
 /* "תקנה בבקשה:\nחלב 3\nלחם\nביצים" ← חלב ×3, לחם, ביצים. שורת פתיחה שנגמרת בנקודתיים ושורות של קישורים לא נכנסות */
 function paste20(text){

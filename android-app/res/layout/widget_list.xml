@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 🏠 2.2: וידג'ט הרשימה במסך הבית (Widget.java). רק תצוגה — לחיצה פותחת את האפליקציה -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:layoutDirection="rtl"
+    android:background="@drawable/widget_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/w_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#1E3A5F"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textDirection="rtl"
+            android:text="@string/app_name" />
+
+        <TextView
+            android:id="@+id/w_add"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:background="@drawable/widget_add"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:contentDescription="@string/w_add"
+            android:text="+" />
+    </LinearLayout>
+
+    <TextView android:id="@+id/w_i1" style="@style/WidgetItem" />
+    <TextView android:id="@+id/w_i2" style="@style/WidgetItem" />
+    <TextView android:id="@+id/w_i3" style="@style/WidgetItem" />
+    <TextView android:id="@+id/w_i4" style="@style/WidgetItem" />
+
+    <TextView
+        android:id="@+id/w_more"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="#6B7280"
+        android:textSize="13sp"
+        android:textDirection="rtl"
+        android:text="@string/w_open" />
+</LinearLayout>

@@ -2,8 +2,8 @@
 /* 🔄 עדכון לאפליקציה לאנדרואיד: מי שפותח גרסה ישנה רואה בכניסה פס קטן "יש עדכון" שנעלם לבד אחרי כמה שניות.
    רק הודעה — בלי הורדה מתוך האפליקציה (את העדכון מורידים מהאתר בדפדפן). הגרסה האחרונה — מ-download/app-version.json */
 (function(){
-  let APK_LATEST='2.1';
-  const m=(navigator.userAgent||'').match(/YamShoppingApp\/([0-9.]+)/);if(!m)return;
+  let APK_LATEST='2.2';
+  const m=(navigator.userAgent||'').match(/YamShoppingApp\/([0-9.]+)/);if(!m||window.OFF_APP)return;
   const older=(a,b)=>{a=a.split('.').map(Number);b=b.split('.').map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){const x=a[i]||0,y=b[i]||0;if(x!==y)return x<y;}return false;};
   function show(){
     if(document.querySelector('#apkUp56'))return;

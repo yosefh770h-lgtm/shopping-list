@@ -32,7 +32,7 @@
   {const _s=onSignedIn;onSignedIn=async function(){const r=await _s.apply(this,arguments);setTimeout(()=>{claim();ping();},3000);return r;};}
 
   /* ---------- בבק אופיס ---------- */
-  const SRC={login:'מסך הכניסה',menu:'התפריט',link:'קישור #apk',install:'—'};
+  const SRC={login:'מסך הכניסה',menu:'התפריט',link:'קישור #apk',install:'—',offline:'📴 האפליקציה האופליין'};
   const VIA=v=>v==='site'?'<small class="muted">🌐 הורד מהאתר שלנו</small>':v==='other'?'<span class="kd55 x">🔗 ממקום אחר</span>':'<small class="muted">מקור לא ידוע</small>';
   const when55=t=>{const d=new Date(t);return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});};
   const place=(r,adm)=>{const g=r.geo||{};const city=[g.city,g.region&&g.region!==g.city?g.region:'',g.country||(r.country==='IL'?'ישראל':r.country)].filter(Boolean).join(', ');
@@ -46,7 +46,7 @@
     card.innerHTML='<h2>🤖 מי מוריד את האפליקציה וכמה</h2><p class="muted">כל לחיצה על "הורדת האפליקציה (APK)" באתר, וכל טלפון שבו האפליקציה נפתחה בפעם הראשונה (כלומר הותקנה). מי שלא מחובר מופיע כאורח — ואם נרשם או נכנס אחר כך, רואים מי זה.'+(adm?' IP ומיקום משוער (עיר) — לפי הכתובת, לא מדויק.':' IP מוצג רק למנהלים.')+(permOk('emails')?'':' המיילים מוסתרים — רק שמות.')+'</p>'+
       '<p class="muted">💡 כדי שכל הורדה תיספר, משתפים את הקישור <span dir="ltr">yamshopping.com/#apk</span> (נפתח חלון ההורדה). קישור ישיר לקובץ עצמו לא נספר.</p>'+
       '<div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:6px"><select id="apk55d" style="max-width:150px"><option value="1">היום</option><option value="7">7 ימים</option><option value="30" selected>30 יום</option><option value="90">90 יום</option><option value="365">שנה</option></select>'+
-      '<select id="apk55k" style="max-width:220px"><option value="">הורדות + פתיחות</option><option value="download">⬇️ רק הורדות</option><option value="open">📲 רק "הותקנה ונפתחה"</option><option value="other">🔗 רק מי שהוריד ממקום אחר</option></select>'+
+      '<select id="apk55k" style="max-width:220px"><option value="">הורדות + פתיחות</option><option value="download">⬇️ רק הורדות</option><option value="open">📲 רק "הותקנה ונפתחה"</option><option value="other">🔗 רק מי שהוריד ממקום אחר</option><option value="off">📴 רק האפליקציה האופליין</option></select>'+
       '<select id="apk55w" style="max-width:200px"><option value="">כולם</option><option value="users">👤 רק משתמשים רשומים</option><option value="guests">רק אורחים</option></select><input id="apk55q" placeholder="חיפוש שם, מייל או עיר" style="max-width:200px"></div>'+
       '<div id="apk55b" class="muted">טוען...</div>'+
       '<h3>📱 מי משתמש באפליקציה — מכל מקום</h3><p class="muted">כל טלפון שבו האפליקציה נפתחה, לא משנה מאיפה הורידו אותה (האתר שלנו, אוגן פליי, קובץ שהועבר בוואטסאפ...) ובאיזו גרסה. נרשם פעם ביום לכל טלפון. "ממקום אחר" = לא הייתה לחיצה על ההורדה באתר שלנו מאותה רשת או מאותו חשבון ב-3 הימים שלפני ההתקנה (הערכה, לא ודאי).</p>'+
@@ -57,7 +57,7 @@
     let rows=[],plat=null,fol=null;
     const v=s=>card.querySelector(s).value;
     const draw=()=>{const k=v('#apk55k'),w=v('#apk55w'),q=v('#apk55q').trim().toLowerCase(),days=+v('#apk55d')||30;
-      const list=rows.filter(r=>(!k||(k==='other'?r.kind==='open'&&r.via==='other':r.kind===k))&&(!w||(w==='users'?!!r.user_id:!r.user_id))&&(!q||[r.name,r.email,r.ip,(r.geo||{}).city,(r.geo||{}).country].some(x=>String(x||'').toLowerCase().includes(q))));
+      const list=rows.filter(r=>(!k||(k==='other'?r.kind==='open'&&r.via==='other':k==='off'?/^off_/.test(r.kind)||r.src==='offline':r.kind===k))&&(!w||(w==='users'?!!r.user_id:!r.user_id))&&(!q||[r.name,r.email,r.ip,(r.geo||{}).city,(r.geo||{}).country].some(x=>String(x||'').toLowerCase().includes(q))));
       const box=card.querySelector('#apk55b');
       const dl=rows.filter(r=>r.kind==='download'),op=rows.filter(r=>r.kind==='open');
       const people=new Set(dl.map(r=>r.user_id||r.ip||r.id)).size;
@@ -67,16 +67,24 @@
         (fol!=null?'<div><b>'+fol+'</b><small>🔔 עוקבים אחרי עדכוני האפליקציה (מייל + פעמון)</small></div>':'')+'</div>';
       /* גרף לפי ימים (או לפי שעות כשבוחרים "היום") */
       const nb=days===1?24:Math.min(days,90),step=days===1?36e5:Math.ceil(days/nb)*864e5,end=days===1?Math.ceil(Date.now()/36e5)*36e5:new Date(new Date().toDateString()).getTime()+864e5;
-      const bins=Array.from({length:nb},()=>[0,0]);rows.forEach(r=>{const i=nb-1-Math.floor((end-new Date(r.at))/step);if(i>=0&&i<nb)bins[i][r.kind==='open'?1:0]++;});
+      const bins=Array.from({length:nb},()=>[0,0]);rows.forEach(r=>{if(/^off_/.test(r.kind))return;const i=nb-1-Math.floor((end-new Date(r.at))/step);if(i>=0&&i<nb)bins[i][r.kind==='download'?0:1]++;});
       const mx=Math.max(1,...bins.map(b=>b[0]+b[1]));
       const lab=t=>{const d=new Date(t);return days===1?d.getHours()+':00':d.getDate()+'/'+(d.getMonth()+1);};
       const chart='<div class="ch55" role="img" aria-label="גרף הורדות">'+bins.map((b,i)=>'<span title="'+lab(end-(nb-i)*step)+': '+b[0]+' הורדות, '+b[1]+' פתיחות"><i style="height:'+(b[0]/mx*100)+'%"></i><i class="o" style="height:'+(b[1]/mx*100)+'%"></i></span>').join('')+'</div>'+
         '<div class="chx55"><span>'+lab(end-nb*step)+'</span><span>'+lab(end-Math.ceil(nb/2)*step)+'</span><span>'+(days===1?'עכשיו':'היום')+'</span></div><div class="lg55"><i></i>הורדות <i class="o"></i>הותקנה ונפתחה</div>';
-      if(!list.length){box.className='';box.innerHTML=kp+chart+'<p class="muted">אין הורדות בטווח הזה.</p>';return;}
-      box.className='';box.innerHTML=kp+chart+'<div class="tw" tabindex="0" role="region" aria-label="הורדות"><table><thead><tr><th>מתי</th><th>מה</th><th>מי</th><th>מאיפה</th><th>מכשיר</th><th>לחצו ב</th></tr></thead><tbody>'+
-        list.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+'</td><td>'+(r.kind==='open'?'<span class="kd55 o">📲 הותקנה ונפתחה</span>'+(r.via?'<br>'+VIA(r.via):'')+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):'<span class="kd55">⬇️ הורדה</span>')+'</td>'+
+      /* 📴 האפליקציה האופליין: כמה טלפונים, כמה חיבורים, למה התחברו (אתר / אפליקציה) ואיך (בלוטות' / QR / קוד) */
+      const sy=rows.filter(r=>r.kind==='off_sync'),cnt=f=>sy.filter(f).length;
+      const offDevs=new Set(rows.filter(r=>/^off_/.test(r.kind)).map(r=>r.dev||'#'+r.id)).size,wk=new Set(sy.filter(r=>Date.now()-new Date(r.at)<7*864e5).map(r=>r.dev)).size;
+      const offk='<h3 id="off55">📴 האפליקציה האופליין — כמה מחוברים</h3><div class="k55">'+[[offDevs,'📴 טלפונים עם האפליקציה האופליין שהתחברו'],[wk,'🟢 מזה התחברו ב-7 הימים האחרונים'],[sy.length,'🔗 חיבורים (נספר פעם ב-6 שעות לכל טלפון)'],
+        [cnt(r=>/^site-/.test(r.src)),'🌐 חיבורים לאתר'],[cnt(r=>/^app-/.test(r.src)),'📱 חיבורים לאפליקציה הרגילה'],[cnt(r=>/-bt$/.test(r.src)),"🔵 בבלוטות'"],[cnt(r=>/-qr$/.test(r.src)),'🔳 ב-QR'],[cnt(r=>/-code$/.test(r.src)),'✉️ בקוד שיתוף'],
+        [dl.filter(r=>r.src==='offline').length,'⬇️ הורדות של האופליין מהאתר']].map(x=>'<div><b>'+x[0]+'</b><small>'+x[1]+'</small></div>').join('')+'</div>'+
+        '<p class="muted">נספר כשאפליקציה אופליין מתחברת לאתר או לאפליקציה הרגילה (שם יש אינטרנט). חיבור בין שתי אפליקציות אופליין לא נספר, כי לשתיהן אין אינטרנט. החיבורים נספרים מ-22/11/2026.</p>';
+      const OFFV={bt:"🔵 בלוטות'",qr:'🔳 QR',code:'✉️ קוד'};
+      if(!list.length){box.className='';box.innerHTML=kp+offk+chart+'<p class="muted">אין הורדות בטווח הזה.</p>';return;}
+      box.className='';box.innerHTML=kp+offk+chart+'<div class="tw" tabindex="0" role="region" aria-label="הורדות"><table><thead><tr><th>מתי</th><th>מה</th><th>מי</th><th>מאיפה</th><th>מכשיר</th><th>לחצו ב</th></tr></thead><tbody>'+
+        list.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+'</td><td>'+(r.kind==='off_sync'?'<span class="kd55 o">📴 אופליין — התחברה '+(/^app-/.test(r.src)?'לאפליקציה':'לאתר')+' · '+(OFFV[String(r.src).split('-')[1]]||'')+'</span>'+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):r.kind==='off_open'?'<span class="kd55 o">📴 אופליין — נראתה בסנכרון</span>'+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):r.kind==='open'?'<span class="kd55 o">📲 הותקנה ונפתחה</span>'+(r.via?'<br>'+VIA(r.via):'')+(r.app_ver?'<br><small class="muted">גרסה '+esc(r.app_ver)+'</small>':''):'<span class="kd55">⬇️ הורדה</span>')+'</td>'+
           '<td>'+(r.user_id?'<b>'+esc(r.name||'משתמש/ת')+'</b>'+(r.guest?' <small class="muted">(הוריד/ה כאורח ונרשם/ה אחר כך)</small>':'')+(r.email?'<br><small class="muted" dir="ltr">'+esc(r.email)+'</small>':''):'<span class="muted">אורח/ת (לא מחובר)</span>')+'</td>'+
-          '<td data-l="מאיפה">'+place(r,adm)+'</td><td data-l="מכשיר"><small>'+esc(r.device||'')+'</small></td>'+(r.kind==='open'?'<td class="nol55"></td>':'<td data-l="לחצו ב"><small>'+esc(SRC[r.src]||r.src||'—')+'</small></td>')+'</tr>').join('')+'</tbody></table></div>'+
+          '<td data-l="מאיפה">'+place(r,adm)+'</td><td data-l="מכשיר"><small>'+esc(r.device||'')+'</small></td>'+(r.kind!=='download'?'<td class="nol55"></td>':'<td data-l="לחצו ב"><small>'+esc(SRC[r.src]||r.src||'—')+'</small></td>')+'</tr>').join('')+'</tbody></table></div>'+
         '<p class="muted" style="margin-top:6px">'+list.length+' שורות</p>';};
     let act=null,latest='';
     if(window.apkVer57)apkVer57().then(x=>{if(x&&x.version){latest=String(x.version);drawU();}});

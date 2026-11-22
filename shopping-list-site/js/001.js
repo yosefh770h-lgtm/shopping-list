@@ -1,3 +1,5 @@
+/* 📴 "רשימת קניות אופליין" (אפליקציה נפרדת, בלי אינטרנט בכלל): בלי ענן ובלי מחירים, ועם 📡 סנכרון (js/087-offsync.js) */
+var OFF_APP=/YamShoppingOffline\//.test(navigator.userAgent||'');if(OFF_APP)document.documentElement.classList.add('offapp');
 /* 🎤 באפליקציה 1.7 ומעלה: בחלון של האפליקציה הדפדפן לא מקליט בעצמו, אז "רשימה קולית" עוברת לזיהוי הדיבור של הטלפון דרך האפליקציה.
    מתנהג כמו SpeechRecognition של הדפדפן, כך ששאר האתר לא צריך לדעת את ההבדל */
 (function(){var A=window.YamApp;if(!A||typeof A.speechStart!=='function')return;var cur=null,seq=0;
