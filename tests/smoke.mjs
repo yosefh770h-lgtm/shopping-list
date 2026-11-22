@@ -2597,13 +2597,15 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   await B.page.evaluate(() => offSyncOpen('code')); await B.page.waitForSelector('#offMail', { timeout: 5000 });
   await A.page.evaluate(() => offSyncOpen('code')); await A.page.waitForSelector('#offMine', { timeout: 5000 });
   assert(!(await A.page.locator('#offMail').count()), 'באופליין יש כפתור מייל');
-  // 📅 באופליין: תאריך עברי ופרשה מעל הרשימה, ובלחיצה — זמני היום
+  // 📅 באופליין ובאתר: תאריך עברי ופרשה מעל הרשימה, ובלחיצה — זמני היום
   await A.page.evaluate(() => closeSheet && closeSheet());
   const hl = await A.page.locator('.hcline').textContent();
   assert(/תשפ|תשצ/.test(hl) && /(פרשת|שבת:)/.test(hl), 'אין תאריך עברי / פרשה באופליין: ' + hl);
-  assert(!(await B.page.locator('.hcline').count()), 'הלוח העברי מופיע גם באתר');
+  assert(/(פרשת|שבת:)/.test(await B.page.locator('.hcline').textContent()), 'אין לוח עברי באתר');
   await A.page.click('.hcline'); await A.page.waitForSelector('.hczm', { timeout: 5000 });
   assert(/הנץ החמה/.test(await A.page.locator('.hczm').textContent()), 'אין זמני היום');
+  await B.page.evaluate(() => closeSheet && closeSheet()); await B.page.click('.hcline'); await B.page.waitForSelector('.hczm', { timeout: 5000 });
+  assert(await B.page.locator('#hcGeo').count() && !(await A.page.locator('#hcGeo').count()), 'כפתור מיקום מדויק: באתר כן, באופליין לא');
   assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
   await A.ctx.close(); await B.ctx.close();
 });

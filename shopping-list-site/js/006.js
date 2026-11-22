@@ -156,14 +156,6 @@ function shabbatTimes(city){
     return {city:cityName(name),candles:cl?T('הדלקת נרות','Candle lighting')+': '+hm(cl):'',candlesDate:cl?HC.dateOf(cr):null,havdalah:hv?T('הבדלה','Havdalah')+': '+hm(hv,true):''};
   }catch(e){return null;}
 }
-function jewishLine(){
-  const today=holidaysOn(new Date()).map(heName);const par=nextParasha();
-  let s='';
-  if(today.length)s+=' · '+today.map(esc).join(' · ');
-  if(par)s+='<span class="jday">📜 '+esc(par)+'</span>';
-  {const df=typeof dafYomi==='function'?dafYomi():'';if(df)s+='<span class="jday">📚 '+T('דף יומי: ','Daf Yomi: ')+esc(df)+'</span>';}
-  return s;
-}
 function findHolidayDate(name){
   const want=normHoliday(name==='שמחת תורה'?'שמיני עצרת':name);
   const evs=upcomingHolidays(400);
