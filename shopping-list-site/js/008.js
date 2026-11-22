@@ -171,14 +171,7 @@ function zmanimToday(){
 }
 function zmanimText(){const z=zmanimToday();if(!z)return T('לא הצלחתי לחשב זמנים כרגע 🙁','Could not compute times 🙁');
   return '📅 '+T('זמני היום ב','Times today in ')+z.place+' ('+hebDate(new Date())+'):\n🌅 '+T('זריחה','Sunrise')+': '+z.sunrise+'\n📖 '+T('סוף זמן ק"ש (גר"א)','Latest Shema')+': '+z.shma+'\n☀️ '+T('חצות','Midday')+': '+z.chatzot+'\n🕐 '+T('מנחה גדולה','Mincha Gedola')+': '+z.minchaG+'\n🕓 '+T('מנחה קטנה','Mincha Ketana')+': '+z.minchaK+'\n🕔 '+T('פלג המנחה','Plag HaMincha')+': '+z.plag+'\n🌇 '+T('שקיעה','Sunset')+': '+z.sunset+'\n✨ '+T('צאת הכוכבים','Nightfall')+': '+z.tzeit+'\n📚 '+T('הדף היומי: ','Daf Yomi: ')+z.daf+'\n\n'+T('לוח מלא ומדויק לפי המנהגים — באתר "עיתים לבינה":','Full calendar at Itim Labina:')+'\n'+itimUrl();}
-function openZmanim(){const z=zmanimToday();const sh=shabbatTimes(userCity());
-  openSheet('📅 '+T('זמני היום','Today\'s times'),(z?'<div class="zm"><span>📍 '+T('מקום','Place')+'</span><b>'+esc(z.place)+'</b><span>📅 '+T('תאריך','Date')+'</span><b>'+esc(hebDate(new Date()))+'</b><span>🌄 '+T('עלות השחר','Dawn')+'</span><b>'+z.alot+'</b><span>🌅 '+T('זריחה','Sunrise')+'</span><b>'+z.sunrise+'</b><span>📖 '+T('סוף זמן ק"ש','Latest Shema')+'</span><b>'+z.shma+'</b><span>☀️ '+T('חצות','Midday')+'</span><b>'+z.chatzot+'</b><span>🕐 '+T('מנחה גדולה','Mincha Gedola')+'</span><b>'+z.minchaG+'</b><span>🕓 '+T('מנחה קטנה','Mincha Ketana')+'</span><b>'+z.minchaK+'</b><span>🕔 '+T('פלג המנחה','Plag HaMincha')+'</span><b>'+z.plag+'</b><span>🌇 '+T('שקיעה','Sunset')+'</span><b>'+z.sunset+'</b><span>✨ '+T('צאת הכוכבים','Nightfall')+'</span><b>'+z.tzeit+'</b><span>📚 '+T('הדף היומי','Daf Yomi')+'</span><b>'+esc(z.daf)+'</b></div>':'')+
-  (sh?'<div class="zm" style="margin-top:10px"><span>🕯️ '+T('הדלקת נרות','Candles')+'</span><b>'+esc(sh.candles.replace(/^[^:]*:\s*/,''))+'</b><span>✨ '+T('צאת השבת','Havdalah')+'</span><b>'+esc(sh.havdalah.replace(/^[^:]*:\s*/,''))+'</b>'+(nextParasha()?'<span>📜 '+T('פרשה','Parasha')+'</span><b>'+esc(nextParasha())+'</b>':'')+'</div>':'')+
-  '<p class="muted-note">'+T('הזמנים מחושבים במכשיר לפי המיקום שלך. ללוח המלא והמדויק לפי המנהגים — "עיתים לבינה":','Times are computed on your device. Full calendar:')+'</p><a class="btn" style="display:block;text-align:center;text-decoration:none" href="'+esc(itimUrl())+'" target="_blank" rel="noopener">📅 '+T('לוח הזמנים המלא — עיתים לבינה','Full calendar — Itim Labina')+'</a>'+
-  '<button class="btn sec" id="zmGeo" style="width:100%;margin-top:8px">📍 '+T('לפי המיקום המדויק שלי','Use my exact location')+'</button>');
-  $8('#zmGeo').onclick=async()=>{const g=await exactLocation();if(g)openZmanim();else flash(T('⚠️ לא קיבלתי מיקום — בדקו שהרשאת המיקום פתוחה','⚠️ No location permission'));};
-}
-$8('#miZmanim').onclick=openZmanim;
+/* המסך של זמני היום — js/090-hcal-ui.js (openZmanim) */
 
 /* ---------- מיקום מדויק: החנויות והמבצעים הכי קרובים ---------- */
 function exactLocation(){return new Promise(res=>{if(!navigator.geolocation)return res(null);let done=false;const fin=v=>{if(!done){done=true;res(v);}};setTimeout(()=>fin(null),12000);
