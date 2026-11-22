@@ -2382,6 +2382,9 @@ await test('📡 סנכרון בלי אינטרנט: אפליקציה אופלי
   const calls = await B.page.evaluate(async (c) => { const got = []; const o = sb; sb = { rpc: (n, a) => { got.push([n, a]); return Promise.resolve({ data: null, error: null }); } }; await offMerge(c, 'qr'); sb = o; return got; }, codeA2);
   assert(calls.some((c) => c[0] === 'log_client_error' && /בדיקת תקלה/.test(c[1].p_msg) && c[1].p_app === '1.0'), 'התקלה לא הועברה: ' + JSON.stringify(calls).slice(0, 200));
   assert(calls.some((c) => c[0] === 'apk_log' && c[1].p_kind === 'off_open' && /Qin3Ultra/.test(c[1].p_device)), 'האפליקציה האופליין לא נרשמה ב"מי הוריד"');
+  assert(calls.some((c) => c[0] === 'apk_log' && c[1].p_kind === 'off_sync' && c[1].p_src === 'site-qr'), 'החיבור לא נספר ב"כמה מחוברים": ' + JSON.stringify(calls).slice(0, 300));
+  const again = await B.page.evaluate(async (c) => { const got = []; const o = sb; sb = { rpc: (n, a) => { got.push([n, a]); return Promise.resolve({ data: null, error: null }); } }; await offMerge(c, 'qr'); sb = o; return got; }, codeA2);
+  assert(!again.some((c) => c[0] === 'apk_log'), 'אותו חיבור נספר פעמיים באותה כניסה');
   const codeB = await B.page.evaluate(async () => { const o = sb; sb = { rpc: () => Promise.resolve({}) }; const c = await offPack(); sb = o; return c; });
   await A.page.evaluate((c) => offMerge(c, 'qr'), codeB);
   assert(await A.page.evaluate(() => !localStorage.getItem('yam_off_diag')), 'התקלות לא נמחקו אחרי שהגיעו');

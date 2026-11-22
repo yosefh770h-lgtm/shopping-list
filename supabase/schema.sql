@@ -7618,7 +7618,7 @@ revoke all on function public.scrape_summary(text) from public, anon, authentica
 create table if not exists public.apk_downloads (
   id bigserial primary key,
   at timestamptz not null default now(),
-  kind text not null default 'download' check (kind in ('download', 'open', 'off_open')),
+  kind text not null default 'download' check (kind in ('download', 'open', 'off_open', 'off_sync')),
   user_id uuid references auth.users(id) on delete set null,
   dev text not null default '',
   ip text not null default '',
@@ -7635,7 +7635,9 @@ create unique index if not exists apk_downloads_open_once on public.apk_download
 -- 📴 נובמבר 2026: "רשימת קניות אופליין" (בלי אינטרנט) — טלפון מחובר שסנכרן איתה מדווח עליה פעם אחת לכל מכשיר (kind = off_open,
 --    הכתובת והמדינה הן של הטלפון המדווח). הורדה של האפליקציה האופליין מהאתר = download עם src = offline
 alter table public.apk_downloads drop constraint if exists apk_downloads_kind_check;
-alter table public.apk_downloads add constraint apk_downloads_kind_check check (kind in ('download', 'open', 'off_open'));
+-- off_sync = כל חיבור (סנכרון) של אפליקציה אופליין עם האתר או עם האפליקציה הרגילה. src = מי התחבר ואיך: site-bt / app-qr / ...
+--    נספר פעם ב-6 שעות לכל מכשיר ולכל דרך, כדי שסנכרון חי בבלוטות' לא ייספר מאות פעמים
+alter table public.apk_downloads add constraint apk_downloads_kind_check check (kind in ('download', 'open', 'off_open', 'off_sync'));
 create unique index if not exists apk_downloads_offopen_once on public.apk_downloads (dev) where kind = 'off_open' and dev <> '';
 alter table public.apk_downloads enable row level security;
 revoke all on public.apk_downloads from anon, authenticated;
@@ -7654,8 +7656,10 @@ create or replace function public.apk_log(p_kind text, p_src text default '', p_
 language plpgsql volatile security definer set search_path = public as $$
 declare v_ip text := public.req_ip(); h jsonb; cc text := ''; d text := ''; ok boolean;
 begin
-  if p_kind not in ('download', 'open', 'off_open') then return false; end if;
+  if p_kind not in ('download', 'open', 'off_open', 'off_sync') then return false; end if;
   if coalesce(p_dev, '') ~ '^[0-9a-f-]{36}$' then d := p_dev; end if;
+  if p_kind = 'off_sync' and (d = '' or coalesce(p_src, '') !~ '^(site|app)-(bt|qr|code)$'
+     or exists (select 1 from public.apk_downloads where dev = d and kind = 'off_sync' and src = p_src and at > now() - interval '6 hours')) then return false; end if;
   -- הגבלה: עד 10 בשעה מאותה כתובת, ועד 500 בשעה בסך הכל
   if (v_ip <> '' and (select count(*) from public.apk_downloads a where a.ip = v_ip and a.at > now() - interval '1 hour') >= 10)
      or (select count(*) from public.apk_downloads where at > now() - interval '1 hour') >= 500 then return false; end if;
@@ -7666,7 +7670,7 @@ begin
   values (p_kind, auth.uid(), d, v_ip, case when cc ~ '^[A-Z]{2}$' then cc else '' end,
           left(regexp_replace(coalesce(p_device, ''), '[^[:alnum:][:space:]·./()_-]', '', 'g'), 60),
           left(regexp_replace(coalesce(p_ver, ''), '[^0-9.]', '', 'g'), 12),
-          case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail', 'offline') then p_src else '' end)
+          case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail', 'offline') or p_src ~ '^(site|app)-(bt|qr|code)$' then p_src else '' end)
   on conflict do nothing;
   ok := found;  -- נשמר לפני הניקוי: ה-delete משנה את found, ואז פעם ב-100 הכניסה דווחה כלא נרשמה
   if random() < 0.01 then delete from public.apk_downloads where at < now() - interval '1 year'; end if;
@@ -7687,7 +7691,7 @@ grant execute on function public.apk_claim(text) to authenticated;
 --    או מאותו חשבון ב-3 הימים שלפני), other = הורד ממקום אחר (אתר של חבר כמו אוגן פליי, קובץ שהועבר בוואטסאפ וכו')
 drop function if exists public.staff_apk_downloads(int);
 create or replace function public.staff_apk_downloads(p_days int default 30)
-returns table(id bigint, at timestamptz, kind text, user_id uuid, name text, email text, guest boolean, ip text, country text, geo jsonb, device text, app_ver text, src text, via text)
+returns table(id bigint, at timestamptz, kind text, user_id uuid, name text, email text, guest boolean, ip text, country text, geo jsonb, device text, app_ver text, src text, via text, dev text)
 language plpgsql stable security definer set search_path = public, auth as $$
 declare em boolean := public.staff_can('emails'); adm boolean := public.is_admin();
 begin
@@ -7703,7 +7707,8 @@ begin
                when exists (select 1 from public.apk_downloads d where d.kind = 'download'
                               and d.at between a.at - interval '3 days' and a.at + interval '5 minutes'
                               and ((a.ip <> '' and d.ip = a.ip) or (d.user_id is not null and d.user_id = coalesce(a.user_id, g.converted_user))))
-               then 'site' else 'other' end)::text
+               then 'site' else 'other' end)::text,
+         (case when a.kind in ('off_open', 'off_sync') then a.dev else '' end)::text
     from public.apk_downloads a
     left join public.guest_visits g on a.user_id is null and a.dev <> '' and g.id::text = a.dev
     left join public.profiles p on p.id = coalesce(a.user_id, g.converted_user)
