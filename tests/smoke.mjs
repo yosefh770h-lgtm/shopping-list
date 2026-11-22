@@ -2472,6 +2472,64 @@ await test('🕰️ סנכרון חי עם אופליין ששעונו זז: ס�
   await A.ctx.close(); await B.ctx.close();
 });
 
+await test('📷 סורק QR של הסנכרון: ריבוע מלא ורק QR — תמונה של הקוד באופליין מסונכרנת לאתר בסריקה אחת', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.1';
+  // A = נגן בלי מצלמה
+  const A = await newPage({ userAgent: OFFUA, init: () => { if (navigator.mediaDevices) navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'audiooutput', deviceId: 'x', label: '', groupId: '' }]; } });
+  const B = await newPage();
+  await A.page.evaluate(() => { addItem('חומוס', ''); addItem('טחינה', ''); });
+  await A.page.evaluate(() => offSyncOpen('qr'));
+  await A.page.waitForSelector('#offQr .offqr svg', { timeout: 8000 });
+  const many = await A.page.locator('#offQr .offqrn').count();
+  assert(!many, 'רשימה קצרה צריכה קוד אחד בלבד');
+  const png = await A.page.locator('#offQr .offqr').screenshot();
+  await A.page.waitForTimeout(300);
+  assert(!(await A.page.locator('#offScan').isVisible()), 'בנגן בלי מצלמה מוצג כפתור סריקה');
+  await B.page.evaluate(() => { localStorage.setItem('yamScanPhoto', '1'); offQrScan(); });
+  await B.page.waitForSelector('#offQs #offQsPh input', { state: 'attached', timeout: 8000 });
+  await B.page.locator('#offQs #offQsPh input').setInputFiles({ name: 'qr.png', mimeType: 'image/png', buffer: png });
+  await B.page.waitForFunction(() => !document.querySelector('#offQs'), null, { timeout: 8000 });
+  assert(await B.page.evaluate(() => { const n = state.lists.flatMap((l) => l.items.map((i) => i.n)); return n.includes('חומוס') && n.includes('טחינה'); }), 'הסריקה לא סנכרנה');
+  // סריקה אחת וזהו — בלי "עכשיו לסרוק בחזרה"
+  assert(!(await B.page.evaluate(() => document.body.innerText.includes('בחזרה'))), 'אחרי הסריקה ביקשו לסרוק גם בכיוון ההפוך');
+  assert(!(await A.page.locator('#offFace').isVisible()), 'בנגן בלי מצלמה מוצג "פנים מול פנים"');
+  // 🔗 שורה קטנה: עם מי סונכרן (שם/מכשיר + אופליין + גרסה)
+  const pl = await B.page.evaluate(() => (document.querySelector('.offsync .offpeers') || {}).textContent || '');
+  assert(/סונכרן עם/.test(pl) && /אופליין 1\.1/.test(pl) && /Android/.test(pl), 'אין שורה של עם מי סונכרן: ' + pl);
+  assert(await B.page.evaluate(() => /סונכרן עם .*אופליין/.test(document.querySelector('#btnOff').title)), 'בכפתור 📡 לא כתוב עם מי סונכרן');
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
+await test('🤝 פנים מול פנים: שני המכשירים מציגים קוד וסורקים יחד — פעולה אחת, שני הכיוונים', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.3';
+  // מצלמה מדומה: מציגה את התמונה שב-__camImg (הקוד של הצד השני)
+  const cam = () => { if (!navigator.mediaDevices) return; window.__fm = [];
+    navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'videoinput', deviceId: 'c', label: '', groupId: '' }];
+    navigator.mediaDevices.getUserMedia = async (c) => { window.__fm.push(JSON.stringify(c)); const cv = document.createElement('canvas'); cv.width = cv.height = 640; const x = cv.getContext('2d');
+      const d = () => { x.fillStyle = '#fff'; x.fillRect(0, 0, 640, 640); if (window.__camImg && window.__camImg.complete) x.drawImage(window.__camImg, (640 - window.__camImg.width) / 2, (640 - window.__camImg.height) / 2); setTimeout(d, 60); }; d(); return cv.captureStream(15); }; };
+  const A = await newPage({ userAgent: OFFUA, init: cam });
+  const B = await newPage({ init: cam });
+  await A.page.evaluate(() => addItem('קוסקוס', ''));
+  await B.page.evaluate(() => addItem('פתיתים', ''));
+  for (const X of [A, B]) { await X.page.evaluate(() => offSyncOpen('qr')); await X.page.waitForSelector('#offFace', { state: 'visible', timeout: 8000 }); }
+  for (const X of [A, B]) { await X.page.evaluate(() => document.querySelector('#offFace').click()); await X.page.waitForSelector('#offQs.face #offQsMine .offqr svg', { timeout: 8000 }); }
+  const shot = async (X) => (await X.page.locator('#offQsMine .offqr').screenshot()).toString('base64');
+  const [qa, qb] = [await shot(A), await shot(B)];
+  const show = (X, b64) => X.page.evaluate((b) => { const im = new Image(); im.src = 'data:image/png;base64,' + b; window.__camImg = im; }, b64);
+  await show(A, qb); await show(B, qa);
+  await Promise.all([A, B].map((X) => X.page.waitForFunction(() => /קיבלתי/.test((document.querySelector('#offQsHint') || {}).textContent || ''), null, { timeout: 15000 })));
+  const has = (X, n) => X.page.waitForFunction((n) => state.lists.some((l) => l.items.some((i) => i.n === n)), n, { timeout: 5000 }).then(() => true, () => false);
+  assert(await has(A, 'פתיתים'), 'האופליין לא קיבל מהאתר');
+  assert(await has(B, 'קוסקוס'), 'האתר לא קיבל מהאופליין');
+  assert(await A.page.evaluate(() => window.__fm.some((c) => /user/.test(c))), 'לא נפתחה המצלמה הקדמית');
+  // הקוד שלי נשאר עוד רגע לצד השני, ו"סיום" סוגר
+  assert(await A.page.locator('#offQsMine .offqr svg').isVisible(), 'הקוד נעלם מיד אחרי שקיבלתי');
+  await A.page.click('#offQsX'); await A.page.waitForFunction(() => !document.querySelector('#offQs'));
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
 await test('🎤🏠🔔 אפליקציה 2.2: כמה מוצרים בקול בלי פסיקים, וידג\'ט הרשימה, ומעקב מבצעים שעובר לאפליקציה', async () => {
   // הגשרים של 2.2 — כמו באפליקציה
   const init = () => { window.__w = []; window.__d = []; window.YamApp = { appInfo: () => JSON.stringify({ ver: '2.2', bg: true }), setWidget: (j) => window.__w.push(JSON.parse(j)), setDealWatch: (j) => window.__d.push(JSON.parse(j)) }; };
