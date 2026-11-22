@@ -2457,6 +2457,20 @@ await test('🎤🏠🔔 אפליקציה 2.2: כמה מוצרים בקול בל
   await ctx.close();
 });
 
+await test('📴 הורדת האפליקציה האופליין מתוך האפליקציה הרגילה: נשמרת ישר בתיקיית ההורדות (בלי דפדפן)', async () => {
+  const init = () => { window.__saved = []; window.YamApp = { appInfo: () => '{"ver":"2.2"}', saveFile: (n, t, b) => window.__saved.push([n, t, b.length]) }; };
+  const { ctx, page, errors } = await newPage({ userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2', init });
+  assert(await page.evaluate(() => !!document.querySelector('#miOffApk')), 'אין "הורדת האפליקציה האופליין" בתפריט של האפליקציה');
+  await page.evaluate(() => offDlSheet()); await page.waitForTimeout(300);
+  await page.click('#offDl');
+  await page.waitForFunction(() => window.__saved.length > 0, null, { timeout: 15000 });
+  const s = await page.evaluate(() => window.__saved[0]);
+  assert(s[0] === 'yamshopping-offline.apk' && /android\.package-archive/.test(s[1]) && s[2] > 1000000, 'הקובץ לא נשמר: ' + JSON.stringify(s));
+  assert(await page.evaluate(() => /נשמר/.test(document.querySelector('#offDl').textContent) && !!document.querySelector('.offsaved')), 'אין הודעה שהקובץ נשמר');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
 const failed = results.filter((r) => r[0] === '❌').length;

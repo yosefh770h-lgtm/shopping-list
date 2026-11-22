@@ -37,8 +37,10 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 const hebDate=d=>{try{if(window.hebcal)return prefs.lang==='en'?new hebcal.HDate(d).render('en'):new hebcal.HDate(d).renderGematriya(true);}catch(e){}return new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'}).format(d);};
 /* תאריך פגום (למשל מנתונים ישנים/מסונכרנים) לא מפיל את הדף — מחזירים מחרוזת ריקה */
 const okDate=d=>{const t=d instanceof Date?d.getTime():new Date(d).getTime();return isFinite(t);};
-const fmtDate=d=>okDate(d)?new Intl.DateTimeFormat(prefs.lang==='en'?'en-US':'he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(d):'';
-const fmtTime=d=>okDate(d)?new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit'}).format(d):'';
+/* ⚡ יצירת Intl.DateTimeFormat יקרה (עשרות מ"ש בטלפון חלש כשיש הרבה שורות) — שומרים אחד לכל שפה */
+const _dtf={};const dtf=(loc,o,k)=>_dtf[k]||(_dtf[k]=new Intl.DateTimeFormat(loc,o));
+const fmtDate=d=>{if(!okDate(d))return '';const en=prefs.lang==='en';return dtf(en?'en-US':'he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'},en?'de':'dh').format(d);};
+const fmtTime=d=>okDate(d)?dtf('he-IL',{hour:'2-digit',minute:'2-digit'},'t').format(d):'';
 const dayKey=d=>new Date(d).toISOString().slice(0,10);
 function norm(s){return (s||'').replace(/['’`׳"]/g,'').replace(/\s+/g,' ').trim();}
 function flash(m){const f=document.querySelector('#flash');f.textContent=m;f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(()=>f.classList.remove('show'),2400);}
@@ -359,7 +361,11 @@ function render(){
     b.classList.add('open');
     b.innerHTML='<span>📋 תוכנית להיום: <b>'+plan.map(esc).join(', ')+'</b></span>'+(missing.length?'<button data-planadd="1">הוסף לרשימה ('+missing.length+')</button>':'<span style="color:var(--muted)">הכל כבר ברשימה ✔</span>');
   }else b.classList.remove('open');
-  renderList();renderBot();bindShare();
+  /* ⚡ כל שינוי ברשימה קורא ל-render — את השיחה עם יאמי (עד 150 הודעות) מציירים רק כשהיא פתוחה ורק אם השתנתה.
+     כל פתיחה שלה (גם העמודה במחשב) עוברת דרך openBot, שמצייר אותה */
+  const bl=state.bot||[],lb=bl[bl.length-1],bsh=document.querySelector('#botSheet'),
+    bs=bsh&&bsh.classList.contains('open')?bl.length+'|'+(lb?lb.ts+'|'+(lb.chips?lb.chips.length:0):'')+'|'+!!window.botTyping+'|'+prefs.lang:'';
+  renderList();if(bs&&bs!==window.__botSig)renderBot();window.__botSig=bs;bindShare();
   /* 🚀 היסטוריה ו"הבית שלי" מצוירים רק כשהלשונית שלהם פתוחה; אחרת מסומנים לציור כשיפתחו אותה (setTab) */
   if(typeof tab!=='undefined'&&tab==='hist')renderHist();else paneStale.hist=1;
   if(typeof tab!=='undefined'&&tab==='home')renderHome();else paneStale.home=1;
