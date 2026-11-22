@@ -2469,6 +2469,30 @@ await test('🕰️ סנכרון חי עם אופליין ששעונו זז: ס�
   await A.ctx.close(); await B.ctx.close();
 });
 
+await test('📷 סורק QR של הסנכרון: ריבוע מלא ורק QR — תמונה של הקוד באופליין מסונכרנת לאתר בסריקה אחת', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.1';
+  // A = נגן בלי מצלמה
+  const A = await newPage({ userAgent: OFFUA, init: () => { if (navigator.mediaDevices) navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'audiooutput', deviceId: 'x', label: '', groupId: '' }]; } });
+  const B = await newPage();
+  await A.page.evaluate(() => { addItem('חומוס', ''); addItem('טחינה', ''); });
+  await A.page.evaluate(() => offSyncOpen('qr'));
+  await A.page.waitForSelector('#offQr .offqr svg', { timeout: 8000 });
+  const many = await A.page.locator('#offQr .offqrn').count();
+  assert(!many, 'רשימה קצרה צריכה קוד אחד בלבד');
+  const png = await A.page.locator('#offQr .offqr').screenshot();
+  await A.page.waitForTimeout(300);
+  assert(!(await A.page.locator('#offScan').isVisible()), 'בנגן בלי מצלמה מוצג כפתור סריקה');
+  await B.page.evaluate(() => { localStorage.setItem('yamScanPhoto', '1'); offQrScan(); });
+  await B.page.waitForSelector('#offQs #offQsPh input', { state: 'attached', timeout: 8000 });
+  await B.page.locator('#offQs #offQsPh input').setInputFiles({ name: 'qr.png', mimeType: 'image/png', buffer: png });
+  await B.page.waitForFunction(() => !document.querySelector('#offQs'), null, { timeout: 8000 });
+  assert(await B.page.evaluate(() => { const n = state.lists.flatMap((l) => l.items.map((i) => i.n)); return n.includes('חומוס') && n.includes('טחינה'); }), 'הסריקה לא סנכרנה');
+  // סריקה אחת וזהו — בלי "עכשיו לסרוק בחזרה"
+  assert(!(await B.page.evaluate(() => document.body.innerText.includes('בחזרה'))), 'אחרי הסריקה ביקשו לסרוק גם בכיוון ההפוך');
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
 await test('🎤🏠🔔 אפליקציה 2.2: כמה מוצרים בקול בלי פסיקים, וידג\'ט הרשימה, ומעקב מבצעים שעובר לאפליקציה', async () => {
   // הגשרים של 2.2 — כמו באפליקציה
   const init = () => { window.__w = []; window.__d = []; window.YamApp = { appInfo: () => JSON.stringify({ ver: '2.2', bg: true }), setWidget: (j) => window.__w.push(JSON.parse(j)), setDealWatch: (j) => window.__d.push(JSON.parse(j)) }; };

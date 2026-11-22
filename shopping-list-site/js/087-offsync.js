@@ -9,7 +9,7 @@
    📴 מהאפליקציה האופליין עוברים גם: גרסה, דגם, ותקלות שנשמרו בטלפון (רק אם הסכימו) — והטלפון המחובר מעביר אותם
    ליומן התקלות 🐞 ול"מי הוריד" בבק אופיס (apk_log 'off_open'). בלי שם, בלי מספר טלפון ובלי תוכן הרשימה. */
 (function(){
-const PFX='YAM1',PART=400,LS_LAST='yam_off_last',LS_PEERS='yam_off_peers',LS_DIAG='yam_off_diag',LS_OK='yam_off_diag_ok';
+const PFX='YAM1',PART=500,LS_LAST='yam_off_last',LS_PEERS='yam_off_peers',LS_DIAG='yam_off_diag',LS_OK='yam_off_diag_ok';
 const ls={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}},del(k){try{localStorage.removeItem(k);}catch(e){}}};
 const jget=(k,d)=>{try{const v=JSON.parse(ls.get(k)||'null');return v==null?d:v;}catch(e){return d;}};
 const $o=s=>document.querySelector(s);
@@ -32,9 +32,12 @@ async function zip(json){const raw=new TextEncoder().encode(json);
   return 'j'+b64u(raw);}
 async function unzip(t){const k=t[0],b=ub64u(t.slice(1));if(k==='j')return new TextDecoder().decode(b);
   if(typeof DecompressionStream!=='function')throw new Error('old');return new TextDecoder().decode(await pipe(b,new DecompressionStream('deflate')));}
-async function pack(){seenAdd();
+/* ב-QR כל תו הוא עוד ריבוע לסרוק: בלי מה שהטלפון השני משלים לבד (אימוג'י וקטגוריה רגילים, כמות ריקה, "לא נקנה") ובלי תמונות */
+function slim(l){return Object.assign({},l,{items:(l.items||[]).map(i=>{const o=Object.assign({},i);delete o.img;if(o.q==='')delete o.q;if(!o.done)delete o.done;
+  try{if(o.e===emojiOf(o.n))delete o.e;if(o.c===resolveCat(o.n))delete o.c;}catch(e){}return o;})});}
+async function pack(qr){seenAdd();
   const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
-    lists:state.lists,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:(state.history||[]).slice(0,30)};
+    lists:qr?state.lists.map(slim):state.lists,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:qr?[]:(state.history||[]).slice(0,30)};/* ב-QR בלי היסטוריה — פחות קודים לסרוק */
   if(OFF_APP){const ai=appInfo();o.ver=String(ai.ver||'');o.model=String(ai.model||'');o.android=String(ai.android||'');
     if(diagOk()==='1'){const d=jget(LS_DIAG,[]);if(Array.isArray(d)&&d.length)o.diag=d.slice(-20);}}
   return PFX+(await zip(JSON.stringify(o)));}
@@ -139,7 +142,7 @@ function qrSvg(m){const w=m.getWidth();let d='';
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+w+'" shape-rendering="crispEdges" role="img" aria-label="QR"><rect width="'+w+'" height="'+w+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';}
 async function showQr(){clearInterval(qrTimer);const box=$o('#offQr');if(!box)return;box.innerHTML='<p class="muted-note">⏳</p>';
   let Z;try{Z=await loadZxing();}catch(e){box.innerHTML='<p class="muted-note">'+T('הקוד לא נטען','Could not load')+'</p>';return;}
-  const code=(await pack()).slice(PFX.length),sid=Math.random().toString(36).slice(2,6).padEnd(4,'0'),n=Math.ceil(code.length/PART);
+  const code=(await pack(true)).slice(PFX.length),sid=Math.random().toString(36).slice(2,6).padEnd(4,'0'),n=Math.ceil(code.length/PART);
   const parts=n<=1?[PFX+code]:Array.from({length:n},(_,i)=>'Y1:'+sid+':'+(i+1)+':'+n+':'+code.slice(i*PART,(i+1)*PART));
   const svgs=parts.map(t=>qrSvg(qrMatrix(Z,t)));
   let i=0;const draw=()=>{if(!document.body.contains(box)){clearInterval(qrTimer);return;}
@@ -150,18 +153,53 @@ window.offQrTake=function(code){code=String(code||'').trim();
   if(/^YAM1[zj]/.test(code)){got(code,'qr');return 'done';}
   const m=code.match(/^Y1:([a-z0-9]{4}):(\d{1,3}):(\d{1,3}):([A-Za-z0-9_-]*)$/);if(!m)return null;
   const n=+m[3];if(rx.sid!==m[1])rx={sid:m[1],n,p:{}};rx.p[m[2]]=m[4];const k=Object.keys(rx.p).length;
-  if(k<n){const h=$o('#scanHint');if(h)h.textContent='📡 '+T('נקלטו '+k+' מתוך '+n+' — ממשיכים לכוון אל הקוד','Got '+k+' of '+n+' — keep pointing');return 'more';}
+  if(k<n){const t='📡 '+T('נקלטו '+k+' מתוך '+n+' — ממשיכים לכוון אל הקוד','Got '+k+' of '+n+' — keep pointing');['#scanHint','#offQsHint'].forEach(q=>{const h=$o(q);if(h)h.textContent=t;});return 'more';}
   const full=PFX+Array.from({length:n},(_,i)=>rx.p[i+1]||'').join('');rx={};got(full,'qr');return 'done';};
-function scanQr(){rx={};if(typeof openBarcodeScanner!=='function')return;
-  openBarcodeScanner(()=>flash(T('זה ברקוד של מוצר — סורקים את קוד ה-QR של הסנכרון בטלפון השני','That is a product barcode — scan the sync QR')));
-  setTimeout(()=>{const h=$o('#scanHint');if(h)h.textContent='📡 '+T('מכוונים אל קוד הסנכרון בטלפון השני','Point at the sync code on the other phone');},300);}
+/* 📷 סורק QR משלו — לא הסורק של ברקוד המוצרים (שחותך מלבן רחב, מקטין את התמונה ומחפש פסים, ולכן כמעט לא קרא את קוד הסנכרון).
+   כאן: ריבוע באמצע התמונה בגודל מלא (עד 900 פיקסלים), רק QR, ואם המצלמה החיה לא עובדת בטלפון הזה — צילום תמונה */
+let qs=null;
+function qrScanClose(){if(!qs)return;qs.on=false;clearTimeout(qs.t);try{qs.stream&&qs.stream.getTracks().forEach(t=>t.stop());}catch(e){}const o=$o('#offQs');if(o)o.remove();qs=null;}
+function qsHint(t){const h=$o('#offQsHint');if(h)h.textContent=t;}
+async function scanQr(){rx={};qrScanClose();
+  document.body.insertAdjacentHTML('beforeend','<div id="offQs" class="offqs" role="dialog" aria-modal="true" aria-label="'+T('סריקת קוד סנכרון','Scan sync code')+'">'+
+    '<div class="offqsv"><video playsinline muted></video><i aria-hidden="true"></i></div><p id="offQsHint" aria-live="polite">⏳</p>'+
+    '<div class="offqsb"><label class="btn" id="offQsPh">📸 '+T('לצלם תמונה במקום','Take a photo instead')+'<input type="file" accept="image/*" capture="environment" hidden></label>'+
+    '<button type="button" class="btn" id="offQsX">'+T('סגירה','Close')+'</button></div></div>');
+  const me=qs={on:true,t:0,stream:null},alive=()=>qs===me&&me.on;
+  $o('#offQsX').onclick=qrScanClose;
+  let Z;try{Z=await loadZxing();}catch(e){qsHint(T('הסורק לא נטען','Scanner failed to load'));return;}
+  const hints=new Map();hints.set(Z.DecodeHintType.TRY_HARDER,true);const rd=new Z.QRCodeReader();
+  let nat=null;try{if(typeof scanNativeOk==='function'&&scanNativeOk()&&(await BarcodeDetector.getSupportedFormats()).includes('qr_code'))nat=new BarcodeDetector({formats:['qr_code']});}catch(e){nat=null;}
+  const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+  const dec=async()=>{if(nat){try{const c=await nat.detect(cv);if(c&&c.length)return c[0].rawValue;}catch(e){nat=null;}}
+    try{return rd.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv))),hints).getText();}catch(e){return null;}};
+  const take=t=>{if(!t||!alive())return false;const r=offQrTake(t);if(r==='done'){qrScanClose();return true;}
+    if(r==null)qsHint(T('זה לא קוד סנכרון — מכוונים אל הקוד שבטלפון השני','Not a sync code'));return false;};
+  /* צילום: גם בטלפון שהמצלמה החיה קורסת בו. רשימה ארוכה = כמה קודים, צילום לכל אחד */
+  $o('#offQsPh input').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;qsHint('⏳');
+    try{const u=URL.createObjectURL(f),im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=u;});
+      for(const mx of [1400,900]){const k=Math.min(1,mx/Math.max(im.width,im.height));cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);cx.drawImage(im,0,0,cv.width,cv.height);
+        const t=await dec();if(t){URL.revokeObjectURL(u);if(!take(t)&&rx.n)qsHint(T('נקלטו '+Object.keys(rx.p).length+' מתוך '+rx.n+' — מצלמים את הקוד הבא','Got '+Object.keys(rx.p).length+' of '+rx.n));return;}}
+      URL.revokeObjectURL(u);qsHint(T('לא נמצא קוד בתמונה — מצלמים מקרוב, ישר, שכל הקוד בתמונה','No code found — try closer'));}catch(er){qsHint(T('התמונה לא נפתחה','Could not open the photo'));}};
+  const live=!(typeof scanPhotoMode==='function'&&scanPhotoMode())&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+  if(!live){qsHint(T('מצלמים את הקוד שבטלפון השני (📸)','Take a photo of the code on the other phone'));$o('#offQs .offqsv').hidden=true;return;}
+  qsHint(T('מכוונים אל קוד הסנכרון בטלפון השני','Point at the sync code on the other phone'));
+  try{me.stream=await getScanStream();}catch(e){if(alive()){qsHint(T('המצלמה לא נפתחה — מצלמים תמונה במקום (📸)','Camera unavailable — take a photo'));$o('#offQs .offqsv').hidden=true;}return;}
+  if(!alive()){me.stream.getTracks().forEach(t=>t.stop());return;}
+  const v=$o('#offQs video');v.srcObject=me.stream;try{await v.play();}catch(e){}
+  const step=async()=>{if(!alive())return;
+    try{const w=v.videoWidth,h=v.videoHeight;if(w&&h&&v.readyState>=2){const sd=Math.round(Math.min(w,h)*.9),k=Math.min(1,900/sd),z=Math.max(1,Math.round(sd*k));
+      if(cv.width!==z){cv.width=cv.height=z;}cx.drawImage(v,(w-sd)/2,(h-sd)/2,sd,sd,0,0,z,z);if(take(await dec()))return;}}catch(e){}
+    if(alive())me.t=setTimeout(step,120);};
+  step();}
+window.offQrScan=scanQr;
 
 /* ---------- אחרי שהגיעה חבילה (מכל דרך) ---------- */
 async function got(code,via,peer){const r=await merge(code,via,peer);if(!r)return;
   const msg='✅ '+T('סונכרן','Synced')+(r.name?' '+T('עם','with')+' '+r.name:'')+': '+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'+(r.del?', '+r.del+' removed':''));
   flash(msg);
-  /* ב-QR ובקוד: עכשיו הטלפון השני צריך לקבל את מה שיש כאן (כבר כולל את מה שהגיע ממנו) */
-  open(via==='code'?'code':'qr',msg+('<br>👉 '+T('עכשיו בטלפון השני סורקים / מדביקים את הקוד שלי — כדי ששניהם יהיו מעודכנים','Now let the other phone take my code too')));}
+  /* מי שסורק / מדביק מקבל את מה שיש בצד השני — וזהו, בלי לבקש "עכשיו לסרוק בחזרה" */
+  open(via==='code'?'code':'qr',msg);}
 
 /* ---------- 🔵 בלוטות' חי: קוד של 4 ספרות, ואז כל שינוי עובר מיד כל עוד הטלפונים קרובים ----------
    בערוץ עוברות הודעות JSON: {k:'hi',code,dev,name} (בדיקת הקוד) ו-{k:'pk',d:'YAM1...'} (החבילה המלאה, נדחסת).
@@ -238,8 +276,10 @@ function open(tab,note){
   const tabs=[...(hasBt()?[['bt','🔵 '+T('בלוטות\'','Bluetooth')]]:[]),['qr','🔳 QR'],['code','✉️ '+T('קוד שיתוף','Share code')]];
   let body='<div class="offsync"><p class="offst">'+ago(last)+(pn&&last?' · '+T(pn+' שינויים מאז',pn+' changes since'):'')+'</p>'+(note?'<div class="offok" role="status">'+note+'</div>':'')+
     '<div class="offtabs" role="tablist">'+tabs.map(t=>'<button role="tab" data-offt="'+t[0]+'" aria-selected="'+(t[0]===curTab)+'">'+t[1]+'</button>').join('')+'</div>';
-  if(curTab==='qr')body+='<p class="muted-note">'+T('בטלפון אחד מציגים את הקוד, ובשני לוחצים "לסרוק". אחר כך מתחלפים — וכך שני הטלפונים מקבלים הכל.','One phone shows the code, the other scans. Then swap.')+'</p>'+
-    '<div id="offQr" class="offqrbox"></div><button class="btn" id="offScan" style="width:100%">📷 '+T('לסרוק את הקוד של הטלפון השני','Scan the other phone\'s code')+'</button>';
+  /* סריקה אחת בלבד — בוחרים מי סורק: הטלפון/הנגן או המחשב. מי שסורק מקבל את כל מה שיש בשני. במכשיר בלי מצלמה (נגן) — רק מציגים */
+  if(curTab==='qr')body+='<p class="muted-note">'+T('סורקים פעם אחת, מאיזה צד שנוח: מי שסורק מקבל את כל מה שיש בצד השני. במכשיר בלי מצלמה (נגן) — מציגים כאן את הקוד, וסורקים אותו מהמחשב או מהטלפון.','Scan once, from whichever side: the device that scans gets everything from the other. On a device without a camera, show this code and scan it from the other side.')+'</p>'+
+    '<button class="btn" id="offScan" style="width:100%;margin-bottom:8px">📷 '+T('אני סורק את הקוד של הצד השני','I scan the other side\'s code')+'</button>'+
+    '<p class="muted-note" id="offQrOr" style="margin:4px 0 0">🔳 '+T('או — הקוד שלי, לסריקה מהצד השני:','Or — my code, to scan from the other side:')+'</p><div id="offQr" class="offqrbox"></div>';
   else if(curTab==='bt'){const p=btPeer();body+='<p class="muted-note">'+T('בלי אינטרנט ובלי SMS: בטלפון אחד יוצרים קוד, ובשני מקלידים אותו. מאז, כל שינוי עובר מיד בין שני הטלפונים כל עוד הם קרובים — ובפעם הבאה הם מתחברים לבד.','No internet or SMS: create a code on one phone, type it on the other. Then every change syncs live while they are close.')+'</p>'+
     (bt.live?'':'<div class="row2"><button class="btn" id="offBtNew">🔢 '+T('ליצור קוד','Create a code')+'</button><button class="btn sec" id="offBtType">⌨️ '+T('להקליד קוד','Type a code')+'</button></div>'+
       '<div id="offBtJoin" class="row2" hidden><input id="offBtCode" type="tel" inputmode="numeric" maxlength="4" dir="ltr" placeholder="0000" aria-label="'+T('הקוד מהטלפון השני','Code from the other phone')+'" class="offcodein"><button class="btn" id="offBtGo">'+T('להתחבר','Connect')+'</button></div>')+
@@ -258,7 +298,10 @@ function open(tab,note){
     '<p class="muted-note">'+T('אפליקציה בלי אינטרנט בכלל (גם לא דרכה): רשימות, מזווה והיסטוריה, באותו עיצוב. מעבירים אליה את הקובץ ומסנכרנים איתה מכאן.','A no-internet app: lists, pantry and history. Sync with it from here.')+'</p></div>';
   body+='</div>';
   openSheet('📡 '+T('סנכרון בלי אינטרנט','Offline sync'),body);
-  if(curTab==='qr')showQr();else if(curTab==='code')showCode();else btShow();}
+  if(curTab==='qr'){showQr();noCam().then(n=>{const b=$o('#offScan'),o=$o('#offQrOr');if(!n||!b)return;b.hidden=true;if(o)o.textContent='🔳 '+T('הקוד שלי — סורקים אותו מהמחשב או מהטלפון:','My code — scan it from the computer or phone:');});}else if(curTab==='code')showCode();else btShow();}
+/* נגן / מכשיר בלי מצלמה: אין מה לסרוק בו */
+async function noCam(){try{if(!(navigator.mediaDevices&&navigator.mediaDevices.enumerateDevices))return true;const d=await navigator.mediaDevices.enumerateDevices();
+  return d.length>0&&!d.some(x=>x.kind==='videoinput');}catch(e){return false;}}
 window.offSyncOpen=open;
 
 document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
@@ -350,6 +393,10 @@ document.head.insertAdjacentHTML('beforeend','<style id="offsync87">'+
   '.offsync .offok{background:#e8f7ee;color:#14532d;border:1px solid #9ad6b0;border-radius:12px;padding:8px 10px;margin:0 0 8px;font-size:14px}'+
   '.offqrbox{display:flex;flex-direction:column;align-items:center;margin:6px 0 10px}.offqr{width:min(78vw,300px);background:#fff;padding:6px;border-radius:12px}.offqr svg{display:block;width:100%;height:auto}'+
   '.offqrn{margin:6px 0 0;font-size:13px;color:var(--muted)}'+
+  '.offqs{position:fixed;inset:0;z-index:99999;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}'+
+  '.offqsv{position:relative;width:min(86vw,60vh);aspect-ratio:1;overflow:hidden;border-radius:16px;background:#111}.offqsv video{width:100%;height:100%;object-fit:cover}'+
+  '.offqsv i{position:absolute;inset:5%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}'+
+  '#offQsHint{margin:0;text-align:center;font-size:16px;max-width:420px}.offqsb{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.offqsb .btn{cursor:pointer}'+
   '.offcode{width:100%;min-height:64px;font:12px/1.35 monospace;word-break:break-all;margin-bottom:6px}'+
   '.offsync .row2{display:flex;gap:8px;margin:6px 0}.offsync .row2>*{flex:1;text-align:center}'+
   '.offbtst{min-height:1.4em;font-size:14px;margin:6px 0}.offbig{font:700 44px/1.1 monospace;letter-spacing:10px;text-align:center;margin:6px 0 4px;color:var(--hdr2)}'+
