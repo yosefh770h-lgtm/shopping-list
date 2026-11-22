@@ -401,7 +401,7 @@ function renderList(){
       return '<div class="grp"><h3>'+esc(CATE[c])+' '+esc(c)+' ('+its.length+')</h3>'+its.map(itemRow).join('')+'</div>';}).join('')||'<div class="empty">ריק</div>');
   }else{
     const open=l.items.filter(i=>!i.done),done=l.items.filter(i=>i.done);
-    p.innerHTML=bar+cheap+'<div class="day"><span>'+fmtDate(new Date())+' · '+hebDate(new Date())+(typeof jewishLine==='function'?jewishLine():'')+'</span></div>'+
+    p.innerHTML=bar+cheap+
       open.map(bubble).join('')+
       (done.length?'<div class="day"><span>נקנו ✓</span></div>'+done.map(bubble).join(''):'');
   }

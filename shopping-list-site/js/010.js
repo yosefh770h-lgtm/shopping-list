@@ -261,7 +261,6 @@ openChat=async function(){
 
 /* ---------- זמני היום: הבהרה ---------- */
 const ZMAN_NOTE=T('⚠️ הזמנים מחושבים אוטומטית ונועדו לעזור בלבד — אין להסתמך עליהם להלכה, ובמיוחד לא בדברים שהם מדאורייתא. יש לבדוק בלוח מוסמך או לשאול רב.','⚠️ Times are computed automatically and are for convenience only — do not rely on them for halachic purposes.');
-const _v10OpenZmanim=openZmanim;openZmanim=function(){const r=_v10OpenZmanim.apply(this,arguments);const b=$10('#v8SheetBody');if(b&&!b.querySelector('.zmannote'))b.insertAdjacentHTML('afterbegin','<p class="zmannote">'+ZMAN_NOTE+'</p>');return r;};
 const _v10ZmanimText=zmanimText;zmanimText=function(){return _v10ZmanimText.apply(this,arguments)+'\n\n'+ZMAN_NOTE;};
 
 /* ---------- דיווחי מחיר: מה שעבר שבוע — יורד לסוף הרשימה כ"ישן" ---------- */
