@@ -63,7 +63,7 @@ public class AppActivity extends Activity {
     static final int MAX_DOWNLOAD_BYTES = 30 * 1024 * 1024;
 
     // בתוך האפליקציה הדפים מקבלים סימון בדפדפן, כדי שהאתר ידע (למשל להסביר שכניסה עם גוגל לא עובדת כאן)
-    static final String UA_MARK = " YamShoppingApp/2.1";
+    static final String UA_MARK = " YamShoppingApp/2.2";
 
     // החלון הפתוח כרגע — כדי שהתקנת העדכון (שרצה ברקע) תוכל לדווח לאתר איפה היא עומדת
     static volatile AppActivity current;

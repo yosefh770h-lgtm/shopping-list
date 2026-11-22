@@ -2,8 +2,8 @@
 <!-- אפליקציית אנדרואיד לאתר: חלון שפותח את האתר החי, כך שכל עדכון באתר מגיע מיד לאפליקציה -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.yamshopping.app"
-    android:versionCode="12"
-    android:versionName="2.1">
+    android:versionCode="13"
+    android:versionName="2.2">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
 
