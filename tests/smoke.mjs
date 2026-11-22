@@ -2323,6 +2323,10 @@ await test('📡 סנכרון בלי אינטרנט: אפליקציה אופלי
   // האפליקציה האופליין: בלי ענן, בלי מחירים, עם פס סנכרון
   assert(await A.page.evaluate(() => OFF_APP && document.documentElement.classList.contains('offapp') && sb === null && isOffline()), 'מצב אופליין לא הופעל');
   assert(!(await A.page.locator('.tab[data-t="prices"]').isVisible()), 'לשונית המחירים מופיעה באופליין');
+  // מה שכולו אינטרנט לא מופיע באופליין: חנויות/מבצעים/"מוצר אחד"/ביגוד, PRO וצבעי לוגו, התראות וירידות מחיר, מוניטין, נעילה וסיור
+  assert(await A.page.evaluate(() => { setTab('stores'); const t = tab; setTab('list'); return t === 'list'; }), 'לשונית החנויות נפתחת באופליין');
+  assert(await A.page.evaluate(() => { const hid = (s) => { const e = document.querySelector(s); return !e || getComputedStyle(e).display === 'none'; };
+    return ['.r2tile[data-r2tile="2"]', '#r2s2', '.r2tc', '.pro2tag', '#miTour', '#miLock51', 'details.mgrp[data-g="acct"]'].every(hid); }), 'נשאר באופליין משהו שדורש אינטרנט');
   assert(await A.page.locator('.offpill').isVisible(), 'אין פס סנכרון באופליין');
   await A.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); });
   await B.page.evaluate(() => { addItem('ביצים', ''); });
