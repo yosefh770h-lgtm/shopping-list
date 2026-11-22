@@ -13,7 +13,25 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattServerCallback;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.os.ParcelUuid;
+
 import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -34,6 +52,10 @@ import java.util.UUID;
  * אחרי החיבור הערוץ נשאר פתוח: כל צד שולח הודעות (send) והאתר (js/087-offsync.js) מסנכרן כל שינוי מיד,
  * כל עוד הטלפונים קרובים. בפעם הבאה מתחברים ישר לכתובת שנשמרה (connect), בלי קוד ובלי חיפוש.
  * האירועים חוזרים לאתר כ-window.offBt({t:'state'|'msg', ...}).
+ *
+ * 💻 מול מחשב (Web Bluetooth בכרום / אדג'): כשיוצרים קוד, הטלפון גם "מפרסם" את עצמו בבלוטות' חסכוני (BLE) עם שירות
+ * שמזהה שלו נגזר מהקוד (bleUuid). באתר במחשב מקלידים את אותו קוד, הדפדפן מוצא רק את הטלפון הזה, ומתחבר.
+ * ההודעות עוברות באותו פורמט (YAM1 + אורך + JSON): המחשב כותב ל-RX, והטלפון שולח ב-TX (notify) בחתיכות לפי ה-MTU.
  */
 final class Bt {
     interface Out {
@@ -54,6 +76,21 @@ final class Bt {
     private String action = "", code = "", addr = "";
     private boolean visible, asked;
 
+    /* ---- 💻 BLE מול מחשב ---- */
+    static final UUID BLE_RX = UUID.fromString("59414d31-0001-4000-8000-000000000000"); // המחשב כותב
+    static final UUID BLE_TX = UUID.fromString("59414d31-0002-4000-8000-000000000000"); // הטלפון שולח (notify)
+    static final UUID CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    private BluetoothGattServer gs;
+    private BluetoothLeAdvertiser adv;
+    private AdvertiseCallback advCb;
+    private BluetoothGattCharacteristic tx;
+    private volatile BluetoothDevice bleDev;
+    private volatile boolean bleLive;
+    private volatile int mtu = 23;
+    private final ByteArrayOutputStream rxBuf = new ByteArrayOutputStream(), prep = new ByteArrayOutputStream();
+    private final ArrayDeque<byte[]> txQ = new ArrayDeque<>();
+    private boolean txBusy;
+
     @SuppressWarnings("deprecation")
     Bt(Activity a, Out out) {
         this.a = a;
@@ -64,6 +101,11 @@ final class Bt {
         } catch (Exception ignored) {
         }
         ad = x;
+    }
+
+    /** מזהה השירות של BLE לפי הקוד — אותו חישוב באתר (js/087-offsync.js) */
+    static UUID bleUuid(String code) {
+        return UUID.fromString("59414d31-0000-4000-8000-00000000" + code);
     }
 
     static UUID uuidFor(String code) {
@@ -85,7 +127,7 @@ final class Bt {
         if (Build.VERSION.SDK_INT >= 31) {
             l.add(Manifest.permission.BLUETOOTH_CONNECT);
             l.add(Manifest.permission.BLUETOOTH_SCAN);
-            if (visible) l.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+            if (visible || "listen".equals(action)) l.add(Manifest.permission.BLUETOOTH_ADVERTISE); // גם בשביל המחשב (BLE)
         } else if ("join".equals(action)) {
             l.add(Manifest.permission.ACCESS_FINE_LOCATION); // עד אנדרואיד 11 — חיפוש טלפונים קרובים דורש הרשאת מיקום
         }
@@ -99,7 +141,7 @@ final class Bt {
             JSONObject o = new JSONObject();
             o.put("has", ad != null);
             o.put("on", ad != null && ad.isEnabled());
-            o.put("live", sock != null && dos != null);
+            o.put("live", (sock != null && dos != null) || bleLive);
             return o.toString();
         } catch (Exception e) {
             return "{}";
@@ -174,6 +216,7 @@ final class Bt {
             } catch (Exception ignored) {
             }
         }
+        final boolean ble = startBle(g);
         final UUID id = uuidFor(code);
         new Thread(() -> {
             BluetoothServerSocket s = null;
@@ -182,12 +225,13 @@ final class Bt {
                 server = s;
                 String n = "";
                 try { n = ad.getName(); } catch (Exception ignored) { }
-                emit("state", "s", "wait", "code", code, "name", n == null ? "" : n);
+                emit("state", "s", "wait", "code", code, "name", n == null ? "" : n, "ble", ble ? "1" : "0");
                 BluetoothSocket c = s.accept(visible ? 300000 : 3600000);
-                if (g != gen) { closeQuiet(c); return; }
+                if (g != gen || bleLive) { closeQuiet(c); return; }
+                stopBle();
                 live(c, g);
             } catch (IOException e) {
-                if (g == gen) emit("state", "s", "fail", "m", "timeout");
+                if (g == gen && !bleLive) { stopBle(); emit("state", "s", "fail", "m", "timeout"); }
             } catch (SecurityException e) {
                 emit("state", "s", "perm");
             } finally {
@@ -303,6 +347,7 @@ final class Bt {
 
     /** שולח הודעה בערוץ הפתוח (מהאתר). false = אין חיבור */
     boolean send(String s) {
+        if (bleLive) return bleSend(s);
         final DataOutputStream o = dos;
         if (o == null || s == null) return false;
         final byte[] b = s.getBytes(StandardCharsets.UTF_8);
@@ -353,6 +398,193 @@ final class Bt {
         closeQuiet(sock);
         sock = null;
         dos = null;
+        stopBle();
         action = "";
+    }
+
+    /* ================= 💻 BLE: הטלפון כשרת, המחשב מתחבר מהדפדפן ================= */
+
+    /** @return true אם הטלפון יכול לפרסם את עצמו למחשב (בחלק מהנגנים אין BLE מפרסם) */
+    @SuppressWarnings({"MissingPermission", "deprecation"})
+    private boolean startBle(final int g) {
+        stopBle();
+        try {
+            if (!ad.isMultipleAdvertisementSupported()) return false;
+            adv = ad.getBluetoothLeAdvertiser();
+            BluetoothManager bm = (BluetoothManager) a.getSystemService(Context.BLUETOOTH_SERVICE);
+            if (adv == null || bm == null) return false;
+            final UUID svcId = bleUuid(code);
+            gs = bm.openGattServer(a, new BluetoothGattServerCallback() {
+                @Override
+                public void onConnectionStateChange(BluetoothDevice d, int status, int st) {
+                    if (st == BluetoothProfile.STATE_DISCONNECTED && d.equals(bleDev)) {
+                        bleDev = null;
+                        if (bleLive) {
+                            bleLive = false;
+                            if (g == gen) emit("state", "s", "lost");
+                        }
+                    }
+                }
+
+                @Override
+                public void onMtuChanged(BluetoothDevice d, int m) {
+                    mtu = Math.max(23, Math.min(m, 517));
+                }
+
+                @Override
+                public void onDescriptorWriteRequest(BluetoothDevice d, int req, BluetoothGattDescriptor ds, boolean prepared, boolean resp, int off, byte[] v) {
+                    if (resp) gs.sendResponse(d, req, BluetoothGatt.GATT_SUCCESS, off, v);
+                    if (bleDev != null && !d.equals(bleDev)) return; // מחשב אחד בכל פעם
+                    if (v != null && v.length > 0 && v[0] != 0) { // המחשב נרשם לקבל הודעות — החיבור מוכן
+                        bleDev = d;
+                        bleLive = true;
+                        synchronized (rxBuf) { rxBuf.reset(); }
+                        synchronized (txQ) { txQ.clear(); txBusy = false; }
+                        closeQuiet(server); // לא מחכים יותר לטלפון בבלוטות' רגיל
+                        stopAdvertising();
+                        String n = "";
+                        try { n = d.getName(); } catch (Exception ignored) { }
+                        emit("state", "s", "live", "name", n == null || n.isEmpty() ? "PC" : n, "addr", "", "via", "ble");
+                    }
+                }
+
+                @Override
+                public void onDescriptorReadRequest(BluetoothDevice d, int req, int off, BluetoothGattDescriptor ds) {
+                    gs.sendResponse(d, req, BluetoothGatt.GATT_SUCCESS, 0, new byte[]{(byte) (d.equals(bleDev) ? 1 : 0), 0});
+                }
+
+                @Override
+                public void onCharacteristicWriteRequest(BluetoothDevice d, int req, BluetoothGattCharacteristic ch, boolean prepared, boolean resp, int off, byte[] v) {
+                    if (!d.equals(bleDev)) { if (resp) gs.sendResponse(d, req, BluetoothGatt.GATT_FAILURE, off, null); return; }
+                    if (prepared) synchronized (prep) { prep.write(v, 0, v.length); }
+                    else feed(v, g);
+                    if (resp) gs.sendResponse(d, req, BluetoothGatt.GATT_SUCCESS, off, v);
+                }
+
+                @Override
+                public void onExecuteWrite(BluetoothDevice d, int req, boolean execute) {
+                    byte[] b;
+                    synchronized (prep) { b = prep.toByteArray(); prep.reset(); }
+                    if (execute && d.equals(bleDev)) feed(b, g);
+                    gs.sendResponse(d, req, BluetoothGatt.GATT_SUCCESS, 0, null);
+                }
+
+                @Override
+                public void onNotificationSent(BluetoothDevice d, int status) {
+                    synchronized (txQ) { txBusy = false; }
+                    pump();
+                }
+            });
+            if (gs == null) return false;
+            BluetoothGattService svc = new BluetoothGattService(svcId, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+            BluetoothGattCharacteristic rx = new BluetoothGattCharacteristic(BLE_RX,
+                    BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
+            tx = new BluetoothGattCharacteristic(BLE_TX, BluetoothGattCharacteristic.PROPERTY_NOTIFY, BluetoothGattCharacteristic.PERMISSION_READ);
+            tx.addDescriptor(new BluetoothGattDescriptor(CCCD, BluetoothGattDescriptor.PERMISSION_READ | BluetoothGattDescriptor.PERMISSION_WRITE));
+            svc.addCharacteristic(rx);
+            svc.addCharacteristic(tx);
+            gs.addService(svc);
+            advertise(svcId, true);
+            return true;
+        } catch (SecurityException | IllegalStateException e) {
+            stopBle();
+            return false;
+        }
+    }
+
+    /** השם בתשובה לסריקה — כדי שבמחשב יופיע שם הטלפון. שם ארוך מדי → בלי שם */
+    @SuppressWarnings("MissingPermission")
+    private void advertise(final UUID svcId, final boolean withName) {
+        if (adv == null) return;
+        AdvertiseSettings set = new AdvertiseSettings.Builder()
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
+                .setConnectable(true).setTimeout(0).build();
+        AdvertiseData data = new AdvertiseData.Builder().addServiceUuid(new ParcelUuid(svcId)).setIncludeDeviceName(false).build();
+        AdvertiseData scan = new AdvertiseData.Builder().setIncludeDeviceName(withName).build();
+        advCb = new AdvertiseCallback() {
+            @Override
+            public void onStartFailure(int err) {
+                if (withName && err == ADVERTISE_FAILED_DATA_TOO_LARGE) advertise(svcId, false);
+            }
+        };
+        try {
+            adv.startAdvertising(set, data, scan, advCb);
+        } catch (SecurityException | IllegalStateException ignored) {
+        }
+    }
+
+    /** מקבלים חתיכות מהמחשב ומרכיבים הודעות שלמות: YAM1 + אורך + תוכן */
+    private void feed(byte[] v, int g) {
+        if (v == null || v.length == 0) return;
+        synchronized (rxBuf) {
+            rxBuf.write(v, 0, v.length);
+            for (;;) {
+                byte[] b = rxBuf.toByteArray();
+                if (b.length < 8) return;
+                java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b);
+                int magic = bb.getInt(), n = bb.getInt();
+                if (magic != MAGIC || n < 0 || n > MAX) { rxBuf.reset(); return; }
+                if (b.length < 8 + n) return;
+                String msg = new String(b, 8, n, StandardCharsets.UTF_8);
+                rxBuf.reset();
+                rxBuf.write(b, 8 + n, b.length - 8 - n);
+                if (g == gen) emit("msg", "data", msg);
+            }
+        }
+    }
+
+    private boolean bleSend(String s) {
+        if (s == null || bleDev == null) return false;
+        byte[] b = s.getBytes(StandardCharsets.UTF_8);
+        if (b.length > MAX) return false;
+        byte[] f = java.nio.ByteBuffer.allocate(8 + b.length).putInt(MAGIC).putInt(b.length).put(b).array();
+        int step = Math.max(20, mtu - 3);
+        synchronized (txQ) {
+            for (int i = 0; i < f.length; i += step) txQ.add(Arrays.copyOfRange(f, i, Math.min(f.length, i + step)));
+        }
+        pump();
+        return true;
+    }
+
+    /** שולחים חתיכה אחת בכל פעם — הבאה אחרי onNotificationSent */
+    @SuppressWarnings({"MissingPermission", "deprecation"})
+    private void pump() {
+        byte[] c;
+        BluetoothDevice d = bleDev;
+        synchronized (txQ) {
+            if (txBusy || d == null || gs == null || tx == null) return;
+            c = txQ.poll();
+            if (c == null) return;
+            txBusy = true;
+        }
+        try {
+            boolean ok;
+            if (Build.VERSION.SDK_INT >= 33) ok = gs.notifyCharacteristicChanged(d, tx, false, c) == BluetoothGatt.GATT_SUCCESS;
+            else { tx.setValue(c); ok = gs.notifyCharacteristicChanged(d, tx, false); }
+            if (!ok) { synchronized (txQ) { txQ.addFirst(c); txBusy = false; } new android.os.Handler(a.getMainLooper()).postDelayed(this::pump, 30); }
+        } catch (SecurityException e) {
+            synchronized (txQ) { txBusy = false; }
+        }
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private void stopAdvertising() {
+        try { if (adv != null && advCb != null) adv.stopAdvertising(advCb); } catch (Exception ignored) { }
+        advCb = null;
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private void stopBle() {
+        stopAdvertising();
+        adv = null;
+        BluetoothDevice d = bleDev;
+        try { if (gs != null && d != null) gs.cancelConnection(d); } catch (Exception ignored) { }
+        try { if (gs != null) gs.close(); } catch (Exception ignored) { }
+        gs = null;
+        tx = null;
+        bleDev = null;
+        bleLive = false;
+        synchronized (txQ) { txQ.clear(); txBusy = false; }
     }
 }

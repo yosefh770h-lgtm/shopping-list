@@ -48,6 +48,8 @@ jobs:
         run: node yami-golden.mjs compare yami-golden.json
       - name: Site security (no code injection, deleted items stay deleted)
         run: node security.mjs
+      - name: Hebrew calendar of the offline app (dates, parsha, holidays, zmanim vs hebcal)
+        run: node hcal.mjs
       - name: Long receipts (no duplicate lines, totals or discounts read as products)
         run: node receipt-clean.mjs
       - name: The server code is not published on the public site

@@ -7618,7 +7618,7 @@ revoke all on function public.scrape_summary(text) from public, anon, authentica
 create table if not exists public.apk_downloads (
   id bigserial primary key,
   at timestamptz not null default now(),
-  kind text not null default 'download' check (kind in ('download', 'open', 'off_open', 'off_sync')),
+  kind text not null default 'download' check (kind in ('download', 'open', 'off_open', 'off_sync', 'off_live')),
   user_id uuid references auth.users(id) on delete set null,
   dev text not null default '',
   ip text not null default '',
@@ -7637,7 +7637,8 @@ create unique index if not exists apk_downloads_open_once on public.apk_download
 alter table public.apk_downloads drop constraint if exists apk_downloads_kind_check;
 -- off_sync = כל חיבור (סנכרון) של אפליקציה אופליין עם האתר או עם האפליקציה הרגילה. src = מי התחבר ואיך: site-bt / app-qr / ...
 --    נספר פעם ב-6 שעות לכל מכשיר ולכל דרך, כדי שסנכרון חי בבלוטות' לא ייספר מאות פעמים
-alter table public.apk_downloads add constraint apk_downloads_kind_check check (kind in ('download', 'open', 'off_open', 'off_sync'));
+--    off_live (אופליין 1.4, נובמבר 2026) = "מחובר עכשיו": בזמן חיבור חי בבלוטות' נשלח כל 10 דקות, ונמחק אחרי 3 ימים
+alter table public.apk_downloads add constraint apk_downloads_kind_check check (kind in ('download', 'open', 'off_open', 'off_sync', 'off_live'));
 create unique index if not exists apk_downloads_offopen_once on public.apk_downloads (dev) where kind = 'off_open' and dev <> '';
 alter table public.apk_downloads enable row level security;
 revoke all on public.apk_downloads from anon, authenticated;
@@ -7656,12 +7657,16 @@ create or replace function public.apk_log(p_kind text, p_src text default '', p_
 language plpgsql volatile security definer set search_path = public as $$
 declare v_ip text := public.req_ip(); h jsonb; cc text := ''; d text := ''; ok boolean;
 begin
-  if p_kind not in ('download', 'open', 'off_open', 'off_sync') then return false; end if;
+  if p_kind not in ('download', 'open', 'off_open', 'off_sync', 'off_live') then return false; end if;
   if coalesce(p_dev, '') ~ '^[0-9a-f-]{36}$' then d := p_dev; end if;
+  -- 🟢 off_live: אפליקציה אופליין מחוברת עכשיו בבלוטות' לאתר / לאפליקציה (נשלח כל 10 דקות בזמן החיבור) — "מי מחובר עכשיו" בבק אופיס.
+  --    לא נספר במגבלה לכתובת (חיבור ארוך היה ממלא אותה), אבל לא יותר מפעם ב-8 דקות לטלפון, ונמחק אחרי 3 ימים
+  if p_kind = 'off_live' and (d = '' or coalesce(p_src, '') !~ '^(site|app)-bt$'
+     or exists (select 1 from public.apk_downloads where dev = d and kind = 'off_live' and at > now() - interval '8 minutes')) then return false; end if;
   if p_kind = 'off_sync' and (d = '' or coalesce(p_src, '') !~ '^(site|app)-(bt|qr|code)$'
      or exists (select 1 from public.apk_downloads where dev = d and kind = 'off_sync' and src = p_src and at > now() - interval '6 hours')) then return false; end if;
   -- הגבלה: עד 10 בשעה מאותה כתובת, ועד 500 בשעה בסך הכל
-  if (v_ip <> '' and (select count(*) from public.apk_downloads a where a.ip = v_ip and a.at > now() - interval '1 hour') >= 10)
+  if (p_kind <> 'off_live' and v_ip <> '' and (select count(*) from public.apk_downloads a where a.ip = v_ip and a.at > now() - interval '1 hour') >= 10)
      or (select count(*) from public.apk_downloads where at > now() - interval '1 hour') >= 500 then return false; end if;
   -- אותו מכשיר לחץ שוב תוך 10 דקות — לא נספר פעמיים
   if p_kind = 'download' and d <> '' and exists (select 1 from public.apk_downloads where dev = d and kind = 'download' and at > now() - interval '10 minutes') then return false; end if;
@@ -7673,7 +7678,7 @@ begin
           case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail', 'offline') or p_src ~ '^(site|app)-(bt|qr|code)$' then p_src else '' end)
   on conflict do nothing;
   ok := found;  -- נשמר לפני הניקוי: ה-delete משנה את found, ואז פעם ב-100 הכניסה דווחה כלא נרשמה
-  if random() < 0.01 then delete from public.apk_downloads where at < now() - interval '1 year'; end if;
+  if random() < 0.01 then delete from public.apk_downloads where at < now() - interval '1 year' or (kind = 'off_live' and at < now() - interval '3 days'); end if;
   return ok;
 end $$;
 revoke all on function public.apk_log(text, text, text, text, text) from public;
@@ -7703,12 +7708,18 @@ begin
          (case when adm then a.ip else '' end)::text, a.country,
          case when adm then a.geo else (case when a.geo ? 'city' then jsonb_build_object('city', a.geo->'city', 'country', a.geo->'country') end) end,
          a.device, a.app_ver, a.src,
-         (case when a.kind <> 'open' then ''
+         (case when a.kind = 'off_open' then
+                 -- 📴 אופליין: "מהאתר" אם מי שסנכרן אותו (אותו חשבון / אותה רשת) הוריד את האופליין מהאתר ב-30 הימים שלפני
+                 (case when exists (select 1 from public.apk_downloads d where d.kind = 'download' and d.src = 'offline'
+                              and d.at between a.at - interval '30 days' and a.at + interval '5 minutes'
+                              and ((a.ip <> '' and d.ip = a.ip) or (d.user_id is not null and d.user_id = coalesce(a.user_id, g.converted_user))))
+                       then 'site' else 'other' end)
+               when a.kind <> 'open' then ''
                when exists (select 1 from public.apk_downloads d where d.kind = 'download'
                               and d.at between a.at - interval '3 days' and a.at + interval '5 minutes'
                               and ((a.ip <> '' and d.ip = a.ip) or (d.user_id is not null and d.user_id = coalesce(a.user_id, g.converted_user))))
                then 'site' else 'other' end)::text,
-         (case when a.kind in ('off_open', 'off_sync') then a.dev else '' end)::text
+         (case when a.kind in ('off_open', 'off_sync', 'off_live') then a.dev else '' end)::text
     from public.apk_downloads a
     left join public.guest_visits g on a.user_id is null and a.dev <> '' and g.id::text = a.dev
     left join public.profiles p on p.id = coalesce(a.user_id, g.converted_user)

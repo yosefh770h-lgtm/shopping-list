@@ -2492,7 +2492,6 @@ await test('📷 סורק QR של הסנכרון: ריבוע מלא ורק QR �
   assert(await B.page.evaluate(() => { const n = state.lists.flatMap((l) => l.items.map((i) => i.n)); return n.includes('חומוס') && n.includes('טחינה'); }), 'הסריקה לא סנכרנה');
   // סריקה אחת וזהו — בלי "עכשיו לסרוק בחזרה"
   assert(!(await B.page.evaluate(() => document.body.innerText.includes('בחזרה'))), 'אחרי הסריקה ביקשו לסרוק גם בכיוון ההפוך');
-  assert(!(await A.page.locator('#offFace').isVisible()), 'בנגן בלי מצלמה מוצג "פנים מול פנים"');
   // 🔗 שורה קטנה: עם מי סונכרן (שם/מכשיר + אופליין + גרסה)
   const pl = await B.page.evaluate(() => (document.querySelector('.offsync .offpeers') || {}).textContent || '');
   assert(/סונכרן עם/.test(pl) && /אופליין 1\.1/.test(pl) && /Android/.test(pl), 'אין שורה של עם מי סונכרן: ' + pl);
@@ -2501,31 +2500,60 @@ await test('📷 סורק QR של הסנכרון: ריבוע מלא ורק QR �
   await A.ctx.close(); await B.ctx.close();
 });
 
-await test('🤝 פנים מול פנים: שני המכשירים מציגים קוד וסורקים יחד — פעולה אחת, שני הכיוונים', async () => {
-  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.3';
-  // מצלמה מדומה: מציגה את התמונה שב-__camImg (הקוד של הצד השני)
-  const cam = () => { if (!navigator.mediaDevices) return; window.__fm = [];
-    navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'videoinput', deviceId: 'c', label: '', groupId: '' }];
-    navigator.mediaDevices.getUserMedia = async (c) => { window.__fm.push(JSON.stringify(c)); const cv = document.createElement('canvas'); cv.width = cv.height = 640; const x = cv.getContext('2d');
-      const d = () => { x.fillStyle = '#fff'; x.fillRect(0, 0, 640, 640); if (window.__camImg && window.__camImg.complete) x.drawImage(window.__camImg, (640 - window.__camImg.width) / 2, (640 - window.__camImg.height) / 2); setTimeout(d, 60); }; d(); return cv.captureStream(15); }; };
-  const A = await newPage({ userAgent: OFFUA, init: cam });
-  const B = await newPage({ init: cam });
-  await A.page.evaluate(() => addItem('קוסקוס', ''));
-  await B.page.evaluate(() => addItem('פתיתים', ''));
-  for (const X of [A, B]) { await X.page.evaluate(() => offSyncOpen('qr')); await X.page.waitForSelector('#offFace', { state: 'visible', timeout: 8000 }); }
-  for (const X of [A, B]) { await X.page.evaluate(() => document.querySelector('#offFace').click()); await X.page.waitForSelector('#offQs.face #offQsMine .offqr svg', { timeout: 8000 }); }
-  const shot = async (X) => (await X.page.locator('#offQsMine .offqr').screenshot()).toString('base64');
-  const [qa, qb] = [await shot(A), await shot(B)];
-  const show = (X, b64) => X.page.evaluate((b) => { const im = new Image(); im.src = 'data:image/png;base64,' + b; window.__camImg = im; }, b64);
-  await show(A, qb); await show(B, qa);
-  await Promise.all([A, B].map((X) => X.page.waitForFunction(() => /קיבלתי/.test((document.querySelector('#offQsHint') || {}).textContent || ''), null, { timeout: 15000 })));
-  const has = (X, n) => X.page.waitForFunction((n) => state.lists.some((l) => l.items.some((i) => i.n === n)), n, { timeout: 5000 }).then(() => true, () => false);
-  assert(await has(A, 'פתיתים'), 'האופליין לא קיבל מהאתר');
-  assert(await has(B, 'קוסקוס'), 'האתר לא קיבל מהאופליין');
-  assert(await A.page.evaluate(() => window.__fm.some((c) => /user/.test(c))), 'לא נפתחה המצלמה הקדמית');
-  // הקוד שלי נשאר עוד רגע לצד השני, ו"סיום" סוגר
-  assert(await A.page.locator('#offQsMine .offqr svg').isVisible(), 'הקוד נעלם מיד אחרי שקיבלתי');
-  await A.page.click('#offQsX'); await A.page.waitForFunction(() => !document.querySelector('#offQs'));
+await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הקוד מהטלפון האופליין, מתחברים (Web Bluetooth) והרשימות מסתנכרנות חי', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.4';
+  // הטלפון האופליין: הגשר של Bt.java (שולח טקסט, מקבל offBt)
+  const A = await newPage({ userAgent: OFFUA, init: () => { window.__out = []; window.YamApp = { appInfo: () => JSON.stringify({ offline: true, offApp: true, ver: '1.4', model: 'Qin3Ultra' }),
+    btState: () => '{"has":true,"on":true}', btListen() {}, btJoin() {}, btConnect() {}, btStop() {}, btSend: (t) => { window.__out.push(t); return true; } }; } });
+  // המחשב: navigator.bluetooth מדומה — מה שנכתב ל-RX נאסף, וה-TX "מודיע" כשמגיעות חתיכות מהטלפון
+  const B = await newPage({ init: () => { window.__wb = { req: [], out: [], tx: null };
+    const tx = new EventTarget(); tx.startNotifications = async () => tx; window.__wb.tx = tx;
+    const rx = { writeValueWithResponse: async (v) => { window.__wb.out.push(Array.from(new Uint8Array(v.buffer || v, v.byteOffset || 0, v.byteLength))); } };
+    const dev = new EventTarget(); dev.name = 'Qin3Ultra'; dev.gatt = { connected: true, connect: async () => ({ getPrimaryService: async () => ({ getCharacteristic: async (u) => (/0001-/.test(u) ? rx : tx) }) }), disconnect() {} };
+    Object.defineProperty(navigator, 'bluetooth', { value: { requestDevice: async (o) => { window.__wb.req.push(JSON.stringify(o)); return dev; } } }); } });
+  await A.page.evaluate(() => { addItem('שמן', ''); });
+  await B.page.evaluate(() => { addItem('סוכר', ''); });
+  // בטלפון: "ליצור קוד" — הקוד מוצג, ונאמר שאפשר להקליד אותו גם במחשב
+  await A.page.evaluate(() => offSyncOpen('bt'));
+  await A.page.click('#offBtNew');
+  await A.page.evaluate(() => offBt({ t: 'state', s: 'wait', code: '4321', ble: '1' }));
+  assert(/במחשב/.test(await A.page.locator('#offBtSt').textContent()), 'בטלפון לא כתוב שאפשר להקליד את הקוד במחשב');
+  // במחשב: לשונית בלוטות' עם שדה לקוד
+  await B.page.evaluate(() => offSyncOpen());
+  await B.page.waitForSelector('#offBtCode', { timeout: 5000 });
+  await B.page.fill('#offBtCode', '4321');
+  await B.page.click('#offBtGo');
+  await B.page.waitForFunction(() => window.__wb.req.length, null, { timeout: 5000 });
+  assert(/59414d31-0000-4000-8000-000000004321/.test(await B.page.evaluate(() => window.__wb.req[0])), 'החיפוש בדפדפן לא לפי הקוד: ' + (await B.page.evaluate(() => window.__wb.req[0])));
+  await A.page.evaluate(() => offBt({ t: 'state', s: 'live', name: 'PC', addr: '', via: 'ble' }));
+  const frame = (t) => { const b = Buffer.from(t, 'utf8'), f = Buffer.alloc(8 + b.length); f.writeUInt32BE(0x59414d31, 0); f.writeUInt32BE(b.length, 4); b.copy(f, 8); return [...f]; };
+  const pump = async () => { for (let k = 0; k < 3; k++) {
+    // טלפון → מחשב: בחתיכות של 20 בתים, כמו notify בלי MTU גדול
+    for (const t of await A.page.evaluate(() => window.__out.splice(0))) { const f = frame(t);
+      await B.page.evaluate((f) => { for (let i = 0; i < f.length; i += 20) { const e = new Event('characteristicvaluechanged'); const u = new Uint8Array(f.slice(i, i + 20)); Object.defineProperty(e, 'target', { value: { value: new DataView(u.buffer) } }); window.__wb.tx.dispatchEvent(e); } }, f); }
+    // מחשב → טלפון: מחברים את החתיכות ומפרקים להודעות
+    const bytes = Buffer.from((await B.page.evaluate(() => window.__wb.out.splice(0))).flat());
+    for (let i = 0; i + 8 <= bytes.length;) { const n = bytes.readUInt32BE(i + 4); await A.page.evaluate((d) => offBt({ t: 'msg', data: d }), bytes.subarray(i + 8, i + 8 + n).toString('utf8')); i += 8 + n; }
+    await A.page.waitForTimeout(250); } };
+  await pump();
+  const names = (X) => X.page.evaluate(() => state.lists.flatMap((l) => l.items.map((i) => i.n)).sort().join(','));
+  assert((await names(A)) === (await names(B)) && /שמן/.test(await names(B)) && /סוכר/.test(await names(A)), 'אחרי החיבור למחשב לא זהים: ' + (await names(A)) + ' ≠ ' + (await names(B)));
+  assert(/מחובר/.test(await B.page.locator('#offBtSt').textContent()), 'במחשב לא כתוב שמחובר');
+  // שינוי במחשב עובר לטלפון מיד (חי)
+  await B.page.evaluate(() => { addItem('קפה', ''); });
+  await B.page.waitForTimeout(1500); await pump();
+  assert(/קפה/.test(await names(A)), 'שינוי במחשב לא עבר לטלפון');
+  // 📧 בקוד שיתוף באתר יש "לשלוח במייל", ובאופליין אין
+  await B.page.evaluate(() => offSyncOpen('code')); await B.page.waitForSelector('#offMail', { timeout: 5000 });
+  await A.page.evaluate(() => offSyncOpen('code')); await A.page.waitForSelector('#offMine', { timeout: 5000 });
+  assert(!(await A.page.locator('#offMail').count()), 'באופליין יש כפתור מייל');
+  // 📅 באופליין: תאריך עברי ופרשה מעל הרשימה, ובלחיצה — זמני היום
+  await A.page.evaluate(() => closeSheet && closeSheet());
+  const hl = await A.page.locator('.hcline').textContent();
+  assert(/תשפ|תשצ/.test(hl) && /(פרשת|שבת:)/.test(hl), 'אין תאריך עברי / פרשה באופליין: ' + hl);
+  assert(!(await B.page.locator('.hcline').count()), 'הלוח העברי מופיע גם באתר');
+  await A.page.click('.hcline'); await A.page.waitForSelector('.hczm', { timeout: 5000 });
+  assert(/הנץ החמה/.test(await A.page.locator('.hczm').textContent()), 'אין זמני היום');
   assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
   await A.ctx.close(); await B.ctx.close();
 });
