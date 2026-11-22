@@ -54,7 +54,7 @@
       '<div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:6px"><select id="apk55v" style="max-width:240px" aria-label="סינון לפי גרסה"><option value="">כל הגרסאות</option><option value="new">✅ רק מי שבגרסה האחרונה</option><option value="old">⚠️ רק מי שבגרסה ישנה</option><option value="upd">🔄 רק מי שעדכן</option><option value="never">רק מי שלא עדכן מאז שהתקין</option><option value="now">🟢 רק מי שהאפליקציה פתוחה אצלו עכשיו</option><option value="reinst">🔁 רק מי שהסיר והתקין מחדש</option><option value="gone">🗑️ רק התקנות שהוסרו (או לא נפתחו חודש)</option></select></div>'+
       '<div id="apk55u" class="muted">טוען...</div>';
     main.prepend(card);
-    let rows=[],plat=null,fol=null;
+    let rows=[],plat=null,fol=null,offErr=null;
     const v=s=>card.querySelector(s).value;
     const draw=()=>{const k=v('#apk55k'),w=v('#apk55w'),q=v('#apk55q').trim().toLowerCase(),days=+v('#apk55d')||30;
       const list=rows.filter(r=>(!k||(k==='other'?r.kind==='open'&&r.via==='other':k==='off'?/^off_/.test(r.kind)||r.src==='offline':r.kind===k))&&(!w||(w==='users'?!!r.user_id:!r.user_id))&&(!q||[r.name,r.email,r.ip,(r.geo||{}).city,(r.geo||{}).country].some(x=>String(x||'').toLowerCase().includes(q))));
@@ -78,7 +78,7 @@
       const offk='<h3 id="off55">📴 האפליקציה האופליין — כמה מחוברים</h3><div class="k55">'+[[offDevs,'📴 טלפונים עם האפליקציה האופליין שהתחברו'],[wk,'🟢 מזה התחברו ב-7 הימים האחרונים'],[sy.length,'🔗 חיבורים (נספר פעם ב-6 שעות לכל טלפון)'],
         [cnt(r=>/^site-/.test(r.src)),'🌐 חיבורים לאתר'],[cnt(r=>/^app-/.test(r.src)),'📱 חיבורים לאפליקציה הרגילה'],[cnt(r=>/-bt$/.test(r.src)),"🔵 בבלוטות'"],[cnt(r=>/-qr$/.test(r.src)),'🔳 ב-QR'],[cnt(r=>/-code$/.test(r.src)),'✉️ בקוד שיתוף'],
         [dl.filter(r=>r.src==='offline').length,'⬇️ הורדות של האופליין מהאתר']].map(x=>'<div><b>'+x[0]+'</b><small>'+x[1]+'</small></div>').join('')+'</div>'+
-        '<p class="muted">נספר כשאפליקציה אופליין מתחברת לאתר או לאפליקציה הרגילה (שם יש אינטרנט). חיבור בין שתי אפליקציות אופליין לא נספר, כי לשתיהן אין אינטרנט. החיבורים נספרים מ-22/11/2026.</p>';
+        '<p class="muted">נספר כשאפליקציה אופליין מתחברת לאתר או לאפליקציה הרגילה (שם יש אינטרנט). חיבור בין שתי אפליקציות אופליין לא נספר, כי לשתיהן אין אינטרנט. החיבורים נספרים מ-22/11/2026.</p>'+offDevT();
       const OFFV={bt:"🔵 בלוטות'",qr:'🔳 QR',code:'✉️ קוד'};
       if(!list.length){box.className='';box.innerHTML=kp+offk+chart+'<p class="muted">אין הורדות בטווח הזה.</p>';return;}
       box.className='';box.innerHTML=kp+offk+chart+'<div class="tw" tabindex="0" role="region" aria-label="הורדות"><table><thead><tr><th>מתי</th><th>מה</th><th>מי</th><th>מאיפה</th><th>מכשיר</th><th>לחצו ב</th></tr></thead><tbody>'+
@@ -86,6 +86,28 @@
           '<td>'+(r.user_id?'<b>'+esc(r.name||'משתמש/ת')+'</b>'+(r.guest?' <small class="muted">(הוריד/ה כאורח ונרשם/ה אחר כך)</small>':'')+(r.email?'<br><small class="muted" dir="ltr">'+esc(r.email)+'</small>':''):'<span class="muted">אורח/ת (לא מחובר)</span>')+'</td>'+
           '<td data-l="מאיפה">'+place(r,adm)+'</td><td data-l="מכשיר"><small>'+esc(r.device||'')+'</small></td>'+(r.kind!=='download'?'<td class="nol55"></td>':'<td data-l="לחצו ב"><small>'+esc(SRC[r.src]||r.src||'—')+'</small></td>')+'</tr>').join('')+'</tbody></table></div>'+
         '<p class="muted" style="margin-top:6px">'+list.length+' שורות</p>';};
+    /* 📴 כל מכשיר אופליין בשורה: איזה מכשיר, גרסה, מתי ואיך התחבר, אצל מי — ומה צריך טיפול (גרסה ישנה, תקלות, שעון שזז, לא התחבר הרבה זמן) */
+    const offDevT=()=>{const OV={bt:"🔵 בלוטות'",qr:'🔳 QR',code:'✉️ קוד'},od={};
+      rows.filter(r=>/^off_/.test(r.kind)).forEach(r=>{const k=r.dev||'#'+r.id,x=od[k]=od[k]||{dev:r.dev,n:0,last:0,ver:'',device:'',who:new Set(),how:'',hat:0},t=+new Date(r.at);
+        if(t>x.last){x.last=t;if(r.app_ver)x.ver=r.app_ver;if(r.device)x.device=r.device;}if(r.name)x.who.add(r.name);
+        if(r.kind==='off_sync'){x.n++;if(t>x.hat){x.hat=t;x.how=r.src;}}});
+      const ds=Object.values(od);if(!ds.length)return '';
+      const top=ds.map(x=>x.ver).filter(Boolean).sort((a,b)=>vcmp(b,a))[0]||'';
+      ds.forEach(x=>{const e=(offErr||[]).filter(r=>r.dev&&r.dev===x.dev),iss=[];
+        if(top&&x.ver&&vcmp(x.ver,top)<0)iss.push('⬆️ גרסה ישנה ('+esc(x.ver)+') — כדאי להעביר אליו את '+esc(top));
+        const ck=e.filter(r=>/שעון/.test(r.src||''));if(ck.length)iss.push('🕰️ '+esc(String(ck[0].msg).slice(0,90)));
+        const er=e.filter(r=>!/שעון/.test(r.src||''));if(er.length){const w=typeof errExplain==='function'?errExplain(er[0]).what:er[0].msg;iss.push('🐞 '+er.length+' תקלות — '+esc(String(w).split(/\. /)[0].slice(0,90)));}
+        if(Date.now()-x.last>14*864e5)iss.push('💤 לא התחבר '+Math.round((Date.now()-x.last)/864e5)+' ימים');
+        x.iss=iss;});
+      ds.sort((a,b)=>(b.iss.length?1:0)-(a.iss.length?1:0)||b.last-a.last);
+      const bad=ds.filter(x=>x.iss.length).length,dn=d=>{const m=String(d||'').split(' · ');return esc((window.phName61&&phName61(m[0]))||m[0]||'מכשיר לא ידוע')+(m[1]?'<br><small class="muted">'+esc(m[1])+'</small>':'');};
+      return '<h3 id="offd61">📴 מכשירים אופליין'+(bad?' · <span class="kd55 o">⚠️ '+bad+' צריכים טיפול</span>':' · <span class="kd55">✅ אין בעיות</span>')+'</h3>'+
+        '<div class="tw" tabindex="0" role="region" aria-label="מכשירים אופליין"><table><thead><tr><th>מכשיר</th><th>גרסה</th><th>התחבר לאחרונה</th><th>חיבורים</th><th>אצל מי</th><th>מה צריך טיפול</th></tr></thead><tbody>'+
+        ds.map(x=>'<tr><td data-l="מכשיר">'+dn(x.device)+'</td><td data-l="גרסה"><b dir="ltr">'+esc(x.ver||'—')+'</b>'+(top&&x.ver&&vcmp(x.ver,top)>=0?' <span class="kd55">✅</span>':'')+'</td>'+
+          '<td data-l="התחבר לאחרונה" style="white-space:nowrap">'+when55(new Date(x.last).toISOString())+(x.how?'<br><small class="muted">'+(/^app-/.test(x.how)?'📱 לאפליקציה':'🌐 לאתר')+' · '+(OV[x.how.split('-')[1]]||'')+'</small>':'')+'</td>'+
+          '<td data-l="חיבורים">'+x.n+'</td><td data-l="אצל מי">'+([...x.who].map(esc).join(', ')||'<span class="muted">אורח/ת</span>')+'</td>'+
+          '<td data-l="מה צריך טיפול">'+(x.iss.length?x.iss.map(t=>'<div class="kd55 o" style="display:block;margin:2px 0">'+t+'</div>').join(''):'<span class="kd55">✅ תקין</span>')+'</td></tr>').join('')+'</tbody></table></div>'+
+        (offErr==null?'<p class="muted">תקלות מהאופליין מופיעות כאן רק למנהל (יומן התקלות).</p>':'');};
     let act=null,latest='';
     if(window.apkVer57)apkVer57().then(x=>{if(x&&x.version){latest=String(x.version);drawU();}});
     const vcmp=(a,b)=>{a=String(a||'0').split('.').map(Number);b=String(b||'0').split('.').map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){const x=a[i]||0,y=b[i]||0;if(x!==y)return x-y;}return 0;};
@@ -133,7 +155,9 @@
       act=error?'⚠️ '+(/forbidden|42501/.test(error.message)?'אין לך הרשאה':'צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)'):(data||[]);drawU();};
     const load=async()=>{loadU();const {data,error}=await sb.rpc('staff_apk_downloads',{p_days:+v('#apk55d')||30});
       if(error){card.querySelector('#apk55b').textContent='⚠️ '+(/forbidden|42501/.test(error.message)?'אין לך הרשאה לראות מי הוריד':'צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)');return;}
-      rows=data||[];draw();};
+      rows=data||[];draw();
+      sb.from('client_errors').select('msg,src,dev,app_ver,created_at').like('src','📴 אופליין%').gt('created_at',new Date(Date.now()-30*864e5).toISOString()).order('created_at',{ascending:false}).limit(500)
+        .then(({data,error})=>{offErr=error?null:(data||[]);draw();},()=>{});};
     if(adm)sb.rpc('admin_user_platforms').then(({data})=>{if(data){plat=data.filter(r=>r.app_at).length;draw();}},()=>{});
     sb.rpc('app_follow_count').then(({data})=>{if(typeof data==='number'){fol=data;draw();}},()=>{});
     card.querySelector('#apk55d').onchange=load;card.querySelector('#apk55v').onchange=drawU;['#apk55k','#apk55w'].forEach(s=>card.querySelector(s).onchange=()=>{draw();drawU();});card.querySelector('#apk55q').oninput=()=>{draw();drawU();};

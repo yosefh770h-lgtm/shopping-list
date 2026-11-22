@@ -16,6 +16,9 @@ const $o=s=>document.querySelector(s);
 const nat=()=>window.YamApp||null;
 const hasBt=()=>{const a=nat();return !!(a&&typeof a.btState==='function');};
 const appInfo=()=>{try{const a=nat();return a&&typeof a.appInfo==='function'?JSON.parse(a.appInfo()||'{}'):{};}catch(e){return {};}};
+/* באתר: "Chrome · Windows" — כדי שבצד השני יהיה כתוב עם איזה מכשיר סונכרן */
+const uaDev=()=>{const u=navigator.userAgent||'',os=/Windows/.test(u)?'Windows':/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iPhone':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'',
+  b=/Edg\//.test(u)?'Edge':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'';return [b,os].filter(Boolean).join(' · ');};
 const devId=()=>{try{return typeof guestId27==='function'?guestId27():'';}catch(e){return '';}};
 
 /* ---------- 🐞 תקלות באפליקציה האופליין: נשמרות בטלפון עד הסנכרון הבא ---------- */
@@ -38,7 +41,8 @@ function slim(l){return Object.assign({},l,{items:(l.items||[]).map(i=>{const o=
 async function pack(qr){seenAdd();
   const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
     lists:qr?state.lists.map(slim):state.lists,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:qr?[]:(state.history||[]).slice(0,30)};/* ב-QR בלי היסטוריה — פחות קודים לסרוק */
-  if(OFF_APP){const ai=appInfo();o.ver=String(ai.ver||'');o.model=String(ai.model||'');o.android=String(ai.android||'');
+  const ai=appInfo();o.kind=OFF_APP?'off':/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site';o.model=String(ai.model||uaDev()).slice(0,40);
+  if(OFF_APP){o.ver=String(ai.ver||(navigator.userAgent.match(/YamShoppingOffline\/([0-9.]+)/)||[])[1]||'');o.android=String(ai.android||'');
     if(diagOk()==='1'){const d=jget(LS_DIAG,[]);if(Array.isArray(d)&&d.length)o.diag=d.slice(-20);}}
   return PFX+(await zip(JSON.stringify(o)));}
 window.offPack=pack;
@@ -55,6 +59,7 @@ const LS_CLOCK='yam_off_clock',LS_SEEN='yam_off_seen',SKEW=90e3;
 function learnClock(o,via){if(!OFF_APP||!o.net||(via!=='bt'&&via!=='qr'))return;const at=Number(o.at);if(!isFinite(at)||at<=0)return;
   const d=at-Date.now();if(Math.abs(d)<SKEW)return;
   const off=(Number(ls.get(LS_CLOCK))||0)+d;if(Math.abs(off)>=4e11)return;ls.set(LS_CLOCK,String(off));
+  if(Math.abs(d)>=36e5)try{offDiagAdd('השעון בטלפון זז ב-'+Math.round(Math.abs(d)/36e5)+' שעות ('+(d>0?'מאחר':'ממהר')+') — תוקן לבד בסנכרון','🕰️ שעון');}catch(e){}
   const _n=Date.now;Date.now=()=>_n()+d;const now=Date.now(),c=v=>{v=Number(v);return isFinite(v)&&v>now?now:v;};
   (state.lists||[]).forEach(l=>{['created','nameTs','mtime'].forEach(k=>{if(l[k]!=null)l[k]=c(l[k]);});(l.items||[]).forEach(i=>{if(i&&i.ts)i.ts=c(i.ts);});});
   const t=state.tomb;if(t&&typeof t==='object')['items','lists'].forEach(k=>{const m=t[k];if(m&&typeof m==='object')Object.keys(m).forEach(id=>{m[id]=c(m[id]);});});}
@@ -85,7 +90,8 @@ async function merge(code,via,peer){
   seenAdd();save();try{render();}catch(e){}
   const b=snap();let add=0,upd=0,del=0;for(const k in b){if(!(k in a))add++;else if(b[k]!==a[k])upd++;}for(const k in a)if(!(k in b))del++;
   const name=String(peer||o.name||o.model||'').replace(/[<>]/g,'').slice(0,40);
-  const peers=obj(jget(LS_PEERS,{}));peers[String(o.dev||'?').slice(0,40)]={at:Date.now(),via,name,off:o.off?1:0};ls.set(LS_PEERS,JSON.stringify(peers));ls.set(LS_LAST,String(Date.now()));
+  const peers=obj(jget(LS_PEERS,{}));const cl=x=>String(x||'').replace(/[<>]/g,'').slice(0,40);
+  peers[String(o.dev||'?').slice(0,40)]={at:Date.now(),via,name:cl(peer||o.name),off:o.off?1:0,kind:['off','app','site'].includes(o.kind)?o.kind:o.off?'off':'',model:cl(o.model),ver:cl(o.ver).slice(0,12)};ls.set(LS_PEERS,JSON.stringify(peers));ls.set(LS_LAST,String(Date.now()));try{mount();}catch(e){}
   /* הצד השני מחובר לאינטרנט וקיבל את התקלות שלנו — אפשר למחוק אותן מהטלפון */
   if(OFF_APP&&o.net)ls.del(LS_DIAG);
   if(!OFF_APP&&o.off)relay(o,via);
@@ -127,7 +133,7 @@ function relay(o,via){if(!sb||navigator.onLine===false)return;
     try{sb.rpc('log_client_error',{p_msg:d.m.slice(0,500),p_src:('📴 אופליין · '+String(d.s||'')).slice(0,300),p_ua:('YamShoppingOffline/'+ver).slice(0,200),p_ver:String(d.v||'').slice(0,12),p_app:ver,p_device:device,p_dev:dev}).then(()=>{},()=>{});}catch(e){}});}
 
 /* ---------- 🔳 QR ---------- */
-let qrTimer=0,rx={};
+let rx={};
 /* הסורק בטלפונים בלי שירותי גוגל (ZXing) לא מצליח לקרוא חלק קטן מהקודים. לכן כל קוד נבדק כאן לפני שמציגים אותו,
    ואם הוא לא נקרא — מציירים אותו מחדש ברמת תיקון שגיאות אחרת (ציור אחר לגמרי של אותו תוכן) */
 function qrMatrix(Z,text){const E=Z.QRCodeDecoderErrorCorrectionLevel;let m=null;
@@ -140,14 +146,14 @@ function qrMatrix(Z,text){const E=Z.QRCodeDecoderErrorCorrectionLevel;let m=null
 function qrSvg(m){const w=m.getWidth();let d='';
   for(let y=0;y<w;y++)for(let x=0;x<w;x++)if(m.get(x,y))d+='M'+x+' '+y+'h1v1h-1z';
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+w+'" shape-rendering="crispEdges" role="img" aria-label="QR"><rect width="'+w+'" height="'+w+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';}
-async function showQr(){clearInterval(qrTimer);const box=$o('#offQr');if(!box)return;box.innerHTML='<p class="muted-note">⏳</p>';
+async function showQr(sel){const box=$o(sel||'#offQr');if(!box)return;clearInterval(box._t);box.innerHTML='<p class="muted-note">⏳</p>';
   let Z;try{Z=await loadZxing();}catch(e){box.innerHTML='<p class="muted-note">'+T('הקוד לא נטען','Could not load')+'</p>';return;}
   const code=(await pack(true)).slice(PFX.length),sid=Math.random().toString(36).slice(2,6).padEnd(4,'0'),n=Math.ceil(code.length/PART);
   const parts=n<=1?[PFX+code]:Array.from({length:n},(_,i)=>'Y1:'+sid+':'+(i+1)+':'+n+':'+code.slice(i*PART,(i+1)*PART));
   const svgs=parts.map(t=>qrSvg(qrMatrix(Z,t)));
-  let i=0;const draw=()=>{if(!document.body.contains(box)){clearInterval(qrTimer);return;}
+  let i=0;const draw=()=>{if(!document.body.contains(box)){clearInterval(box._t);return;}
     box.innerHTML='<div class="offqr">'+svgs[i]+'</div>'+(n>1?'<p class="offqrn">'+T('קוד '+(i+1)+' מתוך '+n+' — מתחלף לבד, ממשיכים לכוון','Code '+(i+1)+' of '+n)+'</p>':'');i=(i+1)%n;};
-  draw();if(n>1)qrTimer=setInterval(draw,900);}
+  draw();if(n>1)box._t=setInterval(draw,900);}
 /* נקרא מהסורק (js/009.js): 'more' = עוד חלקים, המצלמה נשארת פתוחה; 'done' = נקלט; null = לא שלנו */
 window.offQrTake=function(code){code=String(code||'').trim();
   if(/^YAM1[zj]/.test(code)){got(code,'qr');return 'done';}
@@ -158,37 +164,50 @@ window.offQrTake=function(code){code=String(code||'').trim();
 /* 📷 סורק QR משלו — לא הסורק של ברקוד המוצרים (שחותך מלבן רחב, מקטין את התמונה ומחפש פסים, ולכן כמעט לא קרא את קוד הסנכרון).
    כאן: ריבוע באמצע התמונה בגודל מלא (עד 900 פיקסלים), רק QR, ואם המצלמה החיה לא עובדת בטלפון הזה — צילום תמונה */
 let qs=null;
-function qrScanClose(){if(!qs)return;qs.on=false;clearTimeout(qs.t);try{qs.stream&&qs.stream.getTracks().forEach(t=>t.stop());}catch(e){}const o=$o('#offQs');if(o)o.remove();qs=null;}
+function camStop(){try{qs&&qs.stream&&qs.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
+function qrScanClose(){if(!qs)return;qs.on=false;clearTimeout(qs.t);clearTimeout(qs.k);camStop();const o=$o('#offQs');if(o)o.remove();qs=null;}
+/* 🤝 פנים מול פנים: מחזיקים את שני המכשירים זה מול זה. כל אחד מציג את הקוד שלו ומצלם במצלמה הקדמית את הקוד של השני —
+   פעולה אחת, ושני הצדדים מקבלים הכל. אחרי שקיבלנו, הקוד שלנו נשאר עוד רגע — שגם הצד השני יסיים */
+async function faceStream(){const tries=[{video:{facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720}},audio:false},{video:{facingMode:{ideal:'user'}},audio:false},{video:true,audio:false}];
+  let last;for(const c of tries){try{return await navigator.mediaDevices.getUserMedia(c);}catch(e){last=e;if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))break;}}throw last;}
+function faceDone(){if(!qs||!qs.face)return false;const me=qs;me.on=false;clearTimeout(me.t);camStop();
+  const v=$o('#offQs .offqsv');if(v)v.hidden=true;let n=10;
+  const tick=()=>{if(qs!==me)return;if(n<=0){qrScanClose();return;}qsHint('✅ '+T('קיבלתי! הקוד שלי נשאר עוד '+n+' שניות — שגם הצד השני יסיים לסרוק','Got it! My code stays '+n+' more seconds for the other side'));n--;me.k=setTimeout(tick,1000);};
+  tick();const x=$o('#offQsX');if(x)x.textContent=T('סיום','Done');return true;}
 function qsHint(t){const h=$o('#offQsHint');if(h)h.textContent=t;}
-async function scanQr(){rx={};qrScanClose();
-  document.body.insertAdjacentHTML('beforeend','<div id="offQs" class="offqs" role="dialog" aria-modal="true" aria-label="'+T('סריקת קוד סנכרון','Scan sync code')+'">'+
+async function scanQr(face){face=face===true;rx={};qrScanClose();
+  document.body.insertAdjacentHTML('beforeend','<div id="offQs" class="offqs'+(face?' face':'')+'" role="dialog" aria-modal="true" aria-label="'+T('סריקת קוד סנכרון','Scan sync code')+'">'+
+    (face?'<div id="offQsMine" class="offqrbox"></div>':'')+
     '<div class="offqsv"><video playsinline muted></video><i aria-hidden="true"></i></div><p id="offQsHint" aria-live="polite">⏳</p>'+
-    '<div class="offqsb"><label class="btn" id="offQsPh">📸 '+T('לצלם תמונה במקום','Take a photo instead')+'<input type="file" accept="image/*" capture="environment" hidden></label>'+
+    '<div class="offqsb">'+(face?'':'<label class="btn" id="offQsPh">📸 '+T('לצלם תמונה במקום','Take a photo instead')+'<input type="file" accept="image/*" capture="environment" hidden></label>')+
     '<button type="button" class="btn" id="offQsX">'+T('סגירה','Close')+'</button></div></div>');
-  const me=qs={on:true,t:0,stream:null},alive=()=>qs===me&&me.on;
-  $o('#offQsX').onclick=qrScanClose;
+  const me=qs={on:true,t:0,k:0,stream:null,face},alive=()=>qs===me&&me.on;
+  $o('#offQsX').onclick=()=>{qrScanClose();if(face)showQr();};
+  if(face)showQr('#offQsMine');
   let Z;try{Z=await loadZxing();}catch(e){qsHint(T('הסורק לא נטען','Scanner failed to load'));return;}
   const hints=new Map();hints.set(Z.DecodeHintType.TRY_HARDER,true);const rd=new Z.QRCodeReader();
   let nat=null;try{if(typeof scanNativeOk==='function'&&scanNativeOk()&&(await BarcodeDetector.getSupportedFormats()).includes('qr_code'))nat=new BarcodeDetector({formats:['qr_code']});}catch(e){nat=null;}
   const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
   const dec=async()=>{if(nat){try{const c=await nat.detect(cv);if(c&&c.length)return c[0].rawValue;}catch(e){nat=null;}}
     try{return rd.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv))),hints).getText();}catch(e){return null;}};
-  const take=t=>{if(!t||!alive())return false;const r=offQrTake(t);if(r==='done'){qrScanClose();return true;}
+  const take=t=>{if(!t||!alive())return false;const r=offQrTake(t);if(r==='done'){if(!faceDone())qrScanClose();return true;}
     if(r==null)qsHint(T('זה לא קוד סנכרון — מכוונים אל הקוד שבטלפון השני','Not a sync code'));return false;};
   /* צילום: גם בטלפון שהמצלמה החיה קורסת בו. רשימה ארוכה = כמה קודים, צילום לכל אחד */
-  $o('#offQsPh input').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;qsHint('⏳');
+  if(!face)$o('#offQsPh input').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;qsHint('⏳');
     try{const u=URL.createObjectURL(f),im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=u;});
       for(const mx of [1400,900]){const k=Math.min(1,mx/Math.max(im.width,im.height));cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);cx.drawImage(im,0,0,cv.width,cv.height);
         const t=await dec();if(t){URL.revokeObjectURL(u);if(!take(t)&&rx.n)qsHint(T('נקלטו '+Object.keys(rx.p).length+' מתוך '+rx.n+' — מצלמים את הקוד הבא','Got '+Object.keys(rx.p).length+' of '+rx.n));return;}}
       URL.revokeObjectURL(u);qsHint(T('לא נמצא קוד בתמונה — מצלמים מקרוב, ישר, שכל הקוד בתמונה','No code found — try closer'));}catch(er){qsHint(T('התמונה לא נפתחה','Could not open the photo'));}};
   const live=!(typeof scanPhotoMode==='function'&&scanPhotoMode())&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
-  if(!live){qsHint(T('מצלמים את הקוד שבטלפון השני (📸)','Take a photo of the code on the other phone'));$o('#offQs .offqsv').hidden=true;return;}
-  qsHint(T('מכוונים אל קוד הסנכרון בטלפון השני','Point at the sync code on the other phone'));
-  try{me.stream=await getScanStream();}catch(e){if(alive()){qsHint(T('המצלמה לא נפתחה — מצלמים תמונה במקום (📸)','Camera unavailable — take a photo'));$o('#offQs .offqsv').hidden=true;}return;}
+  if(face){qsHint(T('מחזיקים את שני המכשירים זה מול זה: כל אחד מראה את הקוד שלו ומצלם את של השני','Hold both devices facing each other'));
+    try{me.stream=await faceStream();}catch(e){if(alive()){qsHint(T('המצלמה לא נפתחה — סגירה, ואז "אני סורק" מצד אחד','Camera unavailable'));$o('#offQs .offqsv').hidden=true;}return;}}
+  else if(!live){qsHint(T('מצלמים את הקוד שבטלפון השני (📸)','Take a photo of the code on the other phone'));$o('#offQs .offqsv').hidden=true;return;}
+  else{qsHint(T('מכוונים אל קוד הסנכרון בטלפון השני','Point at the sync code on the other phone'));
+  try{me.stream=await getScanStream();}catch(e){if(alive()){qsHint(T('המצלמה לא נפתחה — מצלמים תמונה במקום (📸)','Camera unavailable — take a photo'));$o('#offQs .offqsv').hidden=true;}return;}}
   if(!alive()){me.stream.getTracks().forEach(t=>t.stop());return;}
   const v=$o('#offQs video');v.srcObject=me.stream;try{await v.play();}catch(e){}
   const step=async()=>{if(!alive())return;
-    try{const w=v.videoWidth,h=v.videoHeight;if(w&&h&&v.readyState>=2){const sd=Math.round(Math.min(w,h)*.9),k=Math.min(1,900/sd),z=Math.max(1,Math.round(sd*k));
+    try{const w=v.videoWidth,h=v.videoHeight;if(w&&h&&v.readyState>=2){const sd=Math.round(Math.min(w,h)*((me.f=(me.f||0)+1)%3?.9:.6)),k=Math.min(1,900/sd),z=Math.max(1,Math.round(sd*k));
       if(cv.width!==z){cv.width=cv.height=z;}cx.drawImage(v,(w-sd)/2,(h-sd)/2,sd,sd,0,0,z,z);if(take(await dec()))return;}}catch(e){}
     if(alive())me.t=setTimeout(step,120);};
   step();}
@@ -269,16 +288,25 @@ async function showCode(){const t=$o('#offMine');if(!t)return;t.value=await pack
 let curTab='';
 function ago(ts){if(!ts)return T('עוד לא סונכרן','Never synced');const m=Math.round((Date.now()-ts)/60000);
   return T('סונכרן ','Synced ')+(m<2?T('עכשיו','just now'):m<60?T('לפני '+m+' דקות',m+' min ago'):m<1440?T('לפני '+Math.round(m/60)+' שעות',Math.round(m/60)+' h ago'):T('לפני '+Math.round(m/1440)+' ימים',Math.round(m/1440)+' days ago'));}
+const agoS=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<2?T('עכשיו','now'):m<60?T('לפני '+m+' דק\'',m+'m ago'):m<1440?T('לפני '+Math.round(m/60)+' שע\'',Math.round(m/60)+'h ago'):T('לפני '+Math.round(m/1440)+' ימים',Math.round(m/1440)+'d ago');};
+const VIA={bt:'🔵',qr:'🔳',code:'✉️'};
+/* 🔗 עם מי סונכרן — שם, מכשיר, ואיזה צד (אתר / אפליקציה / אופליין). קטן, בלי חלון */
+function peerTxt(p){const m=String(p.model||''),k={off:T('אופליין','offline')+(p.ver?' '+p.ver:''),app:T('אפליקציה','app'),site:T('אתר','site')}[p.kind]||'';
+  return [p.name,(typeof phName61==='function'&&phName61(m))||m,k].filter(Boolean).join(' · ')||T('מכשיר אחר','another device');}
+function recentPeers(n){const ps=obj(jget(LS_PEERS,{}));return Object.values(ps).filter(p=>p&&p.at&&Date.now()-p.at<30*864e5).sort((a,b)=>b.at-a.at).slice(0,n);}
+function peersHtml(){const a=recentPeers(3);if(!a.length)return '';
+  return '<p class="offpeers">🔗 '+T('סונכרן עם: ','Synced with: ')+a.map(p=>'<span>'+esc(peerTxt(p))+' '+(VIA[p.via]||'')+' <i>'+agoS(p.at)+'</i></span>').join('')+'</p>';}
 function pendingN(){const last=+ls.get(LS_LAST)||0;let n=0;(state.lists||[]).forEach(l=>(l.items||[]).forEach(i=>{if(i&&(i.ts||0)>last)n++;}));return n;}
 function open(tab,note){
   if(tab)curTab=tab;if(!curTab||(curTab==='bt'&&!hasBt()))curTab=hasBt()?'bt':'qr';
   const last=+ls.get(LS_LAST)||0,pn=pendingN();
   const tabs=[...(hasBt()?[['bt','🔵 '+T('בלוטות\'','Bluetooth')]]:[]),['qr','🔳 QR'],['code','✉️ '+T('קוד שיתוף','Share code')]];
-  let body='<div class="offsync"><p class="offst">'+ago(last)+(pn&&last?' · '+T(pn+' שינויים מאז',pn+' changes since'):'')+'</p>'+(note?'<div class="offok" role="status">'+note+'</div>':'')+
+  let body='<div class="offsync"><p class="offst">'+ago(last)+(pn&&last?' · '+T(pn+' שינויים מאז',pn+' changes since'):'')+'</p>'+peersHtml()+(note?'<div class="offok" role="status">'+note+'</div>':'')+
     '<div class="offtabs" role="tablist">'+tabs.map(t=>'<button role="tab" data-offt="'+t[0]+'" aria-selected="'+(t[0]===curTab)+'">'+t[1]+'</button>').join('')+'</div>';
   /* סריקה אחת בלבד — בוחרים מי סורק: הטלפון/הנגן או המחשב. מי שסורק מקבל את כל מה שיש בשני. במכשיר בלי מצלמה (נגן) — רק מציגים */
   if(curTab==='qr')body+='<p class="muted-note">'+T('סורקים פעם אחת, מאיזה צד שנוח: מי שסורק מקבל את כל מה שיש בצד השני. במכשיר בלי מצלמה (נגן) — מציגים כאן את הקוד, וסורקים אותו מהמחשב או מהטלפון.','Scan once, from whichever side: the device that scans gets everything from the other. On a device without a camera, show this code and scan it from the other side.')+'</p>'+
     '<button class="btn" id="offScan" style="width:100%;margin-bottom:8px">📷 '+T('אני סורק את הקוד של הצד השני','I scan the other side\'s code')+'</button>'+
+    '<button class="btn sec" id="offFace" style="width:100%;margin-bottom:8px">🤝 '+T('פנים מול פנים — שני המכשירים סורקים יחד (מצלמה קדמית)','Face to face — both scan at once (front camera)')+'</button>'+
     '<p class="muted-note" id="offQrOr" style="margin:4px 0 0">🔳 '+T('או — הקוד שלי, לסריקה מהצד השני:','Or — my code, to scan from the other side:')+'</p><div id="offQr" class="offqrbox"></div>';
   else if(curTab==='bt'){const p=btPeer();body+='<p class="muted-note">'+T('בלי אינטרנט ובלי SMS: בטלפון אחד יוצרים קוד, ובשני מקלידים אותו. מאז, כל שינוי עובר מיד בין שני הטלפונים כל עוד הם קרובים — ובפעם הבאה הם מתחברים לבד.','No internet or SMS: create a code on one phone, type it on the other. Then every change syncs live while they are close.')+'</p>'+
     (bt.live?'':'<div class="row2"><button class="btn" id="offBtNew">🔢 '+T('ליצור קוד','Create a code')+'</button><button class="btn sec" id="offBtType">⌨️ '+T('להקליד קוד','Type a code')+'</button></div>'+
@@ -298,7 +326,7 @@ function open(tab,note){
     '<p class="muted-note">'+T('אפליקציה בלי אינטרנט בכלל (גם לא דרכה): רשימות, מזווה והיסטוריה, באותו עיצוב. מעבירים אליה את הקובץ ומסנכרנים איתה מכאן.','A no-internet app: lists, pantry and history. Sync with it from here.')+'</p></div>';
   body+='</div>';
   openSheet('📡 '+T('סנכרון בלי אינטרנט','Offline sync'),body);
-  if(curTab==='qr'){showQr();noCam().then(n=>{const b=$o('#offScan'),o=$o('#offQrOr');if(!n||!b)return;b.hidden=true;if(o)o.textContent='🔳 '+T('הקוד שלי — סורקים אותו מהמחשב או מהטלפון:','My code — scan it from the computer or phone:');});}else if(curTab==='code')showCode();else btShow();}
+  if(curTab==='qr'){showQr();{const f=$o('#offFace');if(f&&typeof scanPhotoMode==='function'&&scanPhotoMode())f.hidden=true;}noCam().then(n=>{const b=$o('#offScan'),o=$o('#offQrOr');if(!n||!b)return;b.hidden=true;{const f=$o('#offFace');if(f)f.hidden=true;}if(o)o.textContent='🔳 '+T('הקוד שלי — סורקים אותו מהמחשב או מהטלפון:','My code — scan it from the computer or phone:');});}else if(curTab==='code')showCode();else btShow();}
 /* נגן / מכשיר בלי מצלמה: אין מה לסרוק בו */
 async function noCam(){try{if(!(navigator.mediaDevices&&navigator.mediaDevices.enumerateDevices))return true;const d=await navigator.mediaDevices.enumerateDevices();
   return d.length>0&&!d.some(x=>x.kind==='videoinput');}catch(e){return false;}}
@@ -311,7 +339,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
   const tb=t.closest('[data-offt]');if(tb){open(tb.dataset.offt);return;}
   if(t.closest('#offDl')){try{sb&&sb.rpc('apk_log',{p_kind:'download',p_src:'offline',p_device:'',p_dev:devId(),p_ver:''}).then(()=>{},()=>{});}catch(er){}
     if(inAppSave()){e.preventDefault();appDl(t.closest('#offDl'));}return;}
-  if(t.closest('#offScan')){scanQr();return;}
+  if(t.closest('#offScan')){scanQr();return;}if(t.closest('#offFace')){scanQr(true);return;}
   if(t.closest('#offBtNew')){btCreate();return;}
   if(t.closest('#offBtType')){const j=$o('#offBtJoin');if(j){j.hidden=false;$o('#offBtCode').focus();}return;}
   if(t.closest('#offBtGo')){btJoin();return;}
@@ -378,13 +406,14 @@ function mount(){const k=$o('#shKeep');if(k&&!$o('#shOff'))k.insertAdjacentHTML(
   /* 📡 בכותרת, לפני הצ'אט והפעמון — הדרך הכי מהירה להתחבר. נקודה ירוקה כשיש חיבור חי */
   const hb=$o('#btnChat')||$o('#btnBell')||$o('#btnMenu');if(hb&&!$o('#btnOff'))hb.insertAdjacentHTML('beforebegin','<button class="hbtn" id="btnOff" type="button" title="'+T('סנכרון בלי אינטרנט','Offline sync')+'" aria-label="'+T('סנכרון בלי אינטרנט — בלוטות\', QR או קוד','Offline sync')+'">'+
     '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="7" height="14" rx="1.6"/><rect x="14.5" y="5" width="7" height="14" rx="1.6"/><path d="M10.5 10h3M12 8.5l1.5 1.5-1.5 1.5M13.5 14h-3M12 12.5L10.5 14l1.5 1.5"/></svg><i class="offdot" hidden></i></button>');
-  {const d=$o('#btnOff .offdot');if(d)d.hidden=!bt.live;}
+  {const d=$o('#btnOff .offdot');if(d)d.hidden=!bt.live;const b=$o('#btnOff'),lp=recentPeers(1)[0];if(b)b.title=T('סנכרון בלי אינטרנט','Offline sync')+(lp?' — '+T('סונכרן עם ','synced with ')+peerTxt(lp)+' '+agoS(lp.at):'');}
   /* ⬇️ הורדת האפליקציה האופליין — בתפריט, ליד הורדת האפליקציה הרגילה (באתר ובאפליקציה הרגילה) */
   const ap=!OFF_APP&&($o('#miApk53')||$o('#miInstall')||$o('#miShop26')||$o('#miFinish'));if(ap&&!$o('#miOffApk'))ap.insertAdjacentHTML('afterend','<button id="miOffApk">📴<span>'+T('הורדת האפליקציה האופליין (בלי אינטרנט)','Download the offline app (no internet)')+'</span></button>');
   const an=$o('#miShop26')||$o('#miFinish');if(an&&!$o('#miOff'))an.insertAdjacentHTML('beforebegin','<button id="miOff">📡<span>'+T('סנכרון בלי אינטרנט (בלוטות\', QR, קוד)','Offline sync (Bluetooth, QR, code)')+'</span></button>');
   if(!OFF_APP)return;const pane=$o('#paneList');if(!pane)return;let p=$o('.offpill');
   if(!p){pane.insertAdjacentHTML('afterbegin','<button class="offpill" type="button"></button>');p=$o('.offpill');}
-  const last=+ls.get(LS_LAST)||0,pn=pendingN();p.textContent=bt.live?'🟢 '+T('מחובר ל'+(bt.name||'הטלפון השני')+' · סנכרון חי','Live sync with '+(bt.name||'the other phone')):'📡 '+T('סנכרון','Sync')+' · '+ago(last)+(pn&&last?' · '+T(pn+' שינויים ממתינים',pn+' pending'):'');}
+  const last=+ls.get(LS_LAST)||0,pn=pendingN();p.textContent=bt.live?'🟢 '+T('מחובר ל'+(bt.name||'הטלפון השני')+' · סנכרון חי','Live sync with '+(bt.name||'the other phone')):'📡 '+T('סנכרון','Sync')+' · '+ago(last)+(pn&&last?' · '+T(pn+' שינויים ממתינים',pn+' pending'):'');
+  {const lp=recentPeers(1)[0];let s=p.querySelector('small');if(lp&&!bt.live){if(!s){p.insertAdjacentHTML('beforeend','<small class="offpl"></small>');s=p.querySelector('small');}s.textContent='🔗 '+peerTxt(lp);}}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
 const _offRender=render;render=function(){const r=_offRender.apply(this,arguments);try{mount();}catch(e){}return r;};
 
@@ -393,6 +422,9 @@ document.head.insertAdjacentHTML('beforeend','<style id="offsync87">'+
   '.offsync .offok{background:#e8f7ee;color:#14532d;border:1px solid #9ad6b0;border-radius:12px;padding:8px 10px;margin:0 0 8px;font-size:14px}'+
   '.offqrbox{display:flex;flex-direction:column;align-items:center;margin:6px 0 10px}.offqr{width:min(78vw,300px);background:#fff;padding:6px;border-radius:12px}.offqr svg{display:block;width:100%;height:auto}'+
   '.offqrn{margin:6px 0 0;font-size:13px;color:var(--muted)}'+
+  '.offpeers{margin:-2px 0 8px;font-size:12px;color:var(--muted);line-height:1.5}.offpeers span{display:inline-block;margin-inline-end:10px}.offpeers i{font-style:normal;opacity:.8}'+
+  '.offpill .offpl{display:block;font-size:12px;color:var(--muted);margin-top:2px}'+
+  '.offqs.face{justify-content:flex-start;overflow:auto}.offqs.face .offqr{width:min(80vw,46vh)}.offqs.face .offqrn{color:#ccc}.offqs.face .offqsv{width:min(34vw,22vh)}.offqs.face video{transform:scaleX(-1)}'+
   '.offqs{position:fixed;inset:0;z-index:99999;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}'+
   '.offqsv{position:relative;width:min(86vw,60vh);aspect-ratio:1;overflow:hidden;border-radius:16px;background:#111}.offqsv video{width:100%;height:100%;object-fit:cover}'+
   '.offqsv i{position:absolute;inset:5%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}'+
