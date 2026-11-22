@@ -1599,7 +1599,8 @@ function renderBannerAd(){
 const AD_HOUSE={id:'house',title:'המבצע שלכם כאן',body:'משפחות רואות את הפרסומת בדיוק כשהן מכינות את רשימת הקניות.\nלפרטים: info@yamshopping.com',emoji:'📢',theme:'green',advertiser:'ים שופינג',image:'',link_url:''};
 function renderSideAd(){
   const el=document.querySelector('#ybSide');
-  const pool=tab===AD_MAIN?adsCache.filter(a=>a.placement==='side'&&adOnPage(a)):[];if(!pool.length&&adHouse&&tab===AD_MAIN)pool.push(AD_HOUSE);
+  /* 📴 באפליקציה האופליין אין פרסומת בצד בכלל (גם לא "המבצע שלכם כאן") */
+  const pool=OFF_APP?[]:tab===AD_MAIN?adsCache.filter(a=>a.placement==='side'&&adOnPage(a)):[];if(!pool.length&&adHouse&&tab===AD_MAIN&&!OFF_APP)pool.push(AD_HOUSE);
   /* מעבר לשונית עם אותן פרסומות — לא מציירים מחדש (הסבב ממשיך) */
   const key=pool.map(a=>a.id).join(',');if(el&&key&&el.dataset.k===key&&!el.hidden&&el.innerHTML)return;
   clearInterval(adSideTimer);if(!el)return;el.dataset.k=key;
