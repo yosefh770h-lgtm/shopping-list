@@ -40,9 +40,9 @@ function card(){const t=today(),c=t.p.city,h=fromRd(t.hrd),sh=shabbatOf(t.hrd);
   return '<span class="hcico" aria-hidden="true"><b>'+gem(h.d)+'</b><small>'+e$(EN()?mNameEn(h.y,h.m):mName(h.y,h.m))+'</small></span>'+
     '<span class="hcmain"><span class="hct"><b>'+e$(hDate(h))+'</b><span class="hcd">'+e$(dayPfx(t)+dayName(t.hrd))+' · '+t.now.toLocaleDateString(EN()?'en-GB':'he-IL',{day:'numeric',month:'short'})+'</span></span>'+
     '<span class="hcchips">'+(ev.length?'<span class="hcc hcev">✨ '+e$(ev.join(' · '))+'</span>':'')+
-      '<span class="hcc">📖 '+e$(parsha(sh,c.il))+'</span><span class="hcc">📚 '+e$(daf(t.now))+'</span>'+
-      (showCand?'<span class="hcc">🕯️ '+tt('הדלקת נרות','Candles')+' <b dir="ltr">'+hm(cand,c.tz)+'</b></span>':'')+'</span></span>'+
-    '<span class="hcgo" aria-hidden="true">'+tt('זמני היום','Times')+' ‹</span>';}
+      '<span class="hcc">📖 '+e$(parsha(sh,c.il))+'</span><span class="hcc">📚 '+e$(daf(t.now).replace(' דף ',' '))+'</span>'+
+      (showCand?'<span class="hcc">🕯️ '+tt('נרות','Candles')+' <b dir="ltr">'+hm(cand,c.tz)+'</b></span>':'')+'</span></span>'+
+    '<span class="hcgo" aria-hidden="true">‹</span>';}
 function mount(){const pane=$h('#paneList');if(!pane)return;let b=pane.querySelector('.hcline');
   if(!b){const pill=pane.querySelector('.offpill');(pill||pane).insertAdjacentHTML(pill?'afterend':'afterbegin','<button class="hcline" type="button"></button>');b=pane.querySelector('.hcline');}
   const s=card();if(b.innerHTML!==s){b.innerHTML=s;b.setAttribute('aria-label',b.textContent.replace(/‹/g,'').trim());}}
@@ -94,15 +94,15 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 setInterval(()=>{try{mount();}catch(e){}},60000); /* מתחלף לבד בשקיעה, בחצות ובשינוי של "הזמן הבא" */
 document.head.insertAdjacentHTML('beforeend','<style id="hcal90">'+
   /* הכרטיס */
-  '.hcline{display:flex;align-items:center;gap:12px;width:100%;text-align:start;border:1px solid var(--chipbr);background:var(--panel);color:var(--text);border-radius:16px;padding:10px 12px;margin:0 0 10px;font:inherit;cursor:pointer;box-shadow:0 1px 2px rgba(30,58,95,.06);transition:box-shadow .15s,transform .15s}'+
+  '.hcline{display:flex;align-items:center;gap:9px;width:100%;text-align:start;border:1px solid var(--chipbr);background:var(--panel);color:var(--text);border-radius:14px;padding:6px 10px;margin:0 0 8px;font:inherit;cursor:pointer;box-shadow:0 1px 2px rgba(30,58,95,.06);transition:box-shadow .15s,transform .15s}'+
   '.hcline:hover{box-shadow:0 3px 10px rgba(30,58,95,.12)}.hcline:active{transform:scale(.99)}.hcline:focus-visible{outline:2px solid var(--pink);outline-offset:2px}'+
-  '.hcico{flex:none;width:46px;height:50px;border-radius:12px;background:var(--pinkbg);color:#9c3358;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}'+
-  '.hcico b{font-size:19px}.hcico small{font-size:10.5px;font-weight:600;margin-top:2px}'+
-  '.hcmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}.hct{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}.hct b{font-size:15.5px;color:var(--hdr2)}.hcd{font-size:12.5px;color:var(--muted)}'+
-  '.hcchips{display:flex;flex-wrap:wrap;gap:4px 5px}.hcc{font-size:12px;line-height:1.3;background:var(--chat);border-radius:999px;padding:3px 8px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}'+
-  '.hcc.hcev{background:var(--pinkbg);color:#9c3358;font-weight:600}.hcgo{flex:none;align-self:center;font-size:12px;color:var(--muted);white-space:nowrap}'+
+  '.hcico{flex:none;width:36px;height:36px;border-radius:10px;background:var(--pinkbg);color:#9c3358;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}'+
+  '.hcico b{font-size:14.5px}.hcico small{font-size:9.5px;font-weight:600;margin-top:1px}'+
+  '.hcmain{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:3px 8px}.hct{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;flex-basis:100%}.hct b{font-size:14px;color:var(--hdr2)}.hcd{font-size:12px;color:var(--muted)}'+
+  '.hcchips{display:contents}.hcc{font-size:11.5px;line-height:1.25;background:var(--chat);border-radius:999px;padding:2px 7px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}'+
+  '.hcc.hcev{background:var(--pinkbg);color:#9c3358;font-weight:600}.hcgo{flex:none;align-self:center;font-size:20px;line-height:1;color:var(--muted);white-space:nowrap}'+
   'body.dark .hct b{color:#e7e9ee}body.dark .hcico{color:#f6b6ca}body.dark .hcc.hcev{color:#f6b6ca}'+
-  '@media (max-width:380px){.hcgo{display:none}}'+
+  
   /* המסך המלא */
   '.hcal .hchero{background:linear-gradient(135deg,#1e3a5f,#2c5282);color:#fff;border-radius:16px;padding:14px 16px;margin:0 0 10px}'+
   '.hcal .hcbig{font-size:21px;font-weight:700;line-height:1.3}.hcal .hcsub{font-size:13px;opacity:.82;margin-top:2px}'+
