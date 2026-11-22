@@ -1280,3 +1280,32 @@ def test_receipt_blocked_and_parse(built, monkeypatch):
     assert c.post("/receipt/parse", json={"kind": "other", "data": pz}, headers=site).status_code == 400
     assert c.post("/receipt/parse", json={"kind": "pairzon", "data": {"items": []}}, headers=site).status_code == 422
     assert c.post("/receipt/parse", json={"kind": "pairzon", "data": pz}).status_code == 403
+
+
+def test_receipt_pairzon_short_link(built, monkeypatch):
+    """הקישור המקוצר מה-SMS (אושר עד / אייס): השרת עוקב אחרי הפניה אחת לאותו אתר; חסום ← הקישור המקוצר לאפליקציה"""
+    _, api = built
+    from fastapi.testclient import TestClient
+    from yam import receipts as R
+    short = "https://public.pairzon.com/1152/AbCdEf123456"
+    assert R.short_for(short + "/") == short and R.short_for("https://public.pairzon.com.evil.com/1/AbCdEf123456") is None
+    assert R.short_for("http://public.pairzon.com/1/AbCdEf123456") is None and R.short_for("https://public.pairzon.com/x/AbCdEf") is None
+
+    class Resp:
+        def __init__(self, loc):
+            self.is_redirect, self.headers = True, {"location": loc}
+
+        def close(self):
+            pass
+    full = "/00000000-0000-4000-8000-000000000009.html?id=00000000-0000-4000-8000-000000000001&p=1152"
+    monkeypatch.setattr(R.requests, "get", lambda *a, **k: Resp(full))
+    assert R.resolve_short(short) == "https://public.pairzon.com" + full
+    monkeypatch.setattr(R.requests, "get", lambda *a, **k: Resp("https://evil.example.com" + full))
+    assert R.resolve_short(short) == ""
+
+    def boom(*a, **k):
+        raise R.requests.ConnectTimeout("x")
+    monkeypatch.setattr(R.requests, "get", boom)
+    c = TestClient(api.app)
+    r = c.get("/receipt", params={"u": short}, headers={"Referer": "https://www.yamshopping.com/"})
+    assert r.status_code == 502 and r.json()["short"] == short and r.json()["kind"] == "pairzon" and "api" not in r.json()

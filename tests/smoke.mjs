@@ -862,6 +862,31 @@ await test('🐞 יומן תקלות לפי גרסה ודגם: האפליקצי�
   await ctx.close();
 });
 
+await test('🧭 עדכון שנכשל: כפתור הורדה בדפדפן (גם לגרסאות 2.0/2.1), העתקת קישור לסינון, ושורות כפולות מאוחדות בבק אופיס', async () => {
+  const APP = 'Mozilla/5.0 (Linux; Android 15; SM-S901B Build/AP3A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 YamShoppingApp/2.0';
+  const { ctx, page, errors } = await newPage({ userAgent: APP, viewport: { width: 1366, height: 900 }, init: () => { window.YamApp = { appInfo: () => '{"selfUpdate":true,"ver":"2.0","model":"SM-S901B"}', installUpdate() {} }; } });
+  const st = async (err) => page.evaluate((err) => { sb = { rpc: () => Promise.resolve({}) }; document.querySelectorAll('.nu66').forEach((e) => e.remove()); openNatUpd66(); yamNat66('update', /^(http_|timeout)/.test(err) ? 'download' : 'install', 50, '2.2'); yamNat66('update', 'error', 0, err);
+    const b = document.querySelector('#nuAlt66'); return { shown: !b.hidden, href: (b.querySelector('a.apkdl53') || {}).href || '', copy: !!b.querySelector('#nuCopy66') }; }, err);
+  const inst = await st('Invalid install mode: -1');
+  assert(inst.shown && /\/download\/yamshopping\.apk$/.test(inst.href) && !inst.copy, 'Invalid install mode — אין כפתור הורדה בדפדפן: ' + JSON.stringify(inst));
+  const flt = await st('http_418');
+  assert(flt.shown && flt.copy, 'סינון — אין כפתורים: ' + JSON.stringify(flt));
+  const net = await st('timeout');
+  assert(!net.shown, 'בעיית אינטרנט — לא צריך כפתורים');
+  if (process.env.SHOTS) { await page.setViewportSize({ width: 412, height: 860 }); await st('Invalid install mode: -1'); await page.waitForTimeout(300); await page.evaluate(() => document.querySelector('#nuAlt66').scrollIntoView({ block: 'end' })); await page.screenshot({ path: process.env.SHOTS + '/1-טלפון-שלא-נותן-להתקין.png' });
+    await st('http_418'); await page.waitForTimeout(300); await page.evaluate(() => document.querySelector('#nuAlt66').scrollIntoView({ block: 'end' })); await page.screenshot({ path: process.env.SHOTS + '/2-סינון-עצר-את-ההורדה.png' }); await page.setViewportSize({ width: 1366, height: 900 }); }
+  const at = (m) => new Date(Date.now() - m * 6e4).toISOString(), r = (id, m, o) => Object.assign({ id, at: at(m), user_id: 'u1', name: 'יוסי', email: 'y@x.com', ip: '1.2.3.4', app_ver: '2.1', target_ver: '2.2', err: 'http_418', net: 'wifi', device: 'SM-X110 · Android 16' }, o);
+  const D = { 'rpc:staff_app_update_errors': [r(1, 1), r(2, 2), r(3, 3), r(4, 300, { user_id: 'u2', app_ver: '2.0', err: 'install_ex: Invalid install mode: -1', net: 'cellular', device: 'SM-S901B · Android 15' })] };
+  await page.evaluate((D) => { document.querySelector('.sheet-close, [data-close]')?.click(); sb = __stub(D); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('guests'); }, D);
+  await page.waitForTimeout(600);
+  const t = await page.evaluate(() => ({ rows: document.querySelectorAll('#upf61 tbody tr').length, txt: document.querySelector('#upf61').innerText }));
+  assert(t.rows === 2 && /× 3 ניסיונות/.test(t.txt), 'שורות כפולות לא אוחדו: ' + t.rows + ' ' + t.txt.slice(0, 300));
+  if (process.env.SHOTS) { await page.locator('#upf61').screenshot({ path: process.env.SHOTS + '/3-בק-אופיס-שורות-מאוחדות.png' });
+ }
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('💥 קריסה של האפליקציה (YamApp.lastCrash) נשלחת ליומן התקלות בפתיחה הבאה', async () => {
   const APP = 'Mozilla/5.0 (Linux; Android 14; SM-S901B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 YamShoppingApp/2.2';
   const { ctx, page } = await newPage({ userAgent: APP, init: () => { window.__crashCalls = []; window.YamApp = { lastCrash: () => JSON.stringify({ msg: '💥 האפליקציה נסגרה בגלל תקלה: IllegalStateException', where: 'Updater.run:42 · thread main', at: 1 }) }; } });

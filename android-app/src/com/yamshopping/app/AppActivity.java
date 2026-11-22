@@ -967,12 +967,15 @@ public class AppActivity extends Activity {
             final String u = url == null ? "" : url, cb = id == null ? "" : id;
             if (!cb.matches("[a-z0-9]{1,20}")) return;
             final boolean ok = u.matches("https://[a-z0-9-]{1,40}\\.pairzon\\.com/v1\\.0/documents/[0-9a-fA-F-]{36}\\?p=\\d{1,10}");
+            // 2.3: הקישור המקוצר מה-SMS — https://<רשת>.pairzon.com/<מספר>/<קוד> ← הפניה אחת לקישור המלא באותו אתר
+            final boolean shortLink = u.matches("https://[a-z0-9-]{1,40}\\.pairzon\\.com/\\d{1,10}/[A-Za-z0-9_-]{6,40}");
             new Thread(() -> {
                 String out = null;
-                if (ok) {
+                String api = ok ? u : (shortLink ? pairzonApi(u) : null);
+                if (api != null) {
                     java.net.HttpURLConnection c = null;
                     try {
-                        c = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+                        c = (java.net.HttpURLConnection) new java.net.URL(api).openConnection();
                         c.setInstanceFollowRedirects(false);
                         c.setUseCaches(false);
                         c.setConnectTimeout(10000);
@@ -1000,6 +1003,31 @@ public class AppActivity extends Activity {
             }).start();
         }
 
+        /** 2.3: הקישור המקוצר של Pairzon ← כתובת הנתונים (/v1.0/documents/<id>?p=<p>), רק אם ההפניה לאותו אתר ובצורה המוכרת */
+        private String pairzonApi(String shortUrl) {
+            java.net.HttpURLConnection c = null;
+            try {
+                c = (java.net.HttpURLConnection) new java.net.URL(shortUrl).openConnection();
+                c.setInstanceFollowRedirects(false);
+                c.setUseCaches(false);
+                c.setConnectTimeout(10000);
+                c.setReadTimeout(15000);
+                int code = c.getResponseCode();
+                String loc = c.getHeaderField("Location");
+                if (code < 300 || code > 399 || loc == null) return null;
+                Uri s = Uri.parse(shortUrl), l = Uri.parse(new java.net.URL(new java.net.URL(shortUrl), loc).toString());
+                String id = l.getQueryParameter("id"), p = l.getQueryParameter("p");
+                if (!"https".equals(l.getScheme()) || s.getHost() == null || !s.getHost().equals(l.getHost())
+                        || id == null || p == null || !id.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+                        || !p.matches("\\d{1,10}")) return null;
+                return "https://" + l.getHost() + "/v1.0/documents/" + id + "?p=" + p;
+            } catch (Exception e) {
+                return null;
+            } finally {
+                if (c != null) c.disconnect();
+            }
+        }
+
         /** גרסת האפליקציה ומה היא יודעת לעשות — האתר בודק כאן אם אפשר לעדכן מתוך האפליקציה */
         @JavascriptInterface
         public String appInfo() {
@@ -1022,6 +1050,7 @@ public class AppActivity extends Activity {
                 o.put("widget", true); // 2.2: וידג'ט הרשימה
                 o.put("dealWatch", Deals.on(AppActivity.this)); // 2.2: מעקב מבצעים ברקע פעיל בטלפון
                 o.put("receiptJson", true); // 2.2: קבלת אושר עד נפתחת מהטלפון
+                o.put("receiptShort", true); // 2.3: גם הקישור המקוצר של אושר עד / אייס (Pairzon) מה-SMS
                 o.put("splash", true); // 2.1: האתר מנגן את אנימציית הפתיחה (גם אחרי זמן ארוך ברקע)
                 o.put("offline", Offline.has(AppActivity.this)); // 2.1: עותק של האתר בתוך האפליקציה
                 o.put("offlineNow", offline);

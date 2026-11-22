@@ -128,12 +128,26 @@ function openNatUpd66(){
   const b=openSheet('🔄 '+T('עדכון האפליקציה','Update the app'),'<div class="nu66 apks53"><div id="nuInfo66"></div>'+
     '<p class="muted-note">📱 '+T('הגרסה שלך: ','Your version: ')+'<b>'+esc(n.ver||'')+'</b></p>'+
     '<button type="button" class="go66" id="nuGo66">⬇️ '+T('לעדכן עכשיו','Update now')+'</button>'+
-    '<div class="bar66" hidden><i></i></div><p class="st66" id="nuSt66" role="status" aria-live="polite"></p><p class="muted-note" id="nuDet66" dir="ltr" hidden></p>'+
+    '<div class="bar66" hidden><i></i></div><p class="st66" id="nuSt66" role="status" aria-live="polite"></p><p class="muted-note" id="nuDet66" dir="ltr" hidden></p><div id="nuAlt66" hidden></div>'+
     '<p class="muted-note">'+T('הכל קורה בתוך האפליקציה. הרשימות והחשבון נשארים כמו שהם.','Everything happens inside the app. Your lists and account stay.')+'</p></div>');
   if(window.apkInfo57)apkInfo57(b.querySelector('#nuInfo66'),true);
   b.querySelector('#nuGo66').onclick=e=>{e.currentTarget.disabled=true;b.querySelector('.bar66').hidden=false;$66('#nuSt66').textContent=ST.start;try{YamApp.installUpdate();}catch(x){$66('#nuSt66').textContent=ST.error;e.currentTarget.disabled=false;}};
 }
 window.openNatUpd66=openNatUpd66;
+/* 🧭 כשהעדכון מתוך האפליקציה נכשל בגלל סינון או בגלל הטלפון — דרך אחרת, בלחיצה:
+   "להוריד בדפדפן" פותח את הקובץ בדפדפן של הטלפון (גם בגרסאות 2.0/2.1, שאין בהן את העקיפה של 2.2), ושם מתקינים כרגיל.
+   אם הסינון חוסם — בדפדפן מופיע דף החסימה שלו, ומשם אפשר לבקש ממנו לאשר את הקובץ. "להעתיק קישור" = לשלוח לסינון בבקשת אישור */
+const APK66='https://www.yamshopping.com/download/yamshopping.apk';
+function altUpd66(err){const box=$66('#nuAlt66');if(!box)return;
+  const f=filterErr66(err),ins=!f&&!!instErr66(err)&&!/^install_(5|6)\b/.test(String(err||''));
+  box.hidden=!(f||ins);if(box.hidden){box.innerHTML='';return;}
+  box.innerHTML='<a class="apkdl53" href="'+APK66+'" download="yamshopping.apk">⬇️ '+T('להוריד בדפדפן ולהתקין','Download in the browser and install')+'</a>'+
+    '<p class="muted-note">'+(f?T('אם גם בדפדפן מופיע דף חסימה — שם אפשר לבקש מהסינון לאשר את הקובץ. או להעתיק את הקישור ולשלוח לסינון:','If the browser shows a block page, request approval there. Or copy the link and send it to your filter:')
+      :T('הקובץ יירד בדפדפן של הטלפון. פותחים אותו מההורדות ולוחצים "עדכון". הרשימות והחשבון נשארים.','The file downloads in the phone browser. Open it from downloads and tap "Update".'))+'</p>'+
+    (f?'<button type="button" class="btn sec" id="nuCopy66">📋 '+T('להעתיק את הקישור לקובץ','Copy the file link')+'</button>':'');
+  const cp=box.querySelector('#nuCopy66');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(APK66);flash('✅ '+T('הקישור הועתק','Link copied'));}catch(e){cp.outerHTML='<p class="muted-note" dir="ltr" style="user-select:all;word-break:break-all">'+APK66+'</p>';}};
+  /* "מה חדש" למעלה ארוך — מגלגלים לכפתורים, שיראו אותם בלי לחפש */
+  try{box.scrollIntoView({block:'end'});}catch(e){}}
 /* האפליקציה מדווחת לאתר איך העדכון מתקדם, ומה ענו על ההרשאה להתראות */
 window.yamNat66=function(kind,a,b,c){
   if(kind==='perm'){if(typeof window.__yamPerm66==='function')window.__yamPerm66(a);return;}
@@ -145,6 +159,7 @@ window.yamNat66=function(kind,a,b,c){
   if(a==='error'&&/^(install|confirm)$/.test(window.__updSt66||'')&&!/^install_/.test(String(c||'')))c='install_ex: '+(c||'error');
   window.__updSt66=a;
   if(det){const n=nat()||{};det.hidden=a!=='error';det.textContent=a==='error'?String(c||'error').slice(0,120)+(n.model?' · '+n.model:'')+(n.ver?' · '+n.ver:''):'';}
+  altUpd66(a==='error'?c:null);
   let txt=a==='error'?(filterErr66(c)?ST.filter:instErr66(c)||ST.error):(ST[a]||'');if(a==='error'&&window.updFail61)updFail61(c);if(a==='download'&&b>=0)txt+=' · '+b+'%';if(a==='latest'&&c)txt+=' ('+c+')';
   if(st)st.textContent=txt;else if(txt&&/^(done|error|latest|cancel|confirm|perm)$/.test(a))flash(txt);
   if(bar){bar.style.width=(a==='download'?Math.max(3,b):/^(verify|install|confirm|done)$/.test(a)?100:a==='start'?3:0)+'%';}

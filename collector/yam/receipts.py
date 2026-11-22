@@ -2,6 +2,7 @@
 
 1. אתרי קבלות שבונים את הקבלה רק בדפדפן — קוראים ישירות את הנתונים המסודרים (JSON): מדויק, מהיר ובלי בינה מלאכותית.
      Pairzon (אושר עד ועוד):  https://<רשת>.pairzon.com/<...>.html?id=<GUID>&p=<מספר>  ← /v1.0/documents/<id>?p=<p>
+       ב-SMS מגיע קישור מקוצר: https://<רשת>.pairzon.com/<מספר>/<קוד>  ← הפניה אחת (302) לקישור המלא שלמעלה
      Weezmo (ג'מבו ועוד):     https://receipts.weezmo.com/cms.html?q=<GUID>             ← /api/receipts/<q>
    מוחזרים רק שם הרשת, הסניף, התאריך, הסה"כ והמוצרים — לא פרטי תשלום ולא פרטים אישיים.
 2. כל קישור אחר — מביאים את הדף פעם אחת ומחזירים טקסט / PDF / תמונה, והאתר שולח אותם לקריאה כמו קבלה מצולמת.
@@ -20,6 +21,7 @@ import requests
 
 GUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 PAIRZON = re.compile(r"^[a-z0-9-]{1,40}\.pairzon\.com$")
+PAIRZON_SHORT = re.compile(r"^/(\d{1,10})/([A-Za-z0-9_-]{6,40})/?$")
 UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Mobile Safari/537.36"
 
 
@@ -38,6 +40,31 @@ def api_for(url):
     if h == "receipts.weezmo.com" and GUID.match(one("q")):
         return "weezmo", f"https://receipts.weezmo.com/api/receipts/{one('q')}?withTemplate=false"
     return None
+
+
+def short_for(url):
+    """קישור מקוצר של Pairzon (כמו שמגיע ב-SMS) ← הכתובת המנוקה שלו, או None"""
+    try:
+        u = urlsplit(str(url or "").strip()[:2000])
+    except ValueError:
+        return None
+    h = (u.hostname or "").lower()
+    m = PAIRZON_SHORT.match(u.path or "")
+    if u.scheme != "https" or u.port not in (None, 443) or u.username or u.password or not PAIRZON.match(h) or not m:
+        return None
+    return f"https://{h}/{m.group(1)}/{m.group(2)}"
+
+
+def resolve_short(short, timeout=8):
+    """הקישור המקוצר ← הקישור המלא (רק באותו אתר ורק בצורה המוכרת), None אם לא ענה, או "" אם ענה משהו אחר"""
+    try:
+        r = requests.get(short, headers={"User-Agent": UA}, timeout=(5, timeout), allow_redirects=False)
+    except requests.RequestException as e:
+        print(f"receipt pairzon-short {urlsplit(short).hostname}: {type(e).__name__}", flush=True)
+        return None
+    loc = urljoin(short, r.headers.get("location") or "") if r.is_redirect else ""
+    r.close()
+    return loc if loc and urlsplit(loc).hostname == urlsplit(short).hostname and api_for(loc) else ""
 
 
 def _num(x):
@@ -100,6 +127,8 @@ def to_receipt(kind, d):
                       "ok": abs(total - s) <= 0.1 if total else None, "verified": True, "passes": 1, "bad_lines": []}}
 
 
+BLOCKED_SHORT = ("אושר עד לא מאפשר לשרת שלנו לפתוח את הקבלה. באפליקציה: פותחים את הקישור מה-SMS בדפדפן, מעתיקים את הכתובת "
+                 "המלאה שמופיעה למעלה אחרי שהקבלה נפתחת, ומדביקים אותה כאן. באתר: בכרום ← ⋮ ← שיתוף ← הדפסה ← שמירה כ-PDF, ומעלים כאן את ה-PDF.")
 BLOCKED = ("אושר עד לא מאפשר לשרת שלנו לפתוח את הקבלה. באפליקציה המעודכנת הקבלה נפתחת ישר מהטלפון. "
            "באתר: פותחים את הקישור בכרום ← ⋮ ← שיתוף ← הדפסה ← שמירה כ-PDF, ומעלים כאן את ה-PDF.")
 
@@ -247,6 +276,15 @@ def fetch_any(url, timeout=12, depth=0):
 
 def fetch(url, timeout=12):
     """הקישור של הקבלה ← ({"kind": "receipt", "receipt": ...} או pdf / image / text, None) או (None, (קוד, הודעה))"""
+    short = short_for(url)
+    if short:
+        full = resolve_short(short)
+        if full is None:
+            # השרת חסום — הטלפון (אפליקציה 2.3) פותח את הקישור המקוצר בעצמו
+            return None, (502, BLOCKED_SHORT, {"short": short, "kind": "pairzon"})
+        if not full:
+            return None, (404, "הקבלה לא נמצאה בקישור — אולי פג התוקף שלו")
+        url = full
     if api_for(url):
         rc, err = fetch_known(url, timeout)
         if rc:
