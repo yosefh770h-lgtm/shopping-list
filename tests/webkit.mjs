@@ -75,11 +75,11 @@ await test('WebKit: מבקר חדש רואה את מסך הכניסה ויכול
   await ctx.close();
 });
 
-await test('WebKit: הספריות שבתיקיית vendor נטענות (Supabase, לוח עברי, סורק ברקוד)', async () => {
+await test('WebKit: הספריות שבתיקיית vendor נטענות (Supabase, סורק ברקוד) + הלוח העברי שלנו (js/089-hcal.js)', async () => {
   const { ctx, page, errors } = await newPage({ stub: false });
   await page.goto(ORIGIN + '/privacy.html');
-  for (const f of ['vendor/supabase-js-2.117.2/supabase.js', 'vendor/hebcal-core-6.10.0.min.js', 'vendor/zxing-library-0.21.3.min.js']) await page.addScriptTag({ url: ORIGIN + '/' + f });
-  const r = await page.evaluate(() => ({ sb: typeof (window.supabase && window.supabase.createClient), heb: typeof (window.hebcal && window.hebcal.HDate), zx: typeof (window.ZXing && window.ZXing.BrowserMultiFormatReader) }));
+  for (const f of ['vendor/supabase-js-2.117.2/supabase.js', 'vendor/zxing-library-0.21.3.min.js', 'js/089-hcal.js']) await page.addScriptTag({ url: ORIGIN + '/' + f });
+  const r = await page.evaluate(() => ({ sb: typeof (window.supabase && window.supabase.createClient), heb: typeof (window.Hcal && window.Hcal.events), zx: typeof (window.ZXing && window.ZXing.BrowserMultiFormatReader) }));
   assert(r.sb === 'function', 'Supabase לא נטען: ' + r.sb);
   assert(r.heb === 'function', 'הלוח העברי לא נטען: ' + r.heb);
   assert(r.zx === 'function', 'סורק הברקוד לא נטען: ' + r.zx);

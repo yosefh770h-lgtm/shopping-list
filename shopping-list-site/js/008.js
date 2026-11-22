@@ -159,16 +159,15 @@ function introAnswer(raw){
 }
 
 /* ---------- זמני היום, שבת ודף יומי (מחושב במכשיר) ---------- */
-const SHAS=[['ברכות',64],['שבת',157],['עירובין',105],['פסחים',121],['שקלים',22],['יומא',88],['סוכה',56],['ביצה',40],['ראש השנה',35],['תענית',31],['מגילה',32],['מועד קטן',29],['חגיגה',27],['יבמות',122],['כתובות',112],['נדרים',91],['נזיר',66],['סוטה',49],['גיטין',90],['קידושין',82],['בבא קמא',119],['בבא מציעא',119],['בבא בתרא',176],['סנהדרין',113],['מכות',24],['שבועות',49],['עבודה זרה',76],['הוריות',14],['זבחים',120],['מנחות',110],['חולין',142],['בכורות',61],['ערכין',34],['תמורה',34],['כריתות',28],['מעילה',22],['קינים',25],['תמיד',33],['מידות',37],['נדה',73]];
-function dafYomi(d){d=d||new Date();const days=Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(2020,0,5))/864e5);let n=((days%2711)+2711)%2711;
-  for(const [m,last] of SHAS){const first=m==='קינים'?23:m==='תמיד'?26:m==='מידות'?34:2;const cnt=last-first+1;if(n<cnt){const daf=first+n;let g=daf;try{if(HC)g=HC.gematriya(daf);}catch(e){}return m+' דף '+g;}n-=cnt;}return '';}
+/* הדף היומי — מחושב ב-js/089-hcal.js (Hcal.daf) */
+function dafYomi(d){try{return HC?HC.daf(d||new Date()):'';}catch(e){return '';}}
 function zmanimLoc(){const g=state.geo;if(g&&g.lat&&Date.now()-(g.ts||0)<30*DAY_MS)return {lat:g.lat,lng:g.lng,name:g.city||T('המיקום שלי','My location')};const uc=userCity(),c=CITIES[uc];return {lat:c[0],lng:c[1],name:cityName(uc),tz:c[3]};}
 function itimUrl(){const l=zmanimLoc();return 'https://itimlabina.co.il/calendar/weekly?address='+encodeURIComponent(l.name+', ישראל')+'&lat='+l.lat.toFixed(6)+'&lng='+l.lng.toFixed(6);}
 function zmanimToday(){
-  if(!HC||!HC.Zmanim)return null;const l=zmanimLoc();
-  try{const loc=new HC.Location(l.lat,l.lng,!l.tz,l.tz||'Asia/Jerusalem',l.name,l.tz?'XX':'IL');const z=new HC.Zmanim(loc,new Date(),false);
+  if(!HC)return null;const l=zmanimLoc();
+  try{const z0=HC.zmanim(HC.rdOf(new Date()),{lat:l.lat,lon:l.lng}),z={};['alot','rise','shma','chatzot','mg','mk','plag','set','tzeit'].forEach(k=>{const v=z0&&z0[k];z[k]=()=>v;});
     const f=d=>{try{return d&&!isNaN(d)?new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit',timeZone:l.tz||'Asia/Jerusalem'}).format(d):'—';}catch(e){return fmtTime(d);}};
-    return {place:l.name,alot:f(z.alotHaShachar()),sunrise:f(z.sunrise()),shma:f(z.sofZmanShmaMGA?z.sofZmanShma():z.sofZmanShma()),chatzot:f(z.chatzot()),minchaG:f(z.minchaGedola&&z.minchaGedola()),minchaK:f(z.minchaKetana&&z.minchaKetana()),plag:f(z.plagHaMincha&&z.plagHaMincha()),sunset:f(z.sunset()),tzeit:f(z.tzeit(8.5)),daf:dafYomi()};}catch(e){return null;}
+    return {place:l.name,alot:f(z.alot()),sunrise:f(z.rise()),shma:f(z.shma()),chatzot:f(z.chatzot()),minchaG:f(z.mg()),minchaK:f(z.mk()),plag:f(z.plag()),sunset:f(z.set()),tzeit:f(z.tzeit()),daf:dafYomi()};}catch(e){return null;}
 }
 function zmanimText(){const z=zmanimToday();if(!z)return T('לא הצלחתי לחשב זמנים כרגע 🙁','Could not compute times 🙁');
   return '📅 '+T('זמני היום ב','Times today in ')+z.place+' ('+hebDate(new Date())+'):\n🌅 '+T('זריחה','Sunrise')+': '+z.sunrise+'\n📖 '+T('סוף זמן ק"ש (גר"א)','Latest Shema')+': '+z.shma+'\n☀️ '+T('חצות','Midday')+': '+z.chatzot+'\n🕐 '+T('מנחה גדולה','Mincha Gedola')+': '+z.minchaG+'\n🕓 '+T('מנחה קטנה','Mincha Ketana')+': '+z.minchaK+'\n🕔 '+T('פלג המנחה','Plag HaMincha')+': '+z.plag+'\n🌇 '+T('שקיעה','Sunset')+': '+z.sunset+'\n✨ '+T('צאת הכוכבים','Nightfall')+': '+z.tzeit+'\n📚 '+T('הדף היומי: ','Daf Yomi: ')+z.daf+'\n\n'+T('לוח מלא ומדויק לפי המנהגים — באתר "עיתים לבינה":','Full calendar at Itim Labina:')+'\n'+itimUrl();}

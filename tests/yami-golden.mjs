@@ -57,7 +57,6 @@ async function run(online) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL', timezoneId: 'Asia/Jerusalem' });
   await ctx.route(/supabase\.(co|js)/, (r) => r.abort());
   await ctx.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
-  if (process.env.CDN_DIR) await ctx.route(/cdn\.jsdelivr\.net.*hebcal.*bundle\.min\.js/, (r) => r.fulfill({ path: path.join(process.env.CDN_DIR, 'hebcal.min.js'), contentType: 'text/javascript' }));
   await ctx.route(/(wa\.me|waze\.com|google\.com)/, (r) => r.abort());
   // מאגרים פתוחים (ספריא, Open Food Facts) משתנים מיום ליום — בהקלטה בלי רשת, כדי שהתשובות יהיו קבועות
   await ctx.route(/(sefaria\.org|openfoodfacts\.org)/, (r) => r.abort());

@@ -1,8 +1,10 @@
 /* 📡 סנכרון בלי אינטרנט (נובמבר 2026) — בין "רשימת קניות אופליין" (אפליקציה נפרדת בלי אינטרנט, OFF_APP),
    האפליקציה הרגילה והאתר. שלוש דרכים, אותה "חבילה":
      🔳 QR — טלפון אחד מציג, השני סורק (רשימה ארוכה = כמה קודים שמתחלפים לבד). עובד גם מול האתר במחשב.
-     🔵 בלוטות' — טלפון מול טלפון (android-app Bt.java, מגרסה 2.2 גם באפליקציה הרגילה).
-     ✉️ קוד שיתוף — טקסט ששולחים ב-SMS או מעתיקים, ומדביקים בטלפון השני.
+     🔵 בלוטות' — טלפון מול טלפון (android-app Bt.java, מגרסה 2.2 גם באפליקציה הרגילה), ומאופליין 1.4 גם מול האתר במחשב
+        (Web Bluetooth בכרום / אדג': הטלפון יוצר קוד, ובמחשב מקלידים אותו).
+     📁 קובץ — נשמר בתיקיית ההורדות ומעבירים אותו בכבל USB (לנגנים בלי בלוטות' שמתחבר למחשב ובלי מצלמה).
+     ✉️ קוד שיתוף — טקסט ששולחים ב-SMS, במייל (באתר ובאפליקציה הרגילה) או מעתיקים, ומדביקים בצד השני.
    החבילה: "YAM1" + z (דחוס) / j (לא דחוס) + base64url של JSON עם הרשימות, המחיקות (tomb), המזווה, התכנונים ו-30 קניות אחרונות.
    המיזוג הוא אותו מיזוג של הענן (applyRemote → mergeLists לפי זמן השינוי של כל מוצר), כך ששום דבר לא נדרס ולא מוכפל.
    🔒 בחבילה יש רק נתוני רשימה — אין בה קישורים או פקודות, והיא עוברת את אותו ניקוי (cleanRoom) כמו נתונים מהענן.
@@ -122,10 +124,16 @@ function align(remote){
 /* כל חיבור נרשם גם כ-off_sync: מי התחבר (האתר / האפליקציה הרגילה) ואיך (בלוטות' / QR / קוד) — לספירה "כמה מחוברים" בבק אופיס.
    בסנכרון חי כל שמירה עוברת כאן, ולכן פעם אחת לכל טעינת דף (והשרת סופר שוב רק אחרי 6 שעות) */
 const relayed={};
+/* 🟢 "מחובר עכשיו" בבק אופיס: כל עוד אפליקציה אופליין מחוברת כאן בבלוטות' — דיווח קטן כל 10 דקות (off_live) */
+let liveOff=null;
+function livePing(){if(!liveOff||!bt.live||!sb||navigator.onLine===false||Date.now()-liveOff.t<10*6e4)return;liveOff.t=Date.now();
+  try{sb.rpc('apk_log',{p_kind:'off_live',p_src:liveOff.src,p_device:liveOff.device,p_dev:liveOff.dev,p_ver:liveOff.ver}).then(()=>{},()=>{});}catch(e){}}
+setInterval(livePing,60000);
 function relay(o,via){if(!sb||navigator.onLine===false)return;
   const dev=/^[0-9a-f-]{36}$/.test(o.dev||'')?o.dev:'',ver=String(o.ver||'').replace(/[^0-9.]/g,'').slice(0,12);
   const device=[String(o.model||'').replace(/[^A-Za-z0-9 ._()-]/g,'').slice(0,30),o.android?'Android '+String(o.android).replace(/[^0-9.]/g,'').slice(0,6):''].filter(Boolean).join(' · ');
-  const src=(/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site')+'-'+(['bt','qr','code'].includes(via)?via:'code');
+  const src=(/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site')+'-'+(['bt','qr','code','file'].includes(via)?via:'code');
+  if(dev&&via==='bt'){liveOff={dev,device,ver,src,t:liveOff&&liveOff.dev===dev?liveOff.t:0};livePing();}
   if(dev&&!relayed[dev+src]){relayed[dev+src]=1;
     try{sb.rpc('apk_log',{p_kind:'off_open',p_src:'offline',p_device:device,p_dev:dev,p_ver:ver}).then(()=>{},()=>{});}catch(e){}
     try{sb.rpc('apk_log',{p_kind:'off_sync',p_src:src,p_device:device,p_dev:dev,p_ver:ver}).then(()=>{},()=>{});}catch(e){}}
@@ -146,7 +154,7 @@ function qrMatrix(Z,text){const E=Z.QRCodeDecoderErrorCorrectionLevel;let m=null
 function qrSvg(m){const w=m.getWidth();let d='';
   for(let y=0;y<w;y++)for(let x=0;x<w;x++)if(m.get(x,y))d+='M'+x+' '+y+'h1v1h-1z';
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+w+'" shape-rendering="crispEdges" role="img" aria-label="QR"><rect width="'+w+'" height="'+w+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>';}
-async function showQr(sel){const box=$o(sel||'#offQr');if(!box)return;clearInterval(box._t);box.innerHTML='<p class="muted-note">⏳</p>';
+async function showQr(){const box=$o("#offQr");if(!box)return;clearInterval(box._t);box.innerHTML='<p class="muted-note">⏳</p>';
   let Z;try{Z=await loadZxing();}catch(e){box.innerHTML='<p class="muted-note">'+T('הקוד לא נטען','Could not load')+'</p>';return;}
   const code=(await pack(true)).slice(PFX.length),sid=Math.random().toString(36).slice(2,6).padEnd(4,'0'),n=Math.ceil(code.length/PART);
   const parts=n<=1?[PFX+code]:Array.from({length:n},(_,i)=>'Y1:'+sid+':'+(i+1)+':'+n+':'+code.slice(i*PART,(i+1)*PART));
@@ -165,43 +173,31 @@ window.offQrTake=function(code){code=String(code||'').trim();
    כאן: ריבוע באמצע התמונה בגודל מלא (עד 900 פיקסלים), רק QR, ואם המצלמה החיה לא עובדת בטלפון הזה — צילום תמונה */
 let qs=null;
 function camStop(){try{qs&&qs.stream&&qs.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
-function qrScanClose(){if(!qs)return;qs.on=false;clearTimeout(qs.t);clearTimeout(qs.k);camStop();const o=$o('#offQs');if(o)o.remove();qs=null;}
-/* 🤝 פנים מול פנים: מחזיקים את שני המכשירים זה מול זה. כל אחד מציג את הקוד שלו ומצלם במצלמה הקדמית את הקוד של השני —
-   פעולה אחת, ושני הצדדים מקבלים הכל. אחרי שקיבלנו, הקוד שלנו נשאר עוד רגע — שגם הצד השני יסיים */
-async function faceStream(){const tries=[{video:{facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720}},audio:false},{video:{facingMode:{ideal:'user'}},audio:false},{video:true,audio:false}];
-  let last;for(const c of tries){try{return await navigator.mediaDevices.getUserMedia(c);}catch(e){last=e;if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))break;}}throw last;}
-function faceDone(){if(!qs||!qs.face)return false;const me=qs;me.on=false;clearTimeout(me.t);camStop();
-  const v=$o('#offQs .offqsv');if(v)v.hidden=true;let n=10;
-  const tick=()=>{if(qs!==me)return;if(n<=0){qrScanClose();return;}qsHint('✅ '+T('קיבלתי! הקוד שלי נשאר עוד '+n+' שניות — שגם הצד השני יסיים לסרוק','Got it! My code stays '+n+' more seconds for the other side'));n--;me.k=setTimeout(tick,1000);};
-  tick();const x=$o('#offQsX');if(x)x.textContent=T('סיום','Done');return true;}
+function qrScanClose(){if(!qs)return;qs.on=false;clearTimeout(qs.t);camStop();const o=$o('#offQs');if(o)o.remove();qs=null;}
 function qsHint(t){const h=$o('#offQsHint');if(h)h.textContent=t;}
-async function scanQr(face){face=face===true;rx={};qrScanClose();
-  document.body.insertAdjacentHTML('beforeend','<div id="offQs" class="offqs'+(face?' face':'')+'" role="dialog" aria-modal="true" aria-label="'+T('סריקת קוד סנכרון','Scan sync code')+'">'+
-    (face?'<div id="offQsMine" class="offqrbox"></div>':'')+
+async function scanQr(){rx={};qrScanClose();
+  document.body.insertAdjacentHTML('beforeend','<div id="offQs" class="offqs" role="dialog" aria-modal="true" aria-label="'+T('סריקת קוד סנכרון','Scan sync code')+'">'+
     '<div class="offqsv"><video playsinline muted></video><i aria-hidden="true"></i></div><p id="offQsHint" aria-live="polite">⏳</p>'+
-    '<div class="offqsb">'+(face?'':'<label class="btn" id="offQsPh">📸 '+T('לצלם תמונה במקום','Take a photo instead')+'<input type="file" accept="image/*" capture="environment" hidden></label>')+
+    '<div class="offqsb"><label class="btn" id="offQsPh">📸 '+T('לצלם תמונה במקום','Take a photo instead')+'<input type="file" accept="image/*" capture="environment" hidden></label>'+
     '<button type="button" class="btn" id="offQsX">'+T('סגירה','Close')+'</button></div></div>');
-  const me=qs={on:true,t:0,k:0,stream:null,face},alive=()=>qs===me&&me.on;
-  $o('#offQsX').onclick=()=>{qrScanClose();if(face)showQr();};
-  if(face)showQr('#offQsMine');
+  const me=qs={on:true,t:0,stream:null},alive=()=>qs===me&&me.on;
+  $o('#offQsX').onclick=qrScanClose;
   let Z;try{Z=await loadZxing();}catch(e){qsHint(T('הסורק לא נטען','Scanner failed to load'));return;}
   const hints=new Map();hints.set(Z.DecodeHintType.TRY_HARDER,true);const rd=new Z.QRCodeReader();
   let nat=null;try{if(typeof scanNativeOk==='function'&&scanNativeOk()&&(await BarcodeDetector.getSupportedFormats()).includes('qr_code'))nat=new BarcodeDetector({formats:['qr_code']});}catch(e){nat=null;}
   const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
   const dec=async()=>{if(nat){try{const c=await nat.detect(cv);if(c&&c.length)return c[0].rawValue;}catch(e){nat=null;}}
     try{return rd.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv))),hints).getText();}catch(e){return null;}};
-  const take=t=>{if(!t||!alive())return false;const r=offQrTake(t);if(r==='done'){if(!faceDone())qrScanClose();return true;}
+  const take=t=>{if(!t||!alive())return false;const r=offQrTake(t);if(r==='done'){qrScanClose();return true;}
     if(r==null)qsHint(T('זה לא קוד סנכרון — מכוונים אל הקוד שבטלפון השני','Not a sync code'));return false;};
   /* צילום: גם בטלפון שהמצלמה החיה קורסת בו. רשימה ארוכה = כמה קודים, צילום לכל אחד */
-  if(!face)$o('#offQsPh input').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;qsHint('⏳');
+  $o('#offQsPh input').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;qsHint('⏳');
     try{const u=URL.createObjectURL(f),im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=u;});
       for(const mx of [1400,900]){const k=Math.min(1,mx/Math.max(im.width,im.height));cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);cx.drawImage(im,0,0,cv.width,cv.height);
         const t=await dec();if(t){URL.revokeObjectURL(u);if(!take(t)&&rx.n)qsHint(T('נקלטו '+Object.keys(rx.p).length+' מתוך '+rx.n+' — מצלמים את הקוד הבא','Got '+Object.keys(rx.p).length+' of '+rx.n));return;}}
       URL.revokeObjectURL(u);qsHint(T('לא נמצא קוד בתמונה — מצלמים מקרוב, ישר, שכל הקוד בתמונה','No code found — try closer'));}catch(er){qsHint(T('התמונה לא נפתחה','Could not open the photo'));}};
   const live=!(typeof scanPhotoMode==='function'&&scanPhotoMode())&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
-  if(face){qsHint(T('מחזיקים את שני המכשירים זה מול זה: כל אחד מראה את הקוד שלו ומצלם את של השני','Hold both devices facing each other'));
-    try{me.stream=await faceStream();}catch(e){if(alive()){qsHint(T('המצלמה לא נפתחה — סגירה, ואז "אני סורק" מצד אחד','Camera unavailable'));$o('#offQs .offqsv').hidden=true;}return;}}
-  else if(!live){qsHint(T('מצלמים את הקוד שבטלפון השני (📸)','Take a photo of the code on the other phone'));$o('#offQs .offqsv').hidden=true;return;}
+  if(!live){qsHint(T('מצלמים את הקוד שבטלפון השני (📸)','Take a photo of the code on the other phone'));$o('#offQs .offqsv').hidden=true;return;}
   else{qsHint(T('מכוונים אל קוד הסנכרון בטלפון השני','Point at the sync code on the other phone'));
   try{me.stream=await getScanStream();}catch(e){if(alive()){qsHint(T('המצלמה לא נפתחה — מצלמים תמונה במקום (📸)','Camera unavailable — take a photo'));$o('#offQs .offqsv').hidden=true;}return;}}
   if(!alive()){me.stream.getTracks().forEach(t=>t.stop());return;}
@@ -218,7 +214,7 @@ async function got(code,via,peer){const r=await merge(code,via,peer);if(!r)retur
   const msg='✅ '+T('סונכרן','Synced')+(r.name?' '+T('עם','with')+' '+r.name:'')+': '+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'+(r.del?', '+r.del+' removed':''));
   flash(msg);
   /* מי שסורק / מדביק מקבל את מה שיש בצד השני — וזהו, בלי לבקש "עכשיו לסרוק בחזרה" */
-  open(via==='code'?'code':'qr',msg);}
+  open(via==='code'||via==='file'?via:'qr',msg);}
 
 /* ---------- 🔵 בלוטות' חי: קוד של 4 ספרות, ואז כל שינוי עובר מיד כל עוד הטלפונים קרובים ----------
    בערוץ עוברות הודעות JSON: {k:'hi',code,dev,name} (בדיקת הקוד) ו-{k:'pk',d:'YAM1...'} (החבילה המלאה, נדחסת).
@@ -227,18 +223,24 @@ const LS_BT='yam_off_bt';
 let bt={live:false,name:'',addr:'',code:'',role:'',st:'',retry:0,rt:0,sig:'',sendT:0};
 const btPeer=()=>{const p=obj(jget(LS_BT,null));return p.code&&p.role?p:null;};
 const sig=()=>{const s=JSON.stringify([state.lists,state.tomb,state.pantry,state.customPantry,state.plans]);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return s.length+':'+h;};
-const btSend=o=>{try{const a=nat();return !!(a&&a.btSend(JSON.stringify(o)));}catch(e){return false;}};
+const btSend=o=>{if(wb.dev)return wbSend(JSON.stringify(o));try{const a=nat();return !!(a&&a.btSend(JSON.stringify(o)));}catch(e){return false;}};
 async function btPush(){bt.sig=sig();btSend({k:'pk',d:await pack()});}
 function btText(){const n=esc(bt.name||'');
   const S={none:T('אין בלוטות\' בטלפון הזה — משתמשים ב-QR או בקוד שיתוף','No Bluetooth here — use QR or the share code'),
     perm:T('צריך לאשר את הרשאת הבלוטות\' (מכשירים בקרבת מקום) — לוחצים שוב ומאשרים','Allow the Bluetooth permission and try again'),
     off:T('הבלוטות\' כבוי — מדליקים ולוחצים שוב','Bluetooth is off'),
-    wait:'<div class="offbig" dir="ltr">'+esc(bt.code)+'</div>'+T('מקלידים את הקוד הזה בטלפון השני (⌨️ "להקליד קוד"). מחכה...','Type this code on the other phone. Waiting...'),
+    wait:'<div class="offbig" dir="ltr">'+esc(bt.code)+'</div>'+T('מקלידים את הקוד הזה בטלפון השני (⌨️ "להקליד קוד")','Type this code on the other phone')+
+      (bt.ble==='1'?T(', או באתר במחשב (כרום / אדג\') ← 📡 סנכרון ← 🔵 בלוטות\'',', or on the website on a computer (Chrome / Edge)'):'')+'. '+T('מחכה...','Waiting...')+
+      (bt.ble==='0'?'<small class="offnb">'+T('הטלפון הזה לא יודע להתחבר למחשב בבלוטות\' — מול מחשב משתמשים ב-🔳 QR.','This phone cannot connect to a computer by Bluetooth — use QR.')+'</small>':''),
+    pick:'🔎 '+T('בחלון שנפתח בוחרים את הטלפון ולוחצים "התאמה" / "Pair"','In the window that opens, pick the phone and click Pair'),
+    nowb:T('הדפדפן הזה לא תומך בבלוטות\'. פותחים את האתר בכרום או באדג\' (במחשב עם בלוטות\'), או משתמשים ב-🔳 QR.','This browser has no Bluetooth. Use Chrome or Edge, or QR.'),
+    wboff:T('הבלוטות\' במחשב כבוי או שאין בו בלוטות\' — מדליקים בהגדרות של המחשב ומנסים שוב.','Bluetooth on this computer is off or missing.'),
+    wbnone:T('לא נבחר טלפון. בודקים שבטלפון האופליין מוצג הקוד ('+esc(bt.code)+'), שהבלוטות\' דלוק ושהטלפון קרוב — ומנסים שוב.','No phone was picked. Check the code on the phone, Bluetooth and distance, then retry.'),
     search:'🔎 '+T('מחפש את הטלפון עם הקוד '+esc(bt.code)+'... (עד חצי דקה)','Looking for the phone with code '+esc(bt.code)+'...'),
     'try':'🔄 '+T('בודק את ','Checking ')+n+'...',
     notfound:T('לא נמצא טלפון עם הקוד הזה. בודקים שבטלפון השני מוצג הקוד, שהטלפונים קרובים, ושהבלוטות\' דלוק בשניהם — ומנסים שוב.','No phone with this code was found. Check the code, distance and Bluetooth, then retry.')+(navigator.userAgent.match(/Android (8|9|10|11)\b/)?' '+T('בטלפון ישן צריך גם שהמיקום יהיה דלוק בזמן החיפוש.','On older phones, Location must be on while searching.'):''),
     live:'🟢 '+T('מחובר ל'+n+' — כל שינוי עובר מיד, כל עוד הטלפונים קרובים','Connected to '+n+' — every change syncs live'),
-    lost:'🟠 '+T('החיבור ל'+n+' נקטע (התרחקו?). מתחבר שוב לבד כשיהיו קרובים','Connection lost. Will reconnect when close'),
+    lost:'🟠 '+(webBt()?T('החיבור ל'+n+' נקטע. לוחצים "להתחבר שוב" (בטלפון צריך שיהיה פתוח חלון הסנכרון או האפליקציה)','Connection lost. Click Reconnect'):T('החיבור ל'+n+' נקטע (התרחקו?). מתחבר שוב לבד כשיהיו קרובים','Connection lost. Will reconnect when close')),
     away:'🟠 '+T(n+' לא בטווח כרגע. מתחבר לבד כשיהיו קרובים',n+' is out of range. Will reconnect'),
     fail:'⚠️ '+T('לא הצליח. מנסים שוב','Failed — try again')};
   return S[bt.st]!=null?S[bt.st]:'';}
@@ -261,7 +263,7 @@ window.offBt=function(e){if(!e||typeof e!=='object')return;
       if(r.add+r.upd+r.del)flash('🔄 '+T('עודכן מ'+(bt.name||'הטלפון השני')+': ','Updated from '+(bt.name||'the other phone')+': ')+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'));});}
     return;}
   if(e.t!=='state')return;
-  bt.st=e.s;if(e.code)bt.code=e.code;
+  bt.st=e.s;if(e.code)bt.code=e.code;if(e.ble)bt.ble=e.ble;
   if(e.s==='live'){bt.live=true;bt.retry=0;clearTimeout(bt.rt);bt.addr=e.addr||bt.addr;if(!bt.name)bt.name=e.name||'';
     const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:myName()||String(ai.model||T('הטלפון השני','The other phone'))});btPush();}
   else if(e.s==='lost'||e.s==='away'){bt.live=false;btLater();}
@@ -276,20 +278,69 @@ function btCreate(){const a=nat();if(!a)return;const r=new Uint16Array(1);crypto
   bt.code=String(1000+r[0]%9000);bt.role='listen';bt.name='';bt.addr='';bt.live=false;bt.st='wait';btShow();try{a.btListen(bt.code,true);}catch(e){}}
 function btJoin(){const a=nat(),i=$o('#offBtCode');const c=String(i&&i.value||'').replace(/\D/g,'');
   if(c.length!==4){flash(T('מקלידים את 4 הספרות שמופיעות בטלפון השני','Type the 4 digits shown on the other phone'));if(i)i.focus();return;}
+  if(webBt()){wbJoin(c);return;}
   bt.code=c;bt.role='join';bt.name='';bt.addr='';bt.live=false;bt.st='search';btShow();try{a.btJoin(c);}catch(e){}}
-function btForget(){try{nat().btStop();}catch(e){}clearTimeout(bt.rt);ls.del(LS_BT);bt.live=false;bt.st='';bt.name='';btShow();open('bt');}
+function btForget(){wbClose();try{nat().btStop();}catch(e){}clearTimeout(bt.rt);ls.del(LS_BT);bt.live=false;bt.st='';bt.name='';btShow();open('bt');}
+
+/* ---------- 💻 בלוטות' מהאתר במחשב (Web Bluetooth, כרום / אדג') ----------
+   הטלפון האופליין (1.4 ומעלה) "יוצר קוד" ומפרסם את עצמו בבלוטות' חסכוני עם שירות לפי הקוד (Bt.java bleUuid).
+   כאן מקלידים את הקוד, הדפדפן מראה רק את הטלפון הזה, ומתחברים. ההודעות באותו פורמט: YAM1 + אורך + JSON, בחתיכות.
+   הדפדפן לא מתחבר לבד בלי לחיצה — אז אחרי ניתוק יש כפתור "להתחבר שוב" (עם הקוד שנשמר). */
+const webBt=()=>!nat()&&!OFF_APP;
+const wbOk=()=>webBt()&&!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
+const WB_MAGIC=0x59414d31,WB_RX='59414d31-0001-4000-8000-000000000000',WB_TX='59414d31-0002-4000-8000-000000000000';
+const wbSvc=c=>'59414d31-0000-4000-8000-00000000'+c;
+let wb={dev:null,rx:null,buf:new Uint8Array(0),q:Promise.resolve()};
+function wbFeed(u){const n=new Uint8Array(wb.buf.length+u.length);n.set(wb.buf);n.set(u,wb.buf.length);wb.buf=n;
+  for(;;){if(wb.buf.length<8)return;const v=new DataView(wb.buf.buffer,wb.buf.byteOffset,wb.buf.byteLength),len=v.getUint32(4);
+    if(v.getUint32(0)!==WB_MAGIC||len>2097152){wb.buf=new Uint8Array(0);return;}if(wb.buf.length<8+len)return;
+    const d=new TextDecoder().decode(wb.buf.subarray(8,8+len));wb.buf=wb.buf.slice(8+len);offBt({t:'msg',data:d});}}
+function wbSend(str){const c=wb.rx;if(!c)return false;const b=new TextEncoder().encode(str),f=new Uint8Array(8+b.length),v=new DataView(f.buffer);
+  v.setUint32(0,WB_MAGIC);v.setUint32(4,b.length);f.set(b,8);
+  wb.q=wb.q.then(async()=>{for(let i=0;i<f.length;i+=500){if(wb.rx!==c)return;const p=f.slice(i,i+500);await(c.writeValueWithResponse?c.writeValueWithResponse(p):c.writeValue(p));}}).catch(()=>{});return true;}
+function wbClose(){const d=wb.dev;wb.dev=null;wb.rx=null;wb.buf=new Uint8Array(0);try{if(d&&d.gatt&&d.gatt.connected)d.gatt.disconnect();}catch(e){}}
+/* חייב להיקרא ישר מלחיצה (הדפדפן פותח חלון בחירה רק אחרי לחיצה) */
+async function wbJoin(code){if(!wbOk()){bt.st='nowb';btShow();return;}
+  wbClose();bt.code=code;bt.role='join';bt.name='';bt.addr='';bt.live=false;bt.st='pick';btShow();
+  let dev;try{dev=await navigator.bluetooth.requestDevice({filters:[{services:[wbSvc(code)]}]});}
+  catch(e){bt.st=/adapter|not available|globally disabled/i.test(String(e&&e.message))?'wboff':e&&e.name==='NotFoundError'?'wbnone':'fail';btShow();return;}
+  bt.name=String(dev.name||'').replace(/[<>]/g,'').slice(0,40);bt.st='try';btShow();
+  try{wb.dev=dev;dev.addEventListener('gattserverdisconnected',()=>{if(wb.dev!==dev)return;wb.rx=null;wb.dev=null;offBt({t:'state',s:'lost'});});
+    const sv=await(await dev.gatt.connect()).getPrimaryService(wbSvc(code)),rx=await sv.getCharacteristic(WB_RX),tx=await sv.getCharacteristic(WB_TX);
+    tx.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value;wbFeed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength));});
+    wb.buf=new Uint8Array(0);await tx.startNotifications();if(wb.dev!==dev)return;wb.rx=rx;
+    offBt({t:'state',s:'live',name:bt.name,addr:''});}
+  catch(e){if(wb.dev===dev)wbClose();bt.st='fail';btShow();}}
 
 /* ---------- ✉️ קוד שיתוף ---------- */
 async function showCode(){const t=$o('#offMine');if(!t)return;t.value=await pack();
   const sms=$o('#offSms');if(sms)sms.onclick=e=>{const a=nat();
     if(a&&typeof a.shareText==='function'){e.preventDefault();a.shareText(t.value);}else sms.href='sms:?body='+encodeURIComponent(t.value);};}
 
+/* 📧 במייל: נפתח ג'ימייל עם הקוד. קוד ארוך מדי לקישור — מעתיקים אותו, ובמייל מדביקים (Ctrl+V) */
+function offMail(){const v=($o('#offMine')||{}).value||'';if(!v)return;const su=T('קוד סנכרון — רשימת קניות','Sync code — shopping list'),
+  how=T('בצד השני: 📡 סנכרון בלי אינטרנט ← ✉️ קוד שיתוף ← מדביקים את הקוד ב"קיבלתי קוד" ← "למזג את הרשימות".','On the other side: Offline sync → Share code → paste → Merge.');
+  if(typeof openGmail!=='function')return;
+  if(v.length<6000){openGmail(su,how+'\n\n'+v);return;}
+  const go=()=>{openGmail(su,how+'\n\n'+T('(הקוד הועתק — מדביקים אותו כאן)','(The code was copied — paste it here)'));flash('📋 '+T('הקוד ארוך, אז הוא הועתק — במייל מדביקים אותו (Ctrl+V)','The code was copied — paste it in the email'));};
+  (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(go,()=>{const x=$o('#offMine');x.select();try{document.execCommand('copy');}catch(er){}go();});}
+
+/* 📁 קובץ סנכרון: אותה חבילה (YAM1...) בקובץ טקסט. באופליין ובאפליקציה נשמר בתיקיית ההורדות, באתר — הורדה רגילה */
+async function fileSave(){const code=await pack(),d=new Date(),p=n=>String(n).padStart(2,'0'),
+  name='yam-sync-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.txt',a=nat();
+  try{if(a&&typeof a.saveSyncFile==='function'){a.saveSyncFile(name,code);return;}
+    if(a&&typeof a.saveFile==='function'){a.saveFile(name,'text/plain',btoa(unescape(encodeURIComponent(code))));return;}}catch(e){}
+  const u=URL.createObjectURL(new Blob([code],{type:'text/plain'})),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
+  flash('💾 '+T('נשמר: '+name+' — מעתיקים אותו לתיקיית Download של הטלפון','Saved: '+name));}
+function fileOpen(f){if(f.size>3e6){flash(T('הקובץ גדול מדי — זה לא קובץ סנכרון','File too large'));return;}
+  const r=new FileReader();r.onload=()=>{const t=String(r.result||'').trim();if(t.indexOf(PFX)!==0){flash(T('זה לא קובץ סנכרון של רשימת קניות','Not a sync file'));return;}got(t,'file');};r.readAsText(f);}
+
 /* ---------- המסך ---------- */
 let curTab='';
 function ago(ts){if(!ts)return T('עוד לא סונכרן','Never synced');const m=Math.round((Date.now()-ts)/60000);
   return T('סונכרן ','Synced ')+(m<2?T('עכשיו','just now'):m<60?T('לפני '+m+' דקות',m+' min ago'):m<1440?T('לפני '+Math.round(m/60)+' שעות',Math.round(m/60)+' h ago'):T('לפני '+Math.round(m/1440)+' ימים',Math.round(m/1440)+' days ago'));}
 const agoS=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<2?T('עכשיו','now'):m<60?T('לפני '+m+' דק\'',m+'m ago'):m<1440?T('לפני '+Math.round(m/60)+' שע\'',Math.round(m/60)+'h ago'):T('לפני '+Math.round(m/1440)+' ימים',Math.round(m/1440)+'d ago');};
-const VIA={bt:'🔵',qr:'🔳',code:'✉️'};
+const VIA={bt:'🔵',qr:'🔳',code:'✉️',file:'📁'};
 /* 🔗 עם מי סונכרן — שם, מכשיר, ואיזה צד (אתר / אפליקציה / אופליין). קטן, בלי חלון */
 function peerTxt(p){const m=String(p.model||''),k={off:T('אופליין','offline')+(p.ver?' '+p.ver:''),app:T('אפליקציה','app'),site:T('אתר','site')}[p.kind]||'';
   return [p.name,(typeof phName61==='function'&&phName61(m))||m,k].filter(Boolean).join(' · ')||T('מכשיר אחר','another device');}
@@ -298,25 +349,36 @@ function peersHtml(){const a=recentPeers(3);if(!a.length)return '';
   return '<p class="offpeers">🔗 '+T('סונכרן עם: ','Synced with: ')+a.map(p=>'<span>'+esc(peerTxt(p))+' '+(VIA[p.via]||'')+' <i>'+agoS(p.at)+'</i></span>').join('')+'</p>';}
 function pendingN(){const last=+ls.get(LS_LAST)||0;let n=0;(state.lists||[]).forEach(l=>(l.items||[]).forEach(i=>{if(i&&(i.ts||0)>last)n++;}));return n;}
 function open(tab,note){
-  if(tab)curTab=tab;if(!curTab||(curTab==='bt'&&!hasBt()))curTab=hasBt()?'bt':'qr';
+  const btOk=hasBt()||webBt();if(tab)curTab=tab;if(!curTab||(curTab==='bt'&&!btOk))curTab=hasBt()||wbOk()?'bt':'qr';
   const last=+ls.get(LS_LAST)||0,pn=pendingN();
-  const tabs=[...(hasBt()?[['bt','🔵 '+T('בלוטות\'','Bluetooth')]]:[]),['qr','🔳 QR'],['code','✉️ '+T('קוד שיתוף','Share code')]];
+  const tabs=[...(btOk?[['bt','🔵 '+T('בלוטות\'','Bluetooth')]]:[]),['qr','🔳 QR'],['file','📁 '+T('קובץ','File')],['code','✉️ '+T('קוד שיתוף','Share code')]];
   let body='<div class="offsync"><p class="offst">'+ago(last)+(pn&&last?' · '+T(pn+' שינויים מאז',pn+' changes since'):'')+'</p>'+peersHtml()+(note?'<div class="offok" role="status">'+note+'</div>':'')+
     '<div class="offtabs" role="tablist">'+tabs.map(t=>'<button role="tab" data-offt="'+t[0]+'" aria-selected="'+(t[0]===curTab)+'">'+t[1]+'</button>').join('')+'</div>';
   /* סריקה אחת בלבד — בוחרים מי סורק: הטלפון/הנגן או המחשב. מי שסורק מקבל את כל מה שיש בשני. במכשיר בלי מצלמה (נגן) — רק מציגים */
   if(curTab==='qr')body+='<p class="muted-note">'+T('סורקים פעם אחת, מאיזה צד שנוח: מי שסורק מקבל את כל מה שיש בצד השני. במכשיר בלי מצלמה (נגן) — מציגים כאן את הקוד, וסורקים אותו מהמחשב או מהטלפון.','Scan once, from whichever side: the device that scans gets everything from the other. On a device without a camera, show this code and scan it from the other side.')+'</p>'+
     '<button class="btn" id="offScan" style="width:100%;margin-bottom:8px">📷 '+T('אני סורק את הקוד של הצד השני','I scan the other side\'s code')+'</button>'+
-    '<button class="btn sec" id="offFace" style="width:100%;margin-bottom:8px">🤝 '+T('פנים מול פנים — שני המכשירים סורקים יחד (מצלמה קדמית)','Face to face — both scan at once (front camera)')+'</button>'+
     '<p class="muted-note" id="offQrOr" style="margin:4px 0 0">🔳 '+T('או — הקוד שלי, לסריקה מהצד השני:','Or — my code, to scan from the other side:')+'</p><div id="offQr" class="offqrbox"></div>';
+  else if(curTab==='bt'&&webBt()){const p=btPeer();body+='<p class="muted-note">'+T('מחברים את הטלפון האופליין למחשב בלי אינטרנט בטלפון: בטלפון — 📡 סנכרון ← 🔵 בלוטות\' ← "ליצור קוד". כאן מקלידים את 4 הספרות, לוחצים "להתחבר" ובוחרים את הטלפון בחלון שנפתח. מאז כל שינוי עובר מיד, כל עוד הטלפון קרוב והדף פתוח.','Connect the offline phone to this computer: on the phone tap Sync → Bluetooth → Create a code, then type it here.')+'</p>'+
+    (!wbOk()?'<div class="offbtst">'+T('הדפדפן הזה לא תומך בבלוטות\'. פותחים את האתר בכרום או באדג\' (במחשב עם בלוטות\'), או משתמשים ב-🔳 QR.','This browser has no Bluetooth. Use Chrome or Edge, or QR.')+'</div>':
+    (bt.live?'':'<div class="row2"><input id="offBtCode" type="tel" inputmode="numeric" maxlength="4" dir="ltr" placeholder="0000" aria-label="'+T('הקוד מהטלפון','Code from the phone')+'" class="offcodein"><button class="btn" id="offBtGo">🔵 '+T('להתחבר','Connect')+'</button></div>')+
+    '<div id="offBtSt" class="offbtst" role="status" aria-live="polite"></div>'+
+    (!bt.live&&p?'<button class="btn sec" id="offBtAgain" style="width:100%">🔄 '+T('להתחבר שוב ל'+esc(p.name||'הטלפון')+' (קוד '+esc(p.code)+')','Reconnect to '+esc(p.name||'the phone'))+'</button>':'')+
+    '<button class="btn sec" id="offBtDis" style="width:100%;margin-top:6px"'+(bt.live||p?'':' hidden')+'>🔌 '+T('לנתק ולשכוח את הטלפון הזה','Disconnect and forget')+'</button>');}
   else if(curTab==='bt'){const p=btPeer();body+='<p class="muted-note">'+T('בלי אינטרנט ובלי SMS: בטלפון אחד יוצרים קוד, ובשני מקלידים אותו. מאז, כל שינוי עובר מיד בין שני הטלפונים כל עוד הם קרובים — ובפעם הבאה הם מתחברים לבד.','No internet or SMS: create a code on one phone, type it on the other. Then every change syncs live while they are close.')+'</p>'+
     (bt.live?'':'<div class="row2"><button class="btn" id="offBtNew">🔢 '+T('ליצור קוד','Create a code')+'</button><button class="btn sec" id="offBtType">⌨️ '+T('להקליד קוד','Type a code')+'</button></div>'+
       '<div id="offBtJoin" class="row2" hidden><input id="offBtCode" type="tel" inputmode="numeric" maxlength="4" dir="ltr" placeholder="0000" aria-label="'+T('הקוד מהטלפון השני','Code from the other phone')+'" class="offcodein"><button class="btn" id="offBtGo">'+T('להתחבר','Connect')+'</button></div>')+
     '<div id="offBtSt" class="offbtst" role="status" aria-live="polite"></div>'+
     (!bt.live&&p?'<button class="btn sec" id="offBtAgain" style="width:100%">🔄 '+T('להתחבר שוב ל'+esc(p.name||'הטלפון השני'),'Reconnect to '+esc(p.name||'the other phone'))+'</button>':'')+
     '<button class="btn sec" id="offBtDis" style="width:100%;margin-top:6px"'+(bt.live||p?'':' hidden')+'>🔌 '+T('לנתק ולשכוח את הטלפון הזה','Disconnect and forget')+'</button>';}
+  else if(curTab==='file')body+='<p class="muted-note">'+(OFF_APP||nat()?
+      T('בלי בלוטות\' ובלי מצלמה: מחברים את הטלפון למחשב בכבל USB. "לשמור קובץ" — הקובץ נשמר בתיקיית ההורדות (Download) של הטלפון, ובמחשב פותחים אותו מהטלפון ב"📡 סנכרון ← 📁 קובץ". בכיוון ההפוך: מעתיקים לטלפון את הקובץ מהמחשב, ו"לפתוח קובץ".','No Bluetooth or camera: connect by USB cable. Save a file here and open it on the computer, or copy the computer\'s file here and open it.'):
+      T('לנגן או לטלפון בלי בלוטות\' ובלי מצלמה: מחברים אותו למחשב בכבל USB. בטלפון: 📡 סנכרון ← 📁 קובץ ← "לשמור קובץ", וכאן "לפתוח קובץ" ובוחרים אותו מתיקיית Download של הטלפון. בכיוון ההפוך: כאן "לשמור קובץ", מעתיקים אותו לתיקיית Download של הטלפון, ובטלפון "לפתוח קובץ".','For a device without Bluetooth or camera: connect it by USB cable. Save the file on the phone and open it here, or save here, copy to the phone and open it there.'))+'</p>'+
+    '<button class="btn" id="offFileSave" style="width:100%;margin-bottom:8px">💾 '+T('לשמור קובץ סנכרון','Save a sync file')+'</button>'+
+    '<label class="btn sec" id="offFileOpen" style="display:block;text-align:center;width:100%">📂 '+T('לפתוח קובץ שהגיע מהצד השני','Open a file from the other side')+'<input type="file" accept=".txt,text/plain" hidden></label>';
   else body+='<p class="muted-note">'+T('שולחים את הקוד שלי ב-SMS (אפשר גם לטלפון בלי אינטרנט), ובטלפון השני מדביקים אותו למטה. הקוד ארוך — זה תקין.','Send my code by SMS and paste it on the other phone. It is long — that is fine.')+'</p>'+
     '<label class="il" for="offMine">'+T('הקוד שלי','My code')+'</label><textarea id="offMine" class="offcode" readonly dir="ltr"></textarea>'+
     '<div class="row2"><a class="btn" id="offSms" href="#" role="button">✉️ '+T('לשלוח ב-SMS','Send by SMS')+'</a><button class="btn sec" id="offCopy">📋 '+T('להעתיק','Copy')+'</button></div>'+
+    (OFF_APP?'':'<button class="btn sec" id="offMail" style="width:100%;margin-top:6px">📧 '+T('לשלוח במייל (ג׳ימייל)','Send by email (Gmail)')+'</button>')+
     '<label class="il" for="offIn">'+T('קיבלתי קוד מהטלפון השני','I got a code')+'</label><textarea id="offIn" class="offcode" dir="ltr" placeholder="YAM1..."></textarea>'+
     '<button class="btn" id="offGo" style="width:100%">🔄 '+T('למזג את הרשימות','Merge the lists')+'</button>';
   if(OFF_APP){const ok=diagOk();
@@ -326,7 +388,7 @@ function open(tab,note){
     '<p class="muted-note">'+T('אפליקציה בלי אינטרנט בכלל (גם לא דרכה): רשימות, מזווה והיסטוריה, באותו עיצוב. מעבירים אליה את הקובץ ומסנכרנים איתה מכאן.','A no-internet app: lists, pantry and history. Sync with it from here.')+'</p></div>';
   body+='</div>';
   openSheet('📡 '+T('סנכרון בלי אינטרנט','Offline sync'),body);
-  if(curTab==='qr'){showQr();{const f=$o('#offFace');if(f&&typeof scanPhotoMode==='function'&&scanPhotoMode())f.hidden=true;}noCam().then(n=>{const b=$o('#offScan'),o=$o('#offQrOr');if(!n||!b)return;b.hidden=true;{const f=$o('#offFace');if(f)f.hidden=true;}if(o)o.textContent='🔳 '+T('הקוד שלי — סורקים אותו מהמחשב או מהטלפון:','My code — scan it from the computer or phone:');});}else if(curTab==='code')showCode();else btShow();}
+  if(curTab==='qr'){showQr();noCam().then(n=>{const b=$o('#offScan'),o=$o('#offQrOr');if(!n||!b)return;b.hidden=true;if(o)o.textContent='🔳 '+T('הקוד שלי — סורקים אותו מהמחשב או מהטלפון:','My code — scan it from the computer or phone:');});}else if(curTab==='code')showCode();else btShow();}
 /* נגן / מכשיר בלי מצלמה: אין מה לסרוק בו */
 async function noCam(){try{if(!(navigator.mediaDevices&&navigator.mediaDevices.enumerateDevices))return true;const d=await navigator.mediaDevices.enumerateDevices();
   return d.length>0&&!d.some(x=>x.kind==='videoinput');}catch(e){return false;}}
@@ -339,17 +401,21 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
   const tb=t.closest('[data-offt]');if(tb){open(tb.dataset.offt);return;}
   if(t.closest('#offDl')){try{sb&&sb.rpc('apk_log',{p_kind:'download',p_src:'offline',p_device:'',p_dev:devId(),p_ver:''}).then(()=>{},()=>{});}catch(er){}
     if(inAppSave()){e.preventDefault();appDl(t.closest('#offDl'));}return;}
-  if(t.closest('#offScan')){scanQr();return;}if(t.closest('#offFace')){scanQr(true);return;}
+  if(t.closest('#offScan')){scanQr();return;}
   if(t.closest('#offBtNew')){btCreate();return;}
   if(t.closest('#offBtType')){const j=$o('#offBtJoin');if(j){j.hidden=false;$o('#offBtCode').focus();}return;}
   if(t.closest('#offBtGo')){btJoin();return;}
-  if(t.closest('#offBtAgain')){bt.retry=0;btAuto();return;}
+  if(t.closest('#offBtAgain')){if(webBt()){const p=btPeer();if(p)wbJoin(p.code);return;}bt.retry=0;btAuto();return;}
   if(t.closest('#offBtDis')){btForget();return;}
   if(t.closest('#offCopy')){const v=($o('#offMine')||{}).value||'';(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(()=>flash('📋 '+T('הועתק','Copied')),()=>{const x=$o('#offMine');x.select();try{document.execCommand('copy');flash('📋 '+T('הועתק','Copied'));}catch(er){}});return;}
+  if(t.closest('#offMail')){offMail();return;}
+  if(t.closest('#offFileSave')){fileSave();return;}
   if(t.closest('#offGo')){const v=($o('#offIn')||{}).value||'';got(v,'code');return;}
   const dg=t.closest('[data-offdiag]');if(dg){ls.set(LS_OK,dg.dataset.offdiag);if(dg.dataset.offdiag==='0')ls.del(LS_DIAG);open();return;}
 },true);
-document.addEventListener('change',e=>{if(e.target&&e.target.id==='offDiagCb'){ls.set(LS_OK,e.target.checked?'1':'0');if(!e.target.checked)ls.del(LS_DIAG);}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='offBtCode'){e.preventDefault();btJoin();}});
+document.addEventListener('change',e=>{const fi=e.target&&e.target.closest&&e.target.closest('#offFileOpen')&&e.target.files&&e.target.files[0];if(fi){e.target.value='';fileOpen(fi);return;}
+  if(e.target&&e.target.id==='offDiagCb'){ls.set(LS_OK,e.target.checked?'1':'0');if(!e.target.checked)ls.del(LS_DIAG);}});
 
 /* 📴 מסך הפתיחה באפליקציה האופליין: אותו מסך כניסה של האתר (לוגו ועיצוב), אבל רק "מה השם שלך?" ונכנסים.
    אין חשבון ואין סיסמה — השם נשמר רק בטלפון, ומוצג לטלפון השני בסנכרון ("מחובר ל..."). הוא לא נשלח אלינו */
@@ -424,14 +490,13 @@ document.head.insertAdjacentHTML('beforeend','<style id="offsync87">'+
   '.offqrn{margin:6px 0 0;font-size:13px;color:var(--muted)}'+
   '.offpeers{margin:-2px 0 8px;font-size:12px;color:var(--muted);line-height:1.5}.offpeers span{display:inline-block;margin-inline-end:10px}.offpeers i{font-style:normal;opacity:.8}'+
   '.offpill .offpl{display:block;font-size:12px;color:var(--muted);margin-top:2px}'+
-  '.offqs.face{justify-content:flex-start;overflow:auto}.offqs.face .offqr{width:min(80vw,46vh)}.offqs.face .offqrn{color:#ccc}.offqs.face .offqsv{width:min(34vw,22vh)}.offqs.face video{transform:scaleX(-1)}'+
-  '.offqs{position:fixed;inset:0;z-index:99999;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}'+
+    '.offqs{position:fixed;inset:0;z-index:99999;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}'+
   '.offqsv{position:relative;width:min(86vw,60vh);aspect-ratio:1;overflow:hidden;border-radius:16px;background:#111}.offqsv video{width:100%;height:100%;object-fit:cover}'+
   '.offqsv i{position:absolute;inset:5%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}'+
   '#offQsHint{margin:0;text-align:center;font-size:16px;max-width:420px}.offqsb{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.offqsb .btn{cursor:pointer}'+
   '.offcode{width:100%;min-height:64px;font:12px/1.35 monospace;word-break:break-all;margin-bottom:6px}'+
   '.offsync .row2{display:flex;gap:8px;margin:6px 0}.offsync .row2>*{flex:1;text-align:center}'+
-  '.offbtst{min-height:1.4em;font-size:14px;margin:6px 0}.offbig{font:700 44px/1.1 monospace;letter-spacing:10px;text-align:center;margin:6px 0 4px;color:var(--hdr2)}'+
+  '.offbtst{min-height:1.4em;font-size:14px;margin:6px 0}.offnb{display:block;color:var(--muted);margin-top:6px;font-size:13px}.offbig{font:700 44px/1.1 monospace;letter-spacing:10px;text-align:center;margin:6px 0 4px;color:var(--hdr2)}'+
   '.offcodein{font:700 24px monospace;letter-spacing:8px;text-align:center}'+
   '.offdiag{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:14px}'+
   /* מסך הפתיחה: לוגו, כותרת, משפט אחד, ו"מה השם שלך?" — בלי שאר חלקי הכניסה (מייל, גוגל, בקשת אישור) */
