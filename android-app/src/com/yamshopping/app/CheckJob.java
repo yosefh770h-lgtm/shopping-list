@@ -134,6 +134,8 @@ public class CheckJob extends JobService {
             checkNews(c, p);
         }
         shabbat(c, p, now);
+        // 🔔 2.2: מעקב מבצעים (אם הוגדר באתר) — פעם בשעה
+        Deals.check(c);
     }
 
     static void checkVersion(Context c, SharedPreferences p) {

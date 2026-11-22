@@ -2427,6 +2427,36 @@ await test('🧠 סנכרון חוזר אחרי כמה ימים: בלי כפיל
   await A.ctx.close(); await B.ctx.close();
 });
 
+await test('🎤🏠🔔 אפליקציה 2.2: כמה מוצרים בקול בלי פסיקים, וידג\'ט הרשימה, ומעקב מבצעים שעובר לאפליקציה', async () => {
+  // הגשרים של 2.2 — כמו באפליקציה
+  const init = () => { window.__w = []; window.__d = []; window.YamApp = { appInfo: () => JSON.stringify({ ver: '2.2', bg: true }), setWidget: (j) => window.__w.push(JSON.parse(j)), setDealWatch: (j) => window.__d.push(JSON.parse(j)) }; };
+  const { ctx, page, errors } = await newPage({ userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2', init });
+  const said = async (t) => page.evaluate(async (t) => { curList().items = []; document.querySelector('#inText').value = t; sendCurrent(); await new Promise((r) => setTimeout(r, 700)); return curList().items.map((i) => i.n + (i.q && String(i.q) !== '1' ? '×' + i.q : '')).join('|'); }, t);
+  let r = await said('חלב ביצים לחם');
+  assert(r === 'חלב|ביצים|לחם', 'הקלטה בלי פסיקים: ' + r);
+  r = await said('שתי חלב שלוש ביצים');
+  assert(r === 'חלב×2|ביצים×3', 'כמויות בהקלטה: ' + r);
+  r = await said('גבינה צהובה עגבניות');
+  assert(r === 'גבינה צהובה|עגבניות', 'מוצר משתי מילים נשבר: ' + r);
+  r = await said('אפונה וגזר');
+  assert(r === 'אפונה וגזר', 'אפונה וגזר התפרק: ' + r);
+  // וידג'ט: אחרי שמירה — שם הרשימה, 4 מוצרים שלא נקנו ו"ועוד"
+  await page.evaluate(() => { curList().items = []; ['חלב', 'לחם', 'ביצים', 'אורז', 'סוכר', 'קמח'].forEach((n) => addItem(n, '')); curList().items[0].done = true; save(); });
+  await page.waitForTimeout(1900);
+  const w = await page.evaluate(() => window.__w[window.__w.length - 1]);
+  assert(w && w.items.length === 4 && w.more === 1 && !w.items.includes('חלב') && w.title, 'וידג\'ט: ' + JSON.stringify(w));
+  // מעקב מבצעים: ההגדרה עוברת לאפליקציה, והאתר לא בודק בעצמו
+  await page.evaluate(() => { state.dealWatch = { on: true, stores: [{ k: 'shufersal:12' }], what: 'words', words: 'במבה, חלב', seen: { 'shufersal:12': ['abc'] }, base: true }; save(); });
+  await page.waitForTimeout(1900);
+  const d = await page.evaluate(() => window.__d[window.__d.length - 1]);
+  assert(d && d.on && d.stores[0] === 'shufersal:12' && d.words.includes('במבה') && d.seen['shufersal:12'][0] === 'abc', 'מעקב מבצעים לא עבר: ' + JSON.stringify(d));
+  assert(await page.evaluate(async () => (await dwCheck85(true)) === 0), 'האתר בודק בעצמו גם כשהאפליקציה בודקת');
+  await page.evaluate(() => { state.dealWatch.on = false; save(); }); await page.waitForTimeout(1900);
+  assert(await page.evaluate(() => window.__d[window.__d.length - 1].on === false), 'כיבוי המעקב לא עבר לאפליקציה');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
 const failed = results.filter((r) => r[0] === '❌').length;

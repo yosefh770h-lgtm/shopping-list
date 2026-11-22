@@ -7,4 +7,8 @@
     <string name="sc_scan">סריקת ברקוד</string>
     <string name="sc_voice">הוספה במיקרופון</string>
     <string name="sc_cheap">איפה הכי זול</string>
+    <!-- 🏠 2.2: וידג'ט הרשימה -->
+    <string name="w_add">הוספת מוצר</string>
+    <string name="w_open">לחיצה פותחת את הרשימה</string>
+    <string name="w_desc">הרשימה הפעילה: מה עוד צריך לקנות</string>
 </resources>

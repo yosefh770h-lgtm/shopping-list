@@ -220,6 +220,16 @@ let compoundRx=null,compoundN=-1;
 function COMPOUND_RX(){const ks=Object.keys(NORMP);if(compoundRx&&compoundN===ks.length)return compoundRx;compoundN=ks.length;
   const c=ks.filter(k=>/\sו[א-ת]/.test(k)).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
   compoundRx=c.length?new RegExp('(?<![א-ת])('+c.join('|')+')(?![א-ת])','g'):/(?!)/g;return compoundRx;}
+/* רצף מילים → כמה מוצרים מוכרים. רק אם כל המילים נכנסו למוצרים (לפחות 2), אחרת null ומשאירים כמו שהיה.
+   מספר לפני מוצר ("שתי חלב שלוש ביצים") הוא הכמות שלו; מספר בסוף הולך למוצר האחרון */
+function segmentKnown(p){const w=p.split(' ').filter(Boolean),out=[];let pend='';
+  for(let i=0;i<w.length;){
+    if(NUMW[w[i]]||/^\d+$/.test(w[i])){pend=''+(NUMW[w[i]]||w[i]);i++;continue;}
+    let hit=0;for(let n=Math.min(4,w.length-i);n>=1;n--){if(NORMP[norm(w.slice(i,i+n).join(' '))]){hit=n;break;}}
+    if(!hit)return null;
+    out.push({name:NORMP[norm(w.slice(i,i+hit).join(' '))],qty:pend});pend='';i+=hit;}
+  if(pend&&out.length&&!out[out.length-1].qty)out[out.length-1].qty=pend;
+  return out.length>1?out:null;}
 function parseItems(text){
   let s=' '+norm(text)+' ';
   s=s.replace(/\s(בבקשה|גם|עוד|רק)\s/g,' ').trim().replace(/^(אני צריך|אני צריכה|אני רוצה|צריך|צריכה|תוסיף לי|תוסיפי לי|תוסיף|תוסיפי|תוסיפו|הוסיפי|הוסף לי|הוסף|תרשמו|תרשמי|רשמי|תרשום|רשום|לקנות|תקני|תקנה|קני|קנה|תביאי|תביא|תכניסי|תכניס|שימי|תשימי)\s+/,'').trim();
@@ -241,6 +251,9 @@ function parseItems(text){
     const w=p.split(' ');
     if(w.length&&NUMW[w[0]]){q2=q2||(''+NUMW[w[0]]);w.shift();p=w.join(' ').trim();}
     if(!p)return;
+    /* 🎤 בהקלטה אין פסיקים: "חלב ביצים לחם" — מפרקים לפי מוצרים מוכרים (הצירוף הכי ארוך קודם, כך ש"גבינה צהובה" נשאר אחד) */
+    const seg=!NORMP[norm(p)]&&p.includes(' ')?segmentKnown(p):null;
+    if(seg){seg.forEach((x,i)=>out.push({name:x.name,qty:x.qty||(i===seg.length-1&&!q2&&parts.length===1?qty:q2&&i===0?q2:'')}));return;}
     out.push({name:NORMP[norm(p)]||fuzzyResolve(p)||p,qty:(q2||(parts.length===1?qty:'')||'')});
   });
   return out;

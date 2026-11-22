@@ -61,6 +61,7 @@ function dwWords(w){
   return null;}
 function dwMatch(p,words){if(!words)return true;const n=norm(p.name||'');return words.some(x=>n.includes(x)||x.split(' ').every(t=>t&&n.includes(t)));}
 async function dwCheck(force){const w=state.dealWatch;
+  if(window.dwNative85&&dwNative85())return 0; /* אפליקציה 2.2 בודקת ברקע בעצמה (js/088-native22.js) */
   if(!w||!w.on||!Array.isArray(w.stores)||!w.stores.length||!nearDealsOn())return 0;
   if(!force&&(document.hidden||Date.now()-(w.at||0)<55*60000))return 0;
   w.at=Date.now();save();
@@ -77,7 +78,7 @@ async function dwCheck(force){const w=state.dealWatch;
     const body=place+': '+fresh.slice(0,3).map(p=>(p.text||p.name)+(p.pct>0?' (−'+p.pct+'%)':'')).join(' · ')+(fresh.length>3?' '+T('ועוד','and more'):'');
     notify('dw-'+k+'-'+dwHash(fresh.map(dwId).join(',')),'deal',title,body,'neardeals');});
   w.base=true;save();return total;}
-window.dwCheck85=dwCheck;
+window.dwCheck85=dwCheck;window.dwWords85=dwWords;
 async function openDealWatch(gHint){
   const b=openSheet('🔔 '+T('מעקב מבצעים','Deal watch'),'<div class="empty">'+T('מחפשת סניפים לידך...','Finding branches near you...')+'</div>');b.onclick=null;b.onchange=null;b.oninput=null;
   const w=state.dealWatch||{};

@@ -184,6 +184,14 @@
         <!-- תשובת המערכת על התקנת העדכון -->
         <receiver android:name=".InstallReceiver" android:exported="false" />
 
+        <!-- 🏠 2.2: וידג'ט הרשימה במסך הבית (Widget.java) -->
+        <receiver android:name=".Widget" android:exported="false" android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />
+        </receiver>
+
         <!-- "השב" ו"סימון כנקרא" בהתראת ההודעות מהצוות -->
         <receiver android:name=".ActionReceiver" android:exported="false" />
 

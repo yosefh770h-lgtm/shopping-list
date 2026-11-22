@@ -868,6 +868,18 @@ public class AppActivity extends Activity {
     // ---------- שמירת קבצים שהאתר מוריד ----------
 
     class Bridge {
+        /** 🏠 2.2: וידג'ט הרשימה במסך הבית (js/088-native22.js). רק מהאתר שלנו */
+        @JavascriptInterface
+        public void setWidget(String json) {
+            onOurPage(() -> Widget.set(getApplicationContext(), json));
+        }
+
+        /** 🔔 2.2: מעקב מבצעים גם כשהאפליקציה סגורה — ההגדרה מהאתר (js/085.js), והבדיקה ב-CheckJob פעם בשעה */
+        @JavascriptInterface
+        public void setDealWatch(String json) {
+            onOurPage(() -> Deals.set(getApplicationContext(), json));
+        }
+
         /** 📡 2.2: סנכרון בלי אינטרנט (js/087-offsync.js) — בלוטות' ושליחת קוד הסנכרון. רק מהאתר שלנו */
         @JavascriptInterface
         public String btState() {
@@ -1007,6 +1019,8 @@ public class AppActivity extends Activity {
                 o.put("battery", Power.state(AppActivity.this)); // 2.1: "ok" / "ask" / "na"; 2.2: גם "blocked"
                 o.put("batLost", Power.lost(AppActivity.this)); // 2.2: היה "ללא הגבלות" והטלפון ביטל לבד
                 o.put("autostart", Power.xiaomi()); // 2.1: שיאומי — צריך גם "הפעלה אוטומטית"
+                o.put("widget", true); // 2.2: וידג'ט הרשימה
+                o.put("dealWatch", Deals.on(AppActivity.this)); // 2.2: מעקב מבצעים ברקע פעיל בטלפון
                 o.put("receiptJson", true); // 2.2: קבלת אושר עד נפתחת מהטלפון
                 o.put("splash", true); // 2.1: האתר מנגן את אנימציית הפתיחה (גם אחרי זמן ארוך ברקע)
                 o.put("offline", Offline.has(AppActivity.this)); // 2.1: עותק של האתר בתוך האפליקציה
