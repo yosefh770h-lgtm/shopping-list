@@ -41,7 +41,6 @@ async function newPage(opts = {}) {
   if (!opts.priceApi) await ctx.route(/\/api\/prices\//, (r) => r.abort());
   else await ctx.route(/\/api\/prices\//, opts.priceApi);
   if (process.env.CDN_DIR) {
-    await ctx.route(/cdn\.jsdelivr\.net.*hebcal.*bundle\.min\.js/, (r) => r.fulfill({ path: path.join(process.env.CDN_DIR, 'hebcal.min.js'), contentType: 'text/javascript' }));
     await ctx.route(/cdn\.jsdelivr\.net.*zxing.*index\.min\.js/, (r) => r.fulfill({ path: path.join(process.env.CDN_DIR, 'zxing.min.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
   }
   await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
@@ -2554,6 +2553,29 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   assert(!(await B.page.locator('.hcline').count()), 'הלוח העברי מופיע גם באתר');
   await A.page.click('.hcline'); await A.page.waitForSelector('.hczm', { timeout: 5000 });
   assert(/הנץ החמה/.test(await A.page.locator('.hczm').textContent()), 'אין זמני היום');
+  assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
+  await A.ctx.close(); await B.ctx.close();
+});
+
+await test('📁 קובץ סנכרון בכבל USB: נשמר באופליין, נפתח באתר — ובחזרה', async () => {
+  const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.4';
+  const A = await newPage({ userAgent: OFFUA, init: () => { window.__f = []; window.YamApp = { appInfo: () => JSON.stringify({ offline: true, offApp: true, ver: '1.4' }), saveSyncFile: (n, t) => window.__f.push([n, t]) }; } });
+  const B = await newPage();
+  await A.page.evaluate(() => addItem('אטריות', ''));
+  await B.page.evaluate(() => addItem('פסטה', ''));
+  await A.page.evaluate(() => offSyncOpen('file')); await A.page.click('#offFileSave');
+  await A.page.waitForFunction(() => window.__f.length, null, { timeout: 5000 });
+  const [n, t] = await A.page.evaluate(() => window.__f[0]);
+  assert(/^yam-sync-\d{8}-\d{4}\.txt$/.test(n) && t.startsWith('YAM1'), 'הקובץ באופליין: ' + n);
+  await B.page.evaluate(() => offSyncOpen('file'));
+  await B.page.locator('#offFileOpen input').setInputFiles({ name: n, mimeType: 'text/plain', buffer: Buffer.from(t) });
+  await B.page.waitForFunction(() => state.lists.some((l) => l.items.some((i) => i.n === 'אטריות')), null, { timeout: 5000 });
+  // ובחזרה: האתר שומר קובץ (הורדה), והאופליין פותח אותו
+  const [dl] = await Promise.all([B.page.waitForEvent('download'), B.page.click('#offFileSave')]);
+  const back = fs.readFileSync(await dl.path());
+  await A.page.evaluate(() => offSyncOpen('file'));
+  await A.page.locator('#offFileOpen input').setInputFiles({ name: 'x.txt', mimeType: 'text/plain', buffer: back });
+  await A.page.waitForFunction(() => state.lists.some((l) => l.items.some((i) => i.n === 'פסטה')), null, { timeout: 5000 });
   assert(!A.errors.length && !B.errors.length, A.errors.concat(B.errors).join(' | '));
   await A.ctx.close(); await B.ctx.close();
 });

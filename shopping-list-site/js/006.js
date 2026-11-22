@@ -97,11 +97,12 @@ function profanityMatch(text){
 function hasProfanity(text){return !!profanityMatch(text);}
 
 /* ================= לוח עברי: חגים, פרשת השבוע, זמני שבת ================= */
-const HC=window.hebcal||null;
+/* החישובים: js/089-hcal.js (שלנו — בלי ספריות חיצוניות) */
+const HC=window.Hcal||null;
 const CITIES_ABROAD={'ניו יורק':[40.7128,-74.006,18,'America/New_York','New York'],'ברוקלין':[40.6782,-73.9442,18,'America/New_York','Brooklyn'],'לייקווד':[40.0821,-74.2097,18,'America/New_York','Lakewood'],'מונסי':[41.1112,-74.0685,18,'America/New_York','Monsey'],'מיאמי':[25.7617,-80.1918,18,'America/New_York','Miami'],'שיקגו':[41.8781,-87.6298,18,'America/Chicago','Chicago'],'לוס אנג׳לס':[34.0522,-118.2437,18,'America/Los_Angeles','Los Angeles'],'טורונטו':[43.6532,-79.3832,18,'America/Toronto','Toronto'],'מונטריאול':[45.5017,-73.5673,18,'America/Toronto','Montreal'],'מקסיקו סיטי':[19.4326,-99.1332,18,'America/Mexico_City','Mexico City'],'בואנוס איירס':[-34.6037,-58.3816,18,'America/Argentina/Buenos_Aires','Buenos Aires'],'לונדון':[51.5074,-0.1278,18,'Europe/London','London'],'מנצ׳סטר':[53.4808,-2.2426,18,'Europe/London','Manchester'],'אנטוורפן':[51.2194,4.4025,18,'Europe/Brussels','Antwerp'],'פריז':[48.8566,2.3522,18,'Europe/Paris','Paris'],'ציריך':[47.3769,8.5417,18,'Europe/Zurich','Zurich'],'מוסקבה':[55.7558,37.6173,18,'Europe/Moscow','Moscow'],'קייב':[50.4501,30.5234,18,'Europe/Kyiv','Kyiv'],'יוהנסבורג':[-26.2041,28.0473,18,'Africa/Johannesburg','Johannesburg'],'מלבורן':[-37.8136,144.9631,18,'Australia/Melbourne','Melbourne'],'סידני':[-33.8688,151.2093,18,'Australia/Sydney','Sydney']};
 const IL=()=>!prefs.diaspora;
 const CITIES={'ירושלים':[31.778,35.235,40],'בני ברק':[32.0807,34.8338,20],'בית שמש':[31.747,34.9881,30],'אלעד':[32.0522,34.9511,20],'מודיעין עילית':[31.933,35.0433,30],'ביתר עילית':[31.6966,35.115,40],'אשדוד':[31.8014,34.6435,20],'חיפה':[32.794,34.9896,30],'תל אביב':[32.0853,34.7818,20],'פתח תקווה':[32.084,34.8878,20],'נתניה':[32.3215,34.8532,20],'רחובות':[31.8928,34.8113,20],'צפת':[32.9646,35.496,30],'טבריה':[32.7922,35.5312,30],'באר שבע':[31.2518,34.7913,20],'רמת גן':[32.0684,34.8248,20],'חדרה':[32.434,34.919,20],'נתיבות':[31.4167,34.5833,20],'קרית גת':[31.61,34.7642,20],'בת ים':[32.0171,34.7454,20],'אשקלון':[31.6688,34.5743,20],'עמנואל':[32.161,35.136,20],'חריש':[32.46,35.05,20]};
-const heName=e=>prefs.lang==='en'?e.render('en'):stripNiqqud(e.render('he-x-NoNikud')||e.render('he'));
+const heName=e=>prefs.lang==='en'?e.en:e.he;
 const normHoliday=s=>stripNiqqud(s).replace(/["'׳״]/g,'').replace(/\s+/g,' ').trim();
 Object.assign(CITIES,CITIES_ABROAD);
 /* העיר של המשתמש (לזמני שבת): "העיר שלי" באזור האישי, ואם לא נבחרה — העיר שבכתובת למשלוח.
@@ -112,45 +113,47 @@ const CITY_LOOSE={};Object.keys(CITIES).forEach(c=>{CITY_LOOSE[cityLoose(c)]=c;}
 function knownCity(v){if(!v)return null;if(CITIES[v])return v;return CITY_LOOSE[cityLoose(v)]||null;}
 function userCity(){const me=state.me||{};return knownCity(me.city)||knownCity(me.address&&me.address.city)||knownCity(state.city)||'ירושלים';}
 const cityName=c=>prefs.lang==='en'&&CITIES[c]&&CITIES[c][4]?CITIES[c][4]:c;
-/* ימי פטירה של צדיקים וגדולי ישראל — רק תאריכים שנבדקו מול מקורות (חודש לפי מספור hebcal: ניסן=1 … תשרי=7, אדר=12 — בשנה מעוברת נחשב אדר ב׳) */
+/* ימי פטירה של צדיקים וגדולי ישראל — רק תאריכים שנבדקו מול מקורות (חודש כמו בתורה: ניסן=1 … תשרי=7, אדר=12 — בשנה מעוברת נחשב אדר ב׳) */
 const HILULOT=[[8,11,'רחל אמנו','Rachel Imeinu'],[8,3,'הרב עובדיה יוסף','Rav Ovadia Yosef'],[8,15,'החזון איש','the Chazon Ish'],[8,16,'הרב אלעזר מנחם מן שך','Rav Elazar Menachem Man Shach'],
   [9,24,'הרב אהרן יהודה לייב שטינמן','Rav Aharon Yehuda Leib Steinman'],[10,20,'הרמב״ם','the Rambam'],[11,4,'בבא סאלי','the Baba Sali'],[12,7,'משה רבנו','Moshe Rabbeinu'],
   [12,15,'הרב חיים קניבסקי','Rav Chaim Kanievsky'],[2,14,'רבי מאיר בעל הנס','Rabbi Meir Baal HaNes'],[4,28,'הרב יוסף שלום אלישיב','Rav Yosef Shalom Elyashiv'],
   [5,5,'האר״י הקדוש','the Arizal'],[6,24,'החפץ חיים','the Chafetz Chaim'],[7,19,'הגר״א','the Vilna Gaon']];
-function hilulotOn(hd){const leap=hd.isLeapYear(),m=hd.getMonth(),dd=hd.getDate();
-  return HILULOT.filter(([hm,hday])=>hday===dd&&(hm===12?m===(leap?13:12):hm===m)).map(([,,he,en])=>({getFlags:()=>0,render:l=>l==='en'?'Yahrzeit of '+en:'יום פטירת '+he}));}
-/* ימים ממלכתיים מודרניים (ימי זיכרון לראשי ממשלה וכו׳) לא מוצגים; ימי פטירת צדיקים כן */
-function holidaysOn(d){if(!HC)return [];try{const hd=new HC.HDate(d);return (HC.HebrewCalendar.getHolidaysOnDate(hd,IL())||[]).filter(e=>!(e.getFlags()&HC.flags.MODERN_HOLIDAY)).concat(hilulotOn(hd));}catch(e){return [];}}
+function hilulotOn(h){const leap=HC.leap(h.y);
+  return HILULOT.filter(([hm,hday])=>hday===h.d&&(hm===12?h.m===(leap?13:12):hm===h.m)).map(([,,he,en])=>({k:'hil',he:'יום פטירת '+he,en:'Yahrzeit of '+en,base:'יום פטירת '+he}));}
+/* אירועים: {he, en, k (chag/cm/fast/rc/minor/hil), base, date} — בלי ספירת העומר */
+const dayEvents=(rd,il)=>HC.events(rd,il).filter(e=>e.k!=='omer').concat(hilulotOn(HC.fromRd(rd))).map(e=>Object.assign(e,{date:HC.dateOf(rd)}));
+function holidaysOn(d){if(!HC)return [];try{return dayEvents(HC.rdOf(d),IL());}catch(e){return [];}}
 function upcomingHolidays(days){
   if(!HC)return [];
-  const start=new Date();start.setHours(0,0,0,0);const end=new Date(start.getTime()+days*86400000);
-  try{return HC.HebrewCalendar.calendar({start,end,il:IL(),noModern:true}).filter(e=>!(e.getFlags()&(HC.flags.DAILY_LEARNING|HC.flags.OMER_COUNT|HC.flags.MOLAD|HC.flags.SHABBAT_MEVARCHIM|HC.flags.HEBREW_DATE)));}catch(e){return [];}
+  const r0=HC.rdOf(new Date()),out=[];try{for(let r=r0;r<r0+days;r++)out.push(...dayEvents(r,IL()).filter(e=>e.k!=='hil'));}catch(e){}return out;
 }
 function mainHolidays(days){
   const seen=new Set();
-  return upcomingHolidays(days).filter(e=>{const f=e.getFlags();if(f&(HC.flags.ROSH_CHODESH|HC.flags.SPECIAL_SHABBAT|HC.flags.MINOR_FAST))return false;
-    const b=(e.basename&&e.basename())||heName(e);if(seen.has(b))return false;seen.add(b);return true;});
+  return upcomingHolidays(days).filter(e=>{if(e.k==='rc'||(e.k==='fast'&&e.base!=='תשעה באב'))return false;
+    if(seen.has(e.base))return false;seen.add(e.base);return true;});
 }
 function nextParasha(){
   if(!HC)return '';
-  const start=new Date();start.setHours(0,0,0,0);const end=new Date(start.getTime()+8*86400000);
-  try{
-    const evs=HC.HebrewCalendar.calendar({start,end,il:IL(),sedrot:true,noHolidays:false});
-    const sat=evs.find(e=>e.getFlags()&HC.flags.PARSHA_HASHAVUA);
-    if(sat)return heName(sat);
-    const chag=evs.find(e=>e.getDate().greg().getDay()===6&&(e.getFlags()&HC.flags.CHAG));
-    return chag?('השבת חג: '+heName(chag)):'';
+  try{const r0=HC.rdOf(new Date()),sat=r0+((6-HC.dow(r0))+7)%7,n=HC.parshaNums(sat,IL());
+    if(n&&n.length)return prefs.lang==='en'?'Parashat '+HC.parshaEn(n):'פרשת '+HC.parshaName(n);
+    const chag=HC.events(sat,IL()).find(e=>e.k==='chag'||e.k==='cm');
+    return chag?(T('השבת חג: ','Shabbat is a holiday: ')+heName(chag)):'';
   }catch(e){return '';}
 }
+/* הדלקת נרות (שבת או ערב חג) והבדלה (צאת הכוכבים 8.5°) הקרובות — כמו בלוחות הנפוצים */
 function shabbatTimes(city){
   if(!HC)return null;
   const c=CITIES[city]||CITIES['ירושלים'];const name=CITIES[city]?city:'ירושלים';
   try{
-    const inIsrael=!c[3];const loc=new HC.Location(c[0],c[1],inIsrael,c[3]||'Asia/Jerusalem',c[4]||name,inIsrael?'IL':'XX');
-    const start=new Date();start.setHours(0,0,0,0);const end=new Date(start.getTime()+8*86400000);
-    const evs=HC.HebrewCalendar.calendar({start,end,il:inIsrael,candlelighting:true,location:loc,candleLightingMins:c[2]});
-    const cl=evs.find(e=>e.getDesc()==='Candle lighting');const hv=evs.find(e=>e.getDesc()==='Havdalah'&&(!cl||e.getDate().greg()>=cl.getDate().greg()));
-    return {city:cityName(name),candles:cl?heName(cl):'',candlesDate:cl?cl.getDate().greg():null,havdalah:hv?heName(hv):''};
+    const il=!c[3],tz=c[3]||'Asia/Jerusalem',loc={lat:c[0],lon:c[1]},r0=HC.rdOf(new Date());
+    const holy=r=>HC.dow(r)===6||HC.events(r,il).some(e=>e.k==='chag');
+    let cr=null;for(let r=r0;r<r0+8;r++)if(!holy(r)&&holy(r+1)){cr=r;break;}
+    let hr=null;if(cr!=null)for(let r=cr+1;r<cr+5;r++)if(holy(r)&&!holy(r+1)){hr=r;break;}
+    /* כמו בלוחות: הדלקת נרות מעוגלת לדקה שלפני (לחומרה), והבדלה לדקה הקרובה */
+    const hm=(d,up)=>{d=new Date(Math[up?'round':'floor'](d.getTime()/6e4)*6e4);try{return new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:tz}).format(d);}catch(e){return fmtTime(d);}};
+    const zc=cr!=null&&HC.zmanim(cr,loc),zh=hr!=null&&HC.zmanim(hr,loc);
+    const cl=zc&&zc.set?new Date(zc.set.getTime()-c[2]*6e4):null,hv=zh&&zh.tzeit;
+    return {city:cityName(name),candles:cl?T('הדלקת נרות','Candle lighting')+': '+hm(cl):'',candlesDate:cl?HC.dateOf(cr):null,havdalah:hv?T('הבדלה','Havdalah')+': '+hm(hv,true):''};
   }catch(e){return null;}
 }
 function jewishLine(){
@@ -158,13 +161,14 @@ function jewishLine(){
   let s='';
   if(today.length)s+=' · '+today.map(esc).join(' · ');
   if(par)s+='<span class="jday">📜 '+esc(par)+'</span>';
+  {const df=typeof dafYomi==='function'?dafYomi():'';if(df)s+='<span class="jday">📚 '+T('דף יומי: ','Daf Yomi: ')+esc(df)+'</span>';}
   return s;
 }
 function findHolidayDate(name){
   const want=normHoliday(name==='שמחת תורה'?'שמיני עצרת':name);
   const evs=upcomingHolidays(400);
   const hit=evs.find(e=>normHoliday(heName(e)).startsWith(want))||evs.find(e=>normHoliday(heName(e)).includes(want));
-  return hit?{name:heName(hit),date:hit.getDate().greg()}:null;
+  return hit?{name:heName(hit),date:hit.date}:null;
 }
 
 /* ================= יאמי — הבוט ================= */
@@ -437,11 +441,11 @@ async function yamiCore(raw){
   }
   if(/(החג הבא|החגים הבאים|מה החג הבא|מתי החג|חגים קרובים|לוח חגים)/.test(t)){
     const list=mainHolidays(150).slice(0,8);
-    return botSay(list.length?('📅 החגים והמועדים הקרובים:\n'+list.map(e=>'• '+heName(e)+' — '+fmtDate(e.getDate().greg())+' ('+hebDate(e.getDate().greg())+')').join('\n')):'לא הצלחתי לחשב את לוח החגים כרגע 🙁');
+    return botSay(list.length?('📅 החגים והמועדים הקרובים:\n'+list.map(e=>'• '+heName(e)+' — '+fmtDate(e.date)+' ('+hebDate(e.date)+')').join('\n')):'לא הצלחתי לחשב את לוח החגים כרגע 🙁');
   }
   if(/(איזה חג|מה החג|יש חג|חג היום)/.test(t)){
-    const hs=holidaysOn(now).map(heName);const nx=mainHolidays(120).find(e=>e.getDate().greg()>now);
-    return botSay(hs.length?('🎉 היום: '+hs.join(', ')+'\nמועדים לשמחה! 🙂'):('היום אין חג.'+(nx?' המועד הקרוב: '+heName(nx)+' — '+fmtDate(nx.getDate().greg()):'')));
+    const hs=holidaysOn(now).map(heName);const nx=mainHolidays(120).find(e=>e.date>now);
+    return botSay(hs.length?('🎉 היום: '+hs.join(', ')+'\nמועדים לשמחה! 🙂'):('היום אין חג.'+(nx?' המועד הקרוב: '+heName(nx)+' — '+fmtDate(nx.date):'')));
   }
   if(/^(מה|איזה)?\s*(ה)?(תאריך(\s+(ה)?עברי)?|יום)(\s+היום)?[?？!.]*$/.test(t)||/^מה\s+היום[?？!.]*$/.test(t)||/^(איזה|מה)\s+(יום|תאריך)\s+(יש\s+)?היום[?？!.]*$/.test(t)){const hs=holidaysOn(now).map(heName);return botSay('היום '+fmtDate(now)+'\nבתאריך העברי: '+hebDate(now)+(hs.length?'\n🎉 '+hs.join(', '):'')+(nextParasha()?'\n📜 '+nextParasha():'')+' 📅');}
   /* בדיחה, תודה, ברכות */

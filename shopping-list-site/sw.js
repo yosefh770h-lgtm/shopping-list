@@ -11,8 +11,7 @@ const NAV_TIMEOUT = 6000;
 /* ספריות קבועות (עם מספר גרסה) — אפשר לשמור אותן לתמיד */
 /* נשמרות על השרת של האתר (תיקיית vendor) ולא באתר חיצוני — כך הן נטענות גם כשסינון חוסם את cdn.jsdelivr.net */
 const CDN = [
-  new URL('./vendor/supabase-js-2.117.2/supabase.js', self.location).href,
-  new URL('./vendor/hebcal-core-6.10.0.min.js', self.location).href
+  new URL('./vendor/supabase-js-2.117.2/supabase.js', self.location).href
 ];
 
 /* 🚀 הקוד של האתר נמצא בקבצים נפרדים בתיקייה js/ (נובמבר 2026), כל אחד עם מספר גרסה בכתובת (?v=...).

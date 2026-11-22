@@ -1,10 +1,11 @@
-// 📅 בודק את הלוח העברי של האפליקציה האופליין (js/089-hcal.js) מול hebcal — לוח מוכר ובדוק:
-//   תאריך עברי לכל יום 1900–2300, פרשת השבוע לכל שבת (ארץ ישראל וחו"ל) 1900–2300, חגים עיקריים, וזמני היום (עד דקה).
+// 📅 בודק את הלוח העברי של האתר והאפליקציות (js/089-hcal.js) מול hebcal — לוח מוכר ובדוק:
+//   תאריך עברי לכל יום 1900–2300, הדף היומי 2020–2060, פרשת השבוע לכל שבת (ארץ ישראל וחו"ל) 1900–2300, חגים עיקריים, וזמני היום (עד דקה).
 //   node hcal.mjs
-//   hebcal (רישיון GPL) משמש רק כאן בבדיקות — הוא לא נכלל באתר ולא באפליקציה.
+//   hebcal (רישיון GPL) משמש רק כאן בבדיקות — הוא לא נכלל באתר ולא באפליקציה (היה עד נובמבר 2026, והוחלף בקוד שלנו).
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { HDate, Sedra, Location, Zmanim, HebrewCalendar, flags } from '@hebcal/core';
+import { HDate, Sedra, Location, Zmanim, HebrewCalendar } from '@hebcal/core';
+import { DafYomi } from '@hebcal/learning';
 
 const ctx = { window: {}, Math, Date, JSON, console };
 vm.runInNewContext(fs.readFileSync(new URL('../shopping-list-site/js/089-hcal.js', import.meta.url), 'utf8'), ctx);
@@ -36,14 +37,14 @@ console.log('📖 פרשות נבדקו');
 
 // 3) חגים וצומות עיקריים (ימים שבהם hebcal מציין חג/צום) — 2000–2100
 const map = [[/^Rosh Hashana( \d+| II)?$/, 'ראש השנה'], [/^Tzom Gedaliah/, 'צום גדליה'], [/^Yom Kippur$/, 'יום כיפור'], [/^Sukkot I$/, 'סוכות'], [/^Shmini Atzeret/, 'שמיני עצרת'],
-  [/^Chanukah: 3 Candles/, 'חנוכה — נר ב'], [/^Asara B'Tevet/, 'עשרה בטבת'], [/^Ta'anit Esther/, 'תענית אסתר'], [/^Purim$/, 'פורים'], [/^Pesach I$/, 'פסח'],
+  [/^Chanukah: 3 Candles/, 'חנוכה — נר ג'], [/^Chanukah: 8th Day/, 'יום ח'], [/^Asara B'Tevet/, 'עשרה בטבת'], [/^Ta'anit Esther/, 'תענית אסתר'], [/^Purim$/, 'פורים'], [/^Pesach I$/, 'פסח'],
   [/^Pesach VII$/, 'שביעי של פסח'], [/^Lag BaOmer/, 'ל"ג בעומר'], [/^Shavuot( I)?$/, 'שבועות'], [/^Tzom Tammuz/, 'צום י"ז בתמוז'], [/^Tish'a B'Av/, 'תשעה באב'],
   [/^Rosh Chodesh/, 'ראש חודש']];
 for (const il of [true, false]) {
   for (let y = 5760; y < 5860; y++) {
     for (const ev of HebrewCalendar.calendar({ year: y, isHebrewYear: true, il, noModern: true, noSpecialShabbat: true, noMinorFast: false })) {
       const d = ev.getDesc(), m = map.find(([re]) => re.test(d)); if (!m) continue;
-      const rd = ev.getDate().abs(), mine = H.events(rd, il).join(' | ');
+      const rd = ev.getDate().abs(), mine = H.events(rd, il).map((e) => e.he).join(' | ');
       if (!mine.includes(m[1])) fail(`חג ${d} ${ev.getDate().toString()} (${il ? 'א"י' : 'חו"ל'}): אצלנו "${mine}"`);
     }
   }
@@ -66,6 +67,13 @@ for (const name of pick) {
     }
   }
 }
+// 5) הדף היומי — כל יום 2020–2060 (מסכת ודף)
+for (let rd = H.rdOf(new Date(2020, 0, 5)); rd < H.rdOf(new Date(2060, 0, 1)); rd++) {
+  const d = H.dateOf(rd), mine = H.daf(d), w = new DafYomi(d), m = mine.match(/^(.*) דף (\S+)$/);
+  const want = w.render('he-x-NoNikud').replace(/ דף [^ ]+$/, '').replace('מדות', 'מידות');
+  if (!m || m[1] !== want || m[2].replace(/[״׳]/g, '') !== H.gem(w.getBlatt()).replace(/[״׳]/g, '')) fail(`דף יומי ${d.toDateString()}: ${mine} במקום ${want} ${w.getBlatt()}`);
+}
+console.log('📚 הדף היומי נבדק');
 console.log(`☀️ זמנים נבדקו (ההפרש הגדול ביותר: ${(worst * 60).toFixed(0)} שניות)`);
 if (bad) { console.error(`❌ ${bad} טעויות`); process.exit(1); }
 console.log('✅ הלוח העברי תקין');

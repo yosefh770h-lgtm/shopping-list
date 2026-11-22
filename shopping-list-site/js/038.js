@@ -225,7 +225,7 @@ function shbOn45(){return shbCfg45.on!==false&&shbMe45().off!==true;}
 function candleAt45(){try{const sh=shabbatTimes(userCity());if(!sh||!sh.candlesDate)return null;const m=String(sh.candles||'').match(/(\d{1,2}):(\d{2})/);if(!m)return null;const d=new Date(sh.candlesDate);d.setHours(+m[1],+m[2],0,0);return d;}catch(e){return null;}}
 /* מתי במצב ערב שבת: חמישי ושישי (עד הדלקת נרות), וערב חג */
 function erevChag45(d){if(typeof HC==='undefined'||!HC)return '';try{const t=new Date(d);t.setDate(t.getDate()+1);
-  const isChag=x=>holidaysOn(x).filter(e=>e.getFlags()&HC.flags.CHAG);const tm=isChag(t);if(!tm.length||isChag(d).length)return '';return heName(tm[0]);}catch(e){return '';}}
+  const isChag=x=>holidaysOn(x).filter(e=>e.k==='chag');const tm=isChag(t);if(!tm.length||isChag(d).length)return '';return heName(tm[0]);}catch(e){return '';}}
 function shbDay45(){const d=new Date(),chag=erevChag45(d);if(chag)return {kind:'chag',name:chag};const dow=d.getDay();return dow===4||dow===5?{kind:'shabbat',name:T('שבת','Shabbat')}:null;}
 function shbNow45(){const dt=shbDay45();if(!dt)return null;const c=candleAt45();if(c&&dayKey(c)===dayKey(new Date())&&Date.now()>c.getTime())return null;
   const d=new Date();if(dt.kind==='chag')return {kind:'chag',name:dt.name,wk:dayKey(d)};const f=new Date(d);f.setDate(d.getDate()+((5-d.getDay()+7)%7));return {kind:'shabbat',name:dt.name,wk:dayKey(f)};}

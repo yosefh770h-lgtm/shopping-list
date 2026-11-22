@@ -7635,7 +7635,7 @@ create unique index if not exists apk_downloads_open_once on public.apk_download
 -- 📴 נובמבר 2026: "רשימת קניות אופליין" (בלי אינטרנט) — טלפון מחובר שסנכרן איתה מדווח עליה פעם אחת לכל מכשיר (kind = off_open,
 --    הכתובת והמדינה הן של הטלפון המדווח). הורדה של האפליקציה האופליין מהאתר = download עם src = offline
 alter table public.apk_downloads drop constraint if exists apk_downloads_kind_check;
--- off_sync = כל חיבור (סנכרון) של אפליקציה אופליין עם האתר או עם האפליקציה הרגילה. src = מי התחבר ואיך: site-bt / app-qr / ...
+-- off_sync = כל חיבור (סנכרון) של אפליקציה אופליין עם האתר או עם האפליקציה הרגילה. src = מי התחבר ואיך: site-bt / app-qr / site-file (קובץ בכבל USB) ...
 --    נספר פעם ב-6 שעות לכל מכשיר ולכל דרך, כדי שסנכרון חי בבלוטות' לא ייספר מאות פעמים
 --    off_live (אופליין 1.4, נובמבר 2026) = "מחובר עכשיו": בזמן חיבור חי בבלוטות' נשלח כל 10 דקות, ונמחק אחרי 3 ימים
 alter table public.apk_downloads add constraint apk_downloads_kind_check check (kind in ('download', 'open', 'off_open', 'off_sync', 'off_live'));
@@ -7663,7 +7663,7 @@ begin
   --    לא נספר במגבלה לכתובת (חיבור ארוך היה ממלא אותה), אבל לא יותר מפעם ב-8 דקות לטלפון, ונמחק אחרי 3 ימים
   if p_kind = 'off_live' and (d = '' or coalesce(p_src, '') !~ '^(site|app)-bt$'
      or exists (select 1 from public.apk_downloads where dev = d and kind = 'off_live' and at > now() - interval '8 minutes')) then return false; end if;
-  if p_kind = 'off_sync' and (d = '' or coalesce(p_src, '') !~ '^(site|app)-(bt|qr|code)$'
+  if p_kind = 'off_sync' and (d = '' or coalesce(p_src, '') !~ '^(site|app)-(bt|qr|code|file)$'
      or exists (select 1 from public.apk_downloads where dev = d and kind = 'off_sync' and src = p_src and at > now() - interval '6 hours')) then return false; end if;
   -- הגבלה: עד 10 בשעה מאותה כתובת, ועד 500 בשעה בסך הכל
   if (p_kind <> 'off_live' and v_ip <> '' and (select count(*) from public.apk_downloads a where a.ip = v_ip and a.at > now() - interval '1 hour') >= 10)
@@ -7675,7 +7675,7 @@ begin
   values (p_kind, auth.uid(), d, v_ip, case when cc ~ '^[A-Z]{2}$' then cc else '' end,
           left(regexp_replace(coalesce(p_device, ''), '[^[:alnum:][:space:]·./()_-]', '', 'g'), 60),
           left(regexp_replace(coalesce(p_ver, ''), '[^0-9.]', '', 'g'), 12),
-          case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail', 'offline') or p_src ~ '^(site|app)-(bt|qr|code)$' then p_src else '' end)
+          case when p_src in ('login', 'menu', 'link', 'install', 'update', 'mail', 'offline') or p_src ~ '^(site|app)-(bt|qr|code|file)$' then p_src else '' end)
   on conflict do nothing;
   ok := found;  -- נשמר לפני הניקוי: ה-delete משנה את found, ואז פעם ב-100 הכניסה דווחה כלא נרשמה
   if random() < 0.01 then delete from public.apk_downloads where at < now() - interval '1 year' or (kind = 'off_live' and at < now() - interval '3 days'); end if;

@@ -3,6 +3,7 @@
      🔳 QR — טלפון אחד מציג, השני סורק (רשימה ארוכה = כמה קודים שמתחלפים לבד). עובד גם מול האתר במחשב.
      🔵 בלוטות' — טלפון מול טלפון (android-app Bt.java, מגרסה 2.2 גם באפליקציה הרגילה), ומאופליין 1.4 גם מול האתר במחשב
         (Web Bluetooth בכרום / אדג': הטלפון יוצר קוד, ובמחשב מקלידים אותו).
+     📁 קובץ — נשמר בתיקיית ההורדות ומעבירים אותו בכבל USB (לנגנים בלי בלוטות' שמתחבר למחשב ובלי מצלמה).
      ✉️ קוד שיתוף — טקסט ששולחים ב-SMS, במייל (באתר ובאפליקציה הרגילה) או מעתיקים, ומדביקים בצד השני.
    החבילה: "YAM1" + z (דחוס) / j (לא דחוס) + base64url של JSON עם הרשימות, המחיקות (tomb), המזווה, התכנונים ו-30 קניות אחרונות.
    המיזוג הוא אותו מיזוג של הענן (applyRemote → mergeLists לפי זמן השינוי של כל מוצר), כך ששום דבר לא נדרס ולא מוכפל.
@@ -131,7 +132,7 @@ setInterval(livePing,60000);
 function relay(o,via){if(!sb||navigator.onLine===false)return;
   const dev=/^[0-9a-f-]{36}$/.test(o.dev||'')?o.dev:'',ver=String(o.ver||'').replace(/[^0-9.]/g,'').slice(0,12);
   const device=[String(o.model||'').replace(/[^A-Za-z0-9 ._()-]/g,'').slice(0,30),o.android?'Android '+String(o.android).replace(/[^0-9.]/g,'').slice(0,6):''].filter(Boolean).join(' · ');
-  const src=(/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site')+'-'+(['bt','qr','code'].includes(via)?via:'code');
+  const src=(/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site')+'-'+(['bt','qr','code','file'].includes(via)?via:'code');
   if(dev&&via==='bt'){liveOff={dev,device,ver,src,t:liveOff&&liveOff.dev===dev?liveOff.t:0};livePing();}
   if(dev&&!relayed[dev+src]){relayed[dev+src]=1;
     try{sb.rpc('apk_log',{p_kind:'off_open',p_src:'offline',p_device:device,p_dev:dev,p_ver:ver}).then(()=>{},()=>{});}catch(e){}
@@ -213,7 +214,7 @@ async function got(code,via,peer){const r=await merge(code,via,peer);if(!r)retur
   const msg='✅ '+T('סונכרן','Synced')+(r.name?' '+T('עם','with')+' '+r.name:'')+': '+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'+(r.del?', '+r.del+' removed':''));
   flash(msg);
   /* מי שסורק / מדביק מקבל את מה שיש בצד השני — וזהו, בלי לבקש "עכשיו לסרוק בחזרה" */
-  open(via==='code'?'code':'qr',msg);}
+  open(via==='code'||via==='file'?via:'qr',msg);}
 
 /* ---------- 🔵 בלוטות' חי: קוד של 4 ספרות, ואז כל שינוי עובר מיד כל עוד הטלפונים קרובים ----------
    בערוץ עוברות הודעות JSON: {k:'hi',code,dev,name} (בדיקת הקוד) ו-{k:'pk',d:'YAM1...'} (החבילה המלאה, נדחסת).
@@ -324,12 +325,22 @@ function offMail(){const v=($o('#offMine')||{}).value||'';if(!v)return;const su=
   const go=()=>{openGmail(su,how+'\n\n'+T('(הקוד הועתק — מדביקים אותו כאן)','(The code was copied — paste it here)'));flash('📋 '+T('הקוד ארוך, אז הוא הועתק — במייל מדביקים אותו (Ctrl+V)','The code was copied — paste it in the email'));};
   (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(go,()=>{const x=$o('#offMine');x.select();try{document.execCommand('copy');}catch(er){}go();});}
 
+/* 📁 קובץ סנכרון: אותה חבילה (YAM1...) בקובץ טקסט. באופליין ובאפליקציה נשמר בתיקיית ההורדות, באתר — הורדה רגילה */
+async function fileSave(){const code=await pack(),d=new Date(),p=n=>String(n).padStart(2,'0'),
+  name='yam-sync-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.txt',a=nat();
+  try{if(a&&typeof a.saveSyncFile==='function'){a.saveSyncFile(name,code);return;}
+    if(a&&typeof a.saveFile==='function'){a.saveFile(name,'text/plain',btoa(unescape(encodeURIComponent(code))));return;}}catch(e){}
+  const u=URL.createObjectURL(new Blob([code],{type:'text/plain'})),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
+  flash('💾 '+T('נשמר: '+name+' — מעתיקים אותו לתיקיית Download של הטלפון','Saved: '+name));}
+function fileOpen(f){if(f.size>3e6){flash(T('הקובץ גדול מדי — זה לא קובץ סנכרון','File too large'));return;}
+  const r=new FileReader();r.onload=()=>{const t=String(r.result||'').trim();if(t.indexOf(PFX)!==0){flash(T('זה לא קובץ סנכרון של רשימת קניות','Not a sync file'));return;}got(t,'file');};r.readAsText(f);}
+
 /* ---------- המסך ---------- */
 let curTab='';
 function ago(ts){if(!ts)return T('עוד לא סונכרן','Never synced');const m=Math.round((Date.now()-ts)/60000);
   return T('סונכרן ','Synced ')+(m<2?T('עכשיו','just now'):m<60?T('לפני '+m+' דקות',m+' min ago'):m<1440?T('לפני '+Math.round(m/60)+' שעות',Math.round(m/60)+' h ago'):T('לפני '+Math.round(m/1440)+' ימים',Math.round(m/1440)+' days ago'));}
 const agoS=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<2?T('עכשיו','now'):m<60?T('לפני '+m+' דק\'',m+'m ago'):m<1440?T('לפני '+Math.round(m/60)+' שע\'',Math.round(m/60)+'h ago'):T('לפני '+Math.round(m/1440)+' ימים',Math.round(m/1440)+'d ago');};
-const VIA={bt:'🔵',qr:'🔳',code:'✉️'};
+const VIA={bt:'🔵',qr:'🔳',code:'✉️',file:'📁'};
 /* 🔗 עם מי סונכרן — שם, מכשיר, ואיזה צד (אתר / אפליקציה / אופליין). קטן, בלי חלון */
 function peerTxt(p){const m=String(p.model||''),k={off:T('אופליין','offline')+(p.ver?' '+p.ver:''),app:T('אפליקציה','app'),site:T('אתר','site')}[p.kind]||'';
   return [p.name,(typeof phName61==='function'&&phName61(m))||m,k].filter(Boolean).join(' · ')||T('מכשיר אחר','another device');}
@@ -340,7 +351,7 @@ function pendingN(){const last=+ls.get(LS_LAST)||0;let n=0;(state.lists||[]).for
 function open(tab,note){
   const btOk=hasBt()||webBt();if(tab)curTab=tab;if(!curTab||(curTab==='bt'&&!btOk))curTab=hasBt()||wbOk()?'bt':'qr';
   const last=+ls.get(LS_LAST)||0,pn=pendingN();
-  const tabs=[...(btOk?[['bt','🔵 '+T('בלוטות\'','Bluetooth')]]:[]),['qr','🔳 QR'],['code','✉️ '+T('קוד שיתוף','Share code')]];
+  const tabs=[...(btOk?[['bt','🔵 '+T('בלוטות\'','Bluetooth')]]:[]),['qr','🔳 QR'],['file','📁 '+T('קובץ','File')],['code','✉️ '+T('קוד שיתוף','Share code')]];
   let body='<div class="offsync"><p class="offst">'+ago(last)+(pn&&last?' · '+T(pn+' שינויים מאז',pn+' changes since'):'')+'</p>'+peersHtml()+(note?'<div class="offok" role="status">'+note+'</div>':'')+
     '<div class="offtabs" role="tablist">'+tabs.map(t=>'<button role="tab" data-offt="'+t[0]+'" aria-selected="'+(t[0]===curTab)+'">'+t[1]+'</button>').join('')+'</div>';
   /* סריקה אחת בלבד — בוחרים מי סורק: הטלפון/הנגן או המחשב. מי שסורק מקבל את כל מה שיש בשני. במכשיר בלי מצלמה (נגן) — רק מציגים */
@@ -359,6 +370,11 @@ function open(tab,note){
     '<div id="offBtSt" class="offbtst" role="status" aria-live="polite"></div>'+
     (!bt.live&&p?'<button class="btn sec" id="offBtAgain" style="width:100%">🔄 '+T('להתחבר שוב ל'+esc(p.name||'הטלפון השני'),'Reconnect to '+esc(p.name||'the other phone'))+'</button>':'')+
     '<button class="btn sec" id="offBtDis" style="width:100%;margin-top:6px"'+(bt.live||p?'':' hidden')+'>🔌 '+T('לנתק ולשכוח את הטלפון הזה','Disconnect and forget')+'</button>';}
+  else if(curTab==='file')body+='<p class="muted-note">'+(OFF_APP||nat()?
+      T('בלי בלוטות\' ובלי מצלמה: מחברים את הטלפון למחשב בכבל USB. "לשמור קובץ" — הקובץ נשמר בתיקיית ההורדות (Download) של הטלפון, ובמחשב פותחים אותו מהטלפון ב"📡 סנכרון ← 📁 קובץ". בכיוון ההפוך: מעתיקים לטלפון את הקובץ מהמחשב, ו"לפתוח קובץ".','No Bluetooth or camera: connect by USB cable. Save a file here and open it on the computer, or copy the computer\'s file here and open it.'):
+      T('לנגן או לטלפון בלי בלוטות\' ובלי מצלמה: מחברים אותו למחשב בכבל USB. בטלפון: 📡 סנכרון ← 📁 קובץ ← "לשמור קובץ", וכאן "לפתוח קובץ" ובוחרים אותו מתיקיית Download של הטלפון. בכיוון ההפוך: כאן "לשמור קובץ", מעתיקים אותו לתיקיית Download של הטלפון, ובטלפון "לפתוח קובץ".','For a device without Bluetooth or camera: connect it by USB cable. Save the file on the phone and open it here, or save here, copy to the phone and open it there.'))+'</p>'+
+    '<button class="btn" id="offFileSave" style="width:100%;margin-bottom:8px">💾 '+T('לשמור קובץ סנכרון','Save a sync file')+'</button>'+
+    '<label class="btn sec" id="offFileOpen" style="display:block;text-align:center;width:100%">📂 '+T('לפתוח קובץ שהגיע מהצד השני','Open a file from the other side')+'<input type="file" accept=".txt,text/plain" hidden></label>';
   else body+='<p class="muted-note">'+T('שולחים את הקוד שלי ב-SMS (אפשר גם לטלפון בלי אינטרנט), ובטלפון השני מדביקים אותו למטה. הקוד ארוך — זה תקין.','Send my code by SMS and paste it on the other phone. It is long — that is fine.')+'</p>'+
     '<label class="il" for="offMine">'+T('הקוד שלי','My code')+'</label><textarea id="offMine" class="offcode" readonly dir="ltr"></textarea>'+
     '<div class="row2"><a class="btn" id="offSms" href="#" role="button">✉️ '+T('לשלוח ב-SMS','Send by SMS')+'</a><button class="btn sec" id="offCopy">📋 '+T('להעתיק','Copy')+'</button></div>'+
@@ -393,11 +409,13 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
   if(t.closest('#offBtDis')){btForget();return;}
   if(t.closest('#offCopy')){const v=($o('#offMine')||{}).value||'';(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(()=>flash('📋 '+T('הועתק','Copied')),()=>{const x=$o('#offMine');x.select();try{document.execCommand('copy');flash('📋 '+T('הועתק','Copied'));}catch(er){}});return;}
   if(t.closest('#offMail')){offMail();return;}
+  if(t.closest('#offFileSave')){fileSave();return;}
   if(t.closest('#offGo')){const v=($o('#offIn')||{}).value||'';got(v,'code');return;}
   const dg=t.closest('[data-offdiag]');if(dg){ls.set(LS_OK,dg.dataset.offdiag);if(dg.dataset.offdiag==='0')ls.del(LS_DIAG);open();return;}
 },true);
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='offBtCode'){e.preventDefault();btJoin();}});
-document.addEventListener('change',e=>{if(e.target&&e.target.id==='offDiagCb'){ls.set(LS_OK,e.target.checked?'1':'0');if(!e.target.checked)ls.del(LS_DIAG);}});
+document.addEventListener('change',e=>{const fi=e.target&&e.target.closest&&e.target.closest('#offFileOpen')&&e.target.files&&e.target.files[0];if(fi){e.target.value='';fileOpen(fi);return;}
+  if(e.target&&e.target.id==='offDiagCb'){ls.set(LS_OK,e.target.checked?'1':'0');if(!e.target.checked)ls.del(LS_DIAG);}});
 
 /* 📴 מסך הפתיחה באפליקציה האופליין: אותו מסך כניסה של האתר (לוגו ועיצוב), אבל רק "מה השם שלך?" ונכנסים.
    אין חשבון ואין סיסמה — השם נשמר רק בטלפון, ומוצג לטלפון השני בסנכרון ("מחובר ל..."). הוא לא נשלח אלינו */

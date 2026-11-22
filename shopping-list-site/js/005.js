@@ -34,7 +34,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null||s===false?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
-const hebDate=d=>{try{if(window.hebcal)return prefs.lang==='en'?new hebcal.HDate(d).render('en'):new hebcal.HDate(d).renderGematriya(true);}catch(e){}return new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'}).format(d);};
+const hebDate=d=>{try{if(window.Hcal){const h=Hcal.fromRd(Hcal.rdOf(d));return prefs.lang==='en'?Hcal.hdStrEn(h):Hcal.hdStr(h);}}catch(e){}return new Intl.DateTimeFormat('he-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'}).format(d);};
 /* תאריך פגום (למשל מנתונים ישנים/מסונכרנים) לא מפיל את הדף — מחזירים מחרוזת ריקה */
 const okDate=d=>{const t=d instanceof Date?d.getTime():new Date(d).getTime();return isFinite(t);};
 /* ⚡ יצירת Intl.DateTimeFormat יקרה (עשרות מ"ש בטלפון חלש כשיש הרבה שורות) — שומרים אחד לכל שפה */

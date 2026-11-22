@@ -35,7 +35,7 @@ import java.io.ByteArrayInputStream;
 public class OfflineActivity extends Activity implements Bt.Out {
     static final String VER = "1.4";
     static final String HOME = "https://www.yamshopping.com/";
-    static final int REQ_CAM = 7401, REQ_FILE = 7402;
+    static final int REQ_CAM = 7401, REQ_FILE = 7402, REQ_SYNCFILE = 7403;
 
     WebView web;
     Bt bt;
@@ -149,6 +149,36 @@ public class OfflineActivity extends Activity implements Bt.Out {
         }
     }
 
+    private String pendingSync;
+
+    void saveSync(String file, String text) {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                android.content.ContentValues v = new android.content.ContentValues();
+                v.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, file);
+                v.put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/plain");
+                v.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri == null) throw new java.io.IOException("insert");
+                writeTo(uri, text);
+                Toast.makeText(this, "✅ נשמר בתיקיית ההורדות (Download): " + file, Toast.LENGTH_LONG).show();
+            } else {
+                pendingSync = text;
+                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("text/plain").putExtra(Intent.EXTRA_TITLE, file);
+                startActivityForResult(i, REQ_SYNCFILE);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "שמירת הקובץ נכשלה", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void writeTo(Uri uri, String text) throws java.io.IOException {
+        try (java.io.OutputStream out = getContentResolver().openOutputStream(uri)) {
+            if (out == null) throw new java.io.IOException("no stream");
+            out.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         if (code == REQ_CAM) {
@@ -169,6 +199,16 @@ public class OfflineActivity extends Activity implements Bt.Out {
             ValueCallback<Uri[]> cb = fileCb;
             fileCb = null;
             if (cb != null) cb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result, data));
+        } else if (code == REQ_SYNCFILE) {
+            String t = pendingSync;
+            pendingSync = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || t == null) return;
+            try {
+                writeTo(data.getData(), t);
+                Toast.makeText(this, "✅ קובץ הסנכרון נשמר", Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "שמירת הקובץ נכשלה", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -227,6 +267,15 @@ public class OfflineActivity extends Activity implements Bt.Out {
                 if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             });
+        }
+
+        /** 📁 קובץ סנכרון (טקסט) לתיקיית ההורדות — מעבירים אותו למחשב בכבל USB. בלי הרשאות: מאנדרואיד 10 דרך MediaStore,
+         *  ולפני כן המשתמש בוחר איפה לשמור (ACTION_CREATE_DOCUMENT) */
+        @JavascriptInterface
+        public void saveSyncFile(String name, String text) {
+            if (text == null || text.isEmpty() || text.length() > 3000000) return;
+            final String file = name == null || !name.matches("[A-Za-z0-9._-]{1,60}") ? "yam-sync.txt" : name;
+            runOnUiThread(() -> saveSync(file, text));
         }
 
         /** ✉️ שליחת קוד הסנכרון — רק באפליקציית ה-SMS של הטלפון (לא בחירת אפליקציה, כדי שלא תהיה דרך לאפליקציות עם אינטרנט) */

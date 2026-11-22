@@ -3,7 +3,8 @@
      📆 התאריך — לפי חשבון המולד והדחיות (כל יום בשנים 1900–2300).
      📖 הפרשה — לפי סוג השנה (יום ראש השנה ואורך השנה): 14 סוגים × ארץ ישראל / חוץ לארץ, כמו בשולחן ערוך או"ח תכח.
      ☀️ הזמנים — לפי מיקום השמש (נוסחת NOAA), בגובה פני הים. שעות זמניות לפי הגר"א ולפי המג"א (72 דקות).
-   ברירת המחדל: מוצג רק באפליקציה האופליין (OFF_APP). העיר והדקות של הדלקת הנרות נשמרים בטלפון (yam_hcal). */
+   משמש את כל האתר (תאריך עברי, חגים, פרשה, זמני שבת, יאמי) — במקום ספריית hebcal (רישיון GPL, לא מתאים לקוד סגור).
+   המסך של הלוח באפליקציה האופליין: js/090-hcal-ui.js */
 (function(){
 /* ---------- 📆 תאריך עברי ---------- */
 /* חודשים כמו בתורה: 1 = ניסן ... 7 = תשרי ... 12 = אדר (אדר א' בשנה מעוברת), 13 = אדר ב' */
@@ -29,7 +30,7 @@ const dow=rd=>((rd%7)+7)%7; /* 0 = ראשון ... 6 = שבת */
 /* ---------- גימטריה ---------- */
 function gem(n){const L=[[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']];
   let s='';n=n%1000;while(n>0){if(n===15){s+='טו';break;}if(n===16){s+='טז';break;}for(const [v,c] of L)if(n>=v){s+=c;n-=v;break;}}
-  return s.length>1?s.slice(0,-1)+'"'+s.slice(-1):s+"'";}
+  return s.length>1?s.slice(0,-1)+'״'+s.slice(-1):s+'׳';} /* גרשיים וגרש עבריים, כמו בלוחות */
 const MN={1:'ניסן',2:'אייר',3:'סיון',4:'תמוז',5:'אב',6:'אלול',7:'תשרי',8:'חשון',9:'כסלו',10:'טבת',11:'שבט',12:'אדר',13:'אדר ב\''};
 const mName=(y,m)=>m===12&&leap(y)?'אדר א\'':MN[m];
 const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -47,29 +48,39 @@ function parshaNums(rd,il){const h=fromRd(rd),ny=newYear(h.y),seq=SEQ[(il?'i':'d
   return c===0?[]:c<=54?[c-1]:[PAIR[c-55]-1,PAIR[c-55]];}
 const parshaName=n=>n&&n.length?n.map(i=>PAR[i]).join('-'):'';
 
-/* ---------- 🕎 חגים, צומות, ראש חודש ועומר (מה שמוצג ליום מסוים) ---------- */
-function events(rd,il){const h=fromRd(rd),{y,m,d}=h,w=dow(rd),ev=[];const add=s=>ev.push(s);
-  if(m===7){if(d<=2)add('ראש השנה'+(d===2?' (יום ב\')':''));
-    if((d===3&&w!==6)||(d===4&&w===0))add('צום גדליה');if(d===9)add('ערב יום כיפור');if(d===10)add('יום כיפור');
-    if(d===14)add('ערב סוכות');if(d===15)add('סוכות');if(d===16&&!il)add('סוכות (יום ב\')');
-    if(d>=(il?16:17)&&d<=20)add('חול המועד סוכות');if(d===21)add('הושענא רבה');
-    if(d===22)add(il?'שמיני עצרת ושמחת תורה':'שמיני עצרת');if(d===23&&!il)add('שמחת תורה');}
-  if(m===6&&d===29)add('ערב ראש השנה');
-  /* חנוכה: מכ"ה בכסלו, שמונה ימים */
-  {const ch=rd-toRd(y,9,25)+1;const ch2=rd-toRd(y-1,9,25)+1;const n=ch>=1&&ch<=8?ch:ch2>=1&&ch2<=8?ch2:0;if(n)add('חנוכה — נר '+gem(n));}
-  if(m===10&&d===10)add('עשרה בטבת');if(m===11&&d===15)add('ט"ו בשבט');
+/* ---------- 🕎 חגים, צומות, ראש חודש ועומר ליום מסוים ----------
+   כל אירוע: {he, en, k, base}. k: chag = יום טוב (אסור במלאכה), cm = חול המועד, fast = צום, rc = ראש חודש, omer, minor = שאר הימים.
+   base = השם בלי "יום ב'" / "נר" — לזיהוי אותו חג בכמה ימים */
+const MEN={1:'Nisan',2:'Iyyar',3:'Sivan',4:'Tamuz',5:'Av',6:'Elul',7:'Tishrei',8:'Cheshvan',9:'Kislev',10:'Tevet',11:"Sh'vat",12:'Adar',13:'Adar II'};
+const mNameEn=(y,m)=>m===12&&leap(y)?'Adar I':MEN[m];
+function events(rd,il){const h=fromRd(rd),{y,m,d}=h,w=dow(rd),ev=[];
+  const add=(he,en,k,base)=>ev.push({he,en,k,base:base||he});
+  if(m===7){if(d<=2)add('ראש השנה'+(d===2?' (יום ב\')':''),'Rosh Hashana'+(d===2?' II':''),'chag','ראש השנה');
+    if((d===3&&w!==6)||(d===4&&w===0))add('צום גדליה','Tzom Gedaliah','fast');if(d===9)add('ערב יום כיפור','Erev Yom Kippur','minor');if(d===10)add('יום כיפור','Yom Kippur','chag');
+    if(d===14)add('ערב סוכות','Erev Sukkot','minor');if(d===15)add('סוכות','Sukkot','chag');if(d===16&&!il)add('סוכות (יום ב\')','Sukkot II','chag','סוכות');
+    if(d>=(il?16:17)&&d<=20)add('חול המועד סוכות','Sukkot (Chol HaMoed)','cm');if(d===21)add('הושענא רבה','Hoshana Raba','cm');
+    if(d===22)add(il?'שמיני עצרת ושמחת תורה':'שמיני עצרת',il?'Shmini Atzeret & Simchat Torah':'Shmini Atzeret','chag','שמיני עצרת');if(d===23&&!il)add('שמחת תורה','Simchat Torah','chag');}
+  if(m===6&&d===29)add('ערב ראש השנה','Erev Rosh Hashana','minor');
+  /* חנוכה: "נר א'" ביום שבערבו מדליקים אותו (כ"ד בכסלו), עד נר ח'; ולמחרת — "יום ח'" (זאת חנוכה) */
+  {const c=r=>{const n=rd-r+1;return n>=1&&n<=9?n:0;},n=c(toRd(y,9,24))||c(toRd(y-1,9,24));
+    if(n&&n<=8)add('חנוכה — נר '+gem(n),'Chanukah: '+n+' candle'+(n>1?'s':''),'minor','חנוכה');else if(n===9)add('חנוכה — יום ח\' (זאת חנוכה)','Chanukah: 8th day','minor','חנוכה');}
+  if(m===10&&d===10)add('עשרה בטבת','Asara B\'Tevet','fast');if(m===11&&d===15)add('ט"ו בשבט','Tu BiShvat','minor');
   const adar=leap(y)?13:12;
-  if(m===adar){if((d===13&&w!==6)||(d===11&&w===4))add('תענית אסתר');if(d===14)add('פורים');if(d===15)add('שושן פורים');}
-  if(leap(y)&&m===12){if(d===14)add('פורים קטן');if(d===15)add('שושן פורים קטן');}
-  if(m===1){if(d===14)add('ערב פסח');if(d===15)add('פסח');if(d===16&&!il)add('פסח (יום ב\')');
-    if(d>=(il?16:17)&&d<=20)add('חול המועד פסח');if(d===21)add('שביעי של פסח');if(d===22&&!il)add('אחרון של פסח');}
-  if(m===2&&d===14)add('פסח שני');if(m===2&&d===18)add('ל"ג בעומר');
-  if(m===3){if(d===5)add('ערב שבועות');if(d===6)add('שבועות');if(d===7&&!il)add('שבועות (יום ב\')');}
-  if(m===4&&((d===17&&w!==6)||(d===18&&w===0)))add('צום י"ז בתמוז');
-  if(m===5){if((d===9&&w!==6)||(d===10&&w===0))add('תשעה באב');if(d===15)add('ט"ו באב');}
-  if((d===30)||(d===1&&m!==7))add('ראש חודש '+(d===30?mName(y,order(y)[order(y).indexOf(m)+1]):mName(y,m)));
-  const om=rd-toRd(y,1,16)+1;if(om>=1&&om<=49)add('היום '+gem(om).replace(/["']/g,'')+' ('+om+') לעומר');
+  if(m===adar){if((d===13&&w!==6)||(d===11&&w===4))add('תענית אסתר','Ta\'anit Esther','fast');if(d===14)add('פורים','Purim','minor');if(d===15)add('שושן פורים','Shushan Purim','minor');}
+  if(leap(y)&&m===12){if(d===14)add('פורים קטן','Purim Katan','minor');if(d===15)add('שושן פורים קטן','Shushan Purim Katan','minor');}
+  if(m===1){if(d===14)add('ערב פסח','Erev Pesach','minor');if(d===15)add('פסח','Pesach','chag');if(d===16&&!il)add('פסח (יום ב\')','Pesach II','chag','פסח');
+    if(d>=(il?16:17)&&d<=20)add('חול המועד פסח','Pesach (Chol HaMoed)','cm');if(d===21)add('שביעי של פסח','Pesach VII','chag');if(d===22&&!il)add('אחרון של פסח','Pesach VIII','chag');}
+  if(m===2&&d===14)add('פסח שני','Pesach Sheni','minor');if(m===2&&d===18)add('ל"ג בעומר','Lag BaOmer','minor');
+  if(m===3){if(d===5)add('ערב שבועות','Erev Shavuot','minor');if(d===6)add('שבועות','Shavuot','chag');if(d===7&&!il)add('שבועות (יום ב\')','Shavuot II','chag','שבועות');}
+  if(m===4&&((d===17&&w!==6)||(d===18&&w===0)))add('צום י"ז בתמוז','Tzom Tammuz','fast');
+  if(m===5){if((d===9&&w!==6)||(d===10&&w===0))add('תשעה באב','Tish\'a B\'Av','fast');if(d===15)add('ט"ו באב','Tu B\'Av','minor');}
+  if(d===30||(d===1&&m!==7)){const mm=d===30?order(y)[order(y).indexOf(m)+1]:m;add('ראש חודש '+mName(y,mm),'Rosh Chodesh '+mNameEn(y,mm),'rc');}
+  const om=rd-toRd(y,1,16)+1;if(om>=1&&om<=49)add('היום '+gem(om).replace(/[״׳]/g,'')+' ('+om+') לעומר','Omer day '+om,'omer');
   return ev;}
+/* שם הפרשה באנגלית (לממשק באנגלית) */
+const PAR_EN=['Bereshit','Noach','Lech-Lecha','Vayera','Chayei Sara','Toldot','Vayetzei','Vayishlach','Vayeshev','Miketz','Vayigash','Vayechi','Shemot','Vaera','Bo','Beshalach','Yitro','Mishpatim','Terumah','Tetzaveh','Ki Tisa','Vayakhel','Pekudei','Vayikra','Tzav','Shmini','Tazria','Metzora','Achrei Mot','Kedoshim','Emor','Behar','Bechukotai','Bamidbar','Nasso',"Beha'alotcha","Sh'lach",'Korach','Chukat','Balak','Pinchas','Matot','Masei','Devarim','Vaetchanan','Eikev',"Re'eh",'Shoftim','Ki Teitzei','Ki Tavo','Nitzavim','Vayeilech',"Ha'azinu",'Vezot Haberakhah'];
+const parshaEn=n=>n&&n.length?n.map(i=>PAR_EN[i]).join('-'):'';
+const hdStrEn=h=>h.d+' '+mNameEn(h.y,h.m)+' '+h.y;
 
 /* ---------- ☀️ זמני היום (NOAA) ---------- */
 const RAD=Math.PI/180;
@@ -106,62 +117,10 @@ const CITIES=[['ירושלים',31.769,35.216,IL,1,40],['בני ברק',32.081,3
   ['יוהנסבורג',-26.204,28.047,'Africa/Johannesburg',0],['בואנוס איירס',-34.604,-58.382,'America/Argentina/Buenos_Aires',0]]
   .map(a=>({name:a[0],lat:a[1],lon:a[2],tz:a[3],il:!!a[4],candle:a[5]||18}));
 
-window.Hcal={fromRd,toRd,rdOf,dateOf,dow,leap,gem,hdStr,mName,parshaNums,parshaName,events,zmanim,sunTime,CITIES,DAYS};
-if(typeof OFF_APP==='undefined'||!OFF_APP)return;
 
-/* ---------- המסך (רק באפליקציה האופליין) ---------- */
-const LS='yam_hcal',$h=s=>document.querySelector(s);
-const pref=()=>{let p={};try{p=JSON.parse(localStorage.getItem(LS)||'{}')||{};}catch(e){}const c=CITIES.find(x=>x.name===p.city)||CITIES[0];
-  return {city:c,candle:p.candle>0?+p.candle:c.candle};};
-const setPref=o=>{try{localStorage.setItem(LS,JSON.stringify(Object.assign(JSON.parse(localStorage.getItem(LS)||'{}')||{},o)));}catch(e){}};
-const hm=(d,tz)=>{if(!d)return '—';try{return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:tz});}catch(e){return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',hour12:false});}};
-/* היום העברי מתחלף בשקיעה: אחרי השקיעה מציגים את התאריך של מחר ("אור ל...") */
-function today(){const p=pref(),now=new Date(),rd=rdOf(now),z=zmanim(rd,p.city),night=!!(z&&z.set&&now>z.set);return {p,now,rd,hrd:night?rd+1:rd,night,z};}
-function shabbatOf(rd){return rd+((6-dow(rd))+7)%7;}
-function line(){const t=today(),h=fromRd(t.hrd),sh=shabbatOf(t.hrd),pn=parshaNums(sh,t.p.city.il);
-  const ev=events(t.hrd,t.p.city.il).filter(s=>!/לעומר/.test(s))[0];
-  return (t.night?'אור ל':'יום ')+DAYS[dow(t.hrd)]+' · '+hdStr(h)+' · '+(pn&&pn.length?'פרשת '+parshaName(pn):'שבת: '+(events(sh,t.p.city.il)[0]||'חג'))+(ev?' · '+ev:'');}
-function sheet(){const t=today(),p=t.p,c=p.city,h=fromRd(t.hrd),z=t.z||{},tz=c.tz;
-  const row=(l,d,n)=>'<tr><th>'+l+(n?' <small>'+n+'</small>':'')+'</th><td dir="ltr">'+hm(d,tz)+'</td></tr>';
-  const ev=events(t.hrd,c.il);
-  /* שבת הקרובה: הדלקת נרות ביום שישי, צאת השבת במוצאי שבת */
-  const sh=shabbatOf(t.rd),zf=zmanim(sh-1,c),zs=zmanim(sh,c),pn=parshaNums(sh,c.il);
-  const cand=zf&&zf.set?new Date(zf.set.getTime()-p.candle*6e4):null;
-  /* השבועיים הבאים: חגים וצומות */
-  const up=[];for(let r=t.hrd+1;r<=t.hrd+30&&up.length<5;r++){const e=events(r,c.il).filter(s=>!/לעומר/.test(s));
-    if(e.length)up.push('<li><b>'+DAYS[dow(r)]+' '+gem(fromRd(r).d)+' '+mName(fromRd(r).y,fromRd(r).m)+'</b> — '+e.join(', ')+'</li>');}
-  const body='<div class="hcal">'+
-    '<p class="hcbig">'+(t.night?'אור ל':'יום ')+DAYS[dow(t.hrd)]+', '+hdStr(h)+'</p>'+
-    '<p class="muted-note">'+t.now.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'})+(t.night?' · אחרי השקיעה':'')+'</p>'+
-    (ev.length?'<p class="hcev">'+ev.join(' · ')+'</p>':'')+
-    '<div class="hcsh"><b>📖 '+(pn&&pn.length?'פרשת '+parshaName(pn):'שבת: '+(events(sh,c.il)[0]||'חג'))+'</b>'+
-      '<span>🕯️ הדלקת נרות: <b dir="ltr">'+hm(cand,tz)+'</b></span><span>✨ צאת השבת: <b dir="ltr">'+hm(zs&&zs.tzeit,tz)+'</b> · ר"ת <b dir="ltr">'+hm(zs&&zs.rt,tz)+'</b></span></div>'+
-    '<h3 class="hch">☀️ זמני היום — '+c.name+'</h3>'+
-    (t.z?'<table class="hczm">'+row('עלות השחר',z.alot,'16.1°')+row('משיכיר',z.mish,'11.5°')+row('הנץ החמה',z.rise)+row('סוף זמן ק"ש',z.shmaMga,'מג"א')+row('סוף זמן ק"ש',z.shma,'גר"א')+
-      row('סוף זמן תפילה',z.tfMga,'מג"א')+row('סוף זמן תפילה',z.tf,'גר"א')+row('חצות היום',z.chatzot)+row('מנחה גדולה',z.mg)+row('מנחה קטנה',z.mk)+
-      row('פלג המנחה',z.plag)+row('שקיעה',z.set)+row('צאת הכוכבים',z.tzeit,'8.5°')+'</table>':'<p>אין זריחה ושקיעה רגילים במקום הזה היום.</p>')+
-    (up.length?'<h3 class="hch">🗓️ בקרוב</h3><ul class="hcup">'+up.join('')+'</ul>':'')+
-    '<div class="row2"><label class="il" for="hcCity">📍 עיר<select id="hcCity">'+CITIES.map(x=>'<option'+(x===c?' selected':'')+'>'+x.name+'</option>').join('')+'</select></label>'+
-    '<label class="il" for="hcCand">🕯️ נרות לפני השקיעה<select id="hcCand">'+[18,20,22,30,40].map(n=>'<option value="'+n+'"'+(n===p.candle?' selected':'')+'>'+n+' דק\'</option>').join('')+'</select></label></div>'+
-    '<p class="muted-note">'+(c.il?'פרשות ארץ ישראל':'פרשות חוץ לארץ')+' · מחושב בטלפון, בגובה פני הים, לפי השעון של הטלפון. שעות זמניות: גר"א מהנץ עד השקיעה, מג"א 72 דקות לפני ואחרי. יש לוחות שנוהגים אחרת — לדיוק בודקים בלוח של הקהילה.</p></div>';
-  openSheet('📅 לוח עברי וזמני היום',body);}
-function mount(){const pane=$h('#paneList');if(!pane)return;let b=$h('.hcline');
-  if(!b){const pill=$h('.offpill');(pill||pane.firstChild)?(pill||pane.firstChild).insertAdjacentHTML(pill?'afterend':'beforebegin','<button class="hcline" type="button"></button>'):pane.insertAdjacentHTML('afterbegin','<button class="hcline" type="button"></button>');b=$h('.hcline');}
-  const s='📅 '+line();if(b.textContent!==s)b.textContent=s;}
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.hcline')){e.preventDefault();sheet();}},true);
-document.addEventListener('change',e=>{const id=e.target&&e.target.id;if(id==='hcCity'){setPref({city:e.target.value,candle:0});sheet();mount();}
-  else if(id==='hcCand'){setPref({candle:+e.target.value});sheet();}});
-/* "זמני היום" מהתפריט — באופליין פותח את המסך הזה (בלי הקישור לאתר ובלי מיקום מדויק, שצריכים אינטרנט) */
-if(typeof openZmanim==='function'){openZmanim=sheet;const mz=$h('#miZmanim');if(mz)mz.onclick=sheet;}
-const _r=render;render=function(){const r=_r.apply(this,arguments);try{mount();}catch(e){}return r;};
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
-setInterval(()=>{try{mount();}catch(e){}},60000); /* מתחלף לבד בשקיעה ובחצות */
-document.head.insertAdjacentHTML('beforeend','<style id="hcal89">'+
-  '.hcline{display:block;width:100%;text-align:start;border:1px solid var(--chipbr);background:var(--inputbg);color:var(--text);border-radius:12px;padding:7px 10px;margin:0 0 8px;font:inherit;font-size:13.5px;cursor:pointer;line-height:1.4}'+
-  '.hcal .hcbig{font-size:20px;font-weight:700;margin:0 0 2px}.hcal .hcev{font-weight:700;color:var(--hdr2);margin:6px 0}'+
-  '.hcal .hcsh{display:flex;flex-direction:column;gap:4px;border:1px solid var(--chipbr);border-radius:12px;padding:10px;margin:10px 0}'+
-  '.hcal .hch{font-size:15px;margin:14px 0 6px}.hczm{width:100%;border-collapse:collapse;font-size:15px}.hczm th{text-align:start;font-weight:400;padding:5px 0;border-bottom:1px solid var(--chipbr)}'+
-  '.hczm th small{color:var(--muted)}.hczm td{text-align:end;font-weight:700;border-bottom:1px solid var(--chipbr);font-variant-numeric:tabular-nums}'+
-  '.hcup{margin:0;padding-inline-start:18px}.hcup li{margin:3px 0}.hcal select{display:block;width:100%;margin-top:4px}'+
-  '</style>');
+/* ---------- 📚 הדף היומי (המחזור ה-14 התחיל בברכות ב' ב-5 בינואר 2020; 2,711 דפים). נבדק מול לוח מוכר ---------- */
+const SHAS=[['ברכות',64],['שבת',157],['עירובין',105],['פסחים',121],['שקלים',22],['יומא',88],['סוכה',56],['ביצה',40],['ראש השנה',35],['תענית',31],['מגילה',32],['מועד קטן',29],['חגיגה',27],['יבמות',122],['כתובות',112],['נדרים',91],['נזיר',66],['סוטה',49],['גיטין',90],['קידושין',82],['בבא קמא',119],['בבא מציעא',119],['בבא בתרא',176],['סנהדרין',113],['מכות',24],['שבועות',49],['עבודה זרה',76],['הוריות',14],['זבחים',120],['מנחות',110],['חולין',142],['בכורות',61],['ערכין',34],['תמורה',34],['כריתות',28],['מעילה',22],['קינים',25],['תמיד',33],['מידות',37],['נדה',73]];
+function dafYomi(d){d=d||new Date();const days=Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(2020,0,5))/864e5);let n=((days%2711)+2711)%2711;
+  for(const [m,last] of SHAS){const first=m==='קינים'?23:m==='תמיד'?26:m==='מידות'?34:2;const cnt=last-first+1;if(n<cnt){const daf=first+n;const g=gem(daf);return m+' דף '+g;}n-=cnt;}return '';}
+window.Hcal={daf:dafYomi,fromRd,toRd,rdOf,dateOf,dow,leap,gem,hdStr,hdStrEn,mName,mNameEn,parshaNums,parshaName,parshaEn,events,zmanim,sunTime,CITIES,DAYS};
 })();
