@@ -40,12 +40,13 @@ async function unzip(t){const k=t[0],b=ub64u(t.slice(1));if(k==='j')return new T
 /* ב-QR כל תו הוא עוד ריבוע לסרוק: בלי מה שהטלפון השני משלים לבד (אימוג'י וקטגוריה רגילים, כמות ריקה, "לא נקנה") ובלי תמונות */
 function slim(l){return Object.assign({},l,{items:(l.items||[]).map(i=>{const o=Object.assign({},i);delete o.img;if(o.q==='')delete o.q;if(!o.done)delete o.done;
   try{if(o.e===emojiOf(o.n))delete o.e;if(o.c===resolveCat(o.n))delete o.c;}catch(e){}return o;})});}
+const netNow=()=>!OFF_APP&&!!sb&&navigator.onLine!==false?1:0;
 /* 🔵 בבלוטות' בלי תמונות: בלוטות' חסכוני מול מחשב מעביר כמה קילובייט בשנייה, ותמונה אחת (עד 90KB) תקעה את כל החבילה.
    התמונה נשארת בטלפון שצילם (merge לא מוחק תמונה כשמגיע אותו מוצר בלעדיה) */
 const noImg=l=>Object.assign({},l,{items:(l.items||[]).map(i=>{if(!i||!i.img)return i;const o=Object.assign({},i);delete o.img;return o;})});
 /* opt.only = רק הרשימות האלה (שינוי בזמן חיבור חי: שולחים רק את מה שהשתנה, ובלי היסטוריה) */
 async function pack(qr,opt){seenAdd();opt=opt||{};const ls0=opt.only?state.lists.filter(l=>opt.only.includes(l.id)):state.lists;
-  const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
+  const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:netNow(),
     lists:qr?ls0.map(slim):opt.bt?ls0.map(noImg):ls0,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:qr||opt.only?[]:(state.history||[]).slice(0,opt.bt?10:30)};/* ב-QR בלי היסטוריה — פחות קודים לסרוק */
   const ai=appInfo();o.kind=OFF_APP?'off':/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site';o.model=String(ai.model||uaDev()).slice(0,40);
   if(OFF_APP){o.ver=String(ai.ver||(navigator.userAgent.match(/YamShoppingOffline\/([0-9.]+)/)||[])[1]||'');o.android=String(ai.android||'');
@@ -88,7 +89,7 @@ async function merge(code,via,peer){
   /* רק נתוני רשימה עוברים (לא "האזור האישי", לא הגדרות, לא שיחות), ודרך אותו ניקוי של הענן */
   const remote={lists:o.lists.slice(0,60),tomb:o.tomb,pantry:obj(o.pantry),customPantry:arr(o.customPantry).filter(s=>typeof s==='string'&&s.length<=60).slice(0,500),
     plans:obj(o.plans),history:arr(o.history).filter(h=>h&&typeof h==='object').slice(0,30)};
-  learnClock(o,via);
+  if(!(via==='bt'&&bt.hiClock))learnClock(o,via);
   seenAdd();dropGone(remote);
   align(remote);keepImg(remote);
   const a=snap();
@@ -229,7 +230,7 @@ async function got(code,via,peer){const r=await merge(code,via,peer);if(!r)retur
    בערוץ עוברות הודעות JSON: {k:'hi',code,dev,name} (בדיקת הקוד) ו-{k:'pk',d:'YAM1...'} (החבילה המלאה, נדחסת).
    הטלפון שנשמר (LS_BT) מתחבר לבד בפתיחה הבאה: מי שיצר את הקוד מחכה, מי שהקליד מתחבר לכתובת. */
 const LS_BT='yam_off_bt';
-let bt={live:false,name:'',addr:'',code:'',role:'',st:'',retry:0,rt:0,sig:'',sendT:0};
+let bt={live:false,name:'',addr:'',code:'',role:'',st:'',retry:0,rt:0,sig:'',sendT:0,n:0,pend:null,tries:0,ack:false,hiClock:false};
 const btPeer=()=>{const p=obj(jget(LS_BT,null));return p.code&&p.role?p:null;};
 const sig=()=>hsh(JSON.stringify([state.lists,state.tomb,state.pantry,state.customPantry,state.plans]));
 const btSend=o=>{if(wb.dev)return wbSend(JSON.stringify(o));try{const a=nat();return !!(a&&a.btSend(JSON.stringify(o)));}catch(e){return false;}};
@@ -237,8 +238,13 @@ const btSend=o=>{if(wb.dev)return wbSend(JSON.stringify(o));try{const a=nat();re
 const hsh=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return s.length+':'+h;};
 let btSent={};
 const btMark=()=>{btSent={};(state.lists||[]).forEach(l=>{btSent[l.id]=hsh(JSON.stringify(l));});};
-async function btPush(full){bt.sig=sig();const only=full?null:(state.lists||[]).filter(l=>btSent[l.id]!==hsh(JSON.stringify(l))).map(l=>l.id);btMark();
-  btSend({k:'pk',d:await pack(false,{bt:1,only})});}
+/* ✔️ אישור קבלה: הצד השני עונה {k:'ok',n}. לא חזר אישור (החיבור נקטע באמצע) — שולחים שוב הכל, עד 3 פעמים, ואחר כך השינוי הבא יוצא מלא.
+   כשהקודמת עוד לא אושרה — גם החדשה נשלחת מלאה, כדי שלא יאבד מה שהיה בקודמת. אופליין 1.4 לא עונה — אצלו לא שולחים שוב (bt.ack מגיע ב-hi) */
+async function btPush(full){bt.sig=sig();if(bt.pend)full=true;
+  const only=full?null:(state.lists||[]).filter(l=>btSent[l.id]!==hsh(JSON.stringify(l))).map(l=>l.id);btMark();
+  const n=++bt.n,d=await pack(false,{bt:1,only});clearTimeout(bt.pend&&bt.pend.t);
+  bt.pend={n,t:setTimeout(()=>{if(!bt.pend||bt.pend.n!==n)return;bt.pend=null;btSent={};if(bt.live&&bt.ack&&bt.tries++<3)btPush(true);},15000+d.length/2)};
+  btSend({k:'pk',d,n});}
 function btText(){const n=esc(bt.name||'');
   const S={none:T('אין בלוטות\' בטלפון הזה — משתמשים ב-QR או בקוד שיתוף','No Bluetooth here — use QR or the share code'),
     perm:T('צריך לאשר את הרשאת הבלוטות\' (מכשירים בקרבת מקום) — לוחצים שוב ומאשרים','Allow the Bluetooth permission and try again'),
@@ -259,28 +265,38 @@ function btText(){const n=esc(bt.name||'');
     away:'🟠 '+T(n+' לא בטווח כרגע. מתחבר לבד כשיהיו קרובים',n+' is out of range. Will reconnect'),
     fail:'⚠️ '+T('לא הצליח. מנסים שוב','Failed — try again')};
   return S[bt.st]!=null?S[bt.st]:'';}
-function btShow(){const e=$o('#offBtSt');if(e)e.innerHTML=btText();try{mount();}catch(er){}
+/* ☀ בזמן חיבור המסך לא נכבה (בחלק מהטלפונים כיבוי המסך מנתק את הבלוטות'). לא מכבים כשמצב הקנייה (js/034.js) מחזיק את המסך דלוק */
+let btAwake=false;
+function btKeep(){const a=nat();if(!a||typeof a.keepScreen!=='function')return;
+  const want=bt.live||(['wait','search','try'].includes(bt.st)&&!!document.querySelector('#v8Sheet.open .offsync'));if(want===btAwake)return;btAwake=want;
+  const shop=document.querySelector('#shop26');if(!want&&shop&&!shop.hidden)return;try{a.keepScreen(want);}catch(e){}}
+if(typeof closeShop26==='function'){const f=closeShop26;closeShop26=function(){const r=f.apply(this,arguments);if(btAwake)try{nat().keepScreen(true);}catch(e){}return r;};}
+if(typeof closeSheet==='function'){const f=closeSheet;closeSheet=function(){const r=f.apply(this,arguments);btKeep();return r;};}
+function btShow(){btKeep();const e=$o('#offBtSt');if(e)e.innerHTML=btText();try{mount();}catch(er){}
   const d=$o('#offBtDis');if(d)d.hidden=!(bt.live||btPeer());}
 function btLater(){clearTimeout(bt.rt);const p=btPeer();if(!p||bt.live)return;
   const wait=Math.min(120,30*Math.pow(2,bt.retry++))*1000;
   bt.rt=setTimeout(()=>{if(document.visibilityState==='visible')btAuto();else btLater();},wait);}
 /* חיבור לבד לטלפון שכבר הוצמד */
-function btAuto(){const p=btPeer(),a=nat();if(!p||!hasBt()||bt.live)return;
+function btAuto(){const p=btPeer(),a=nat();if(!p||!hasBt()||bt.live||['wait','search','try'].includes(bt.st))return;
   try{if(!JSON.parse(a.btState()||'{}').on)return;}catch(e){return;}
   bt.code=p.code;bt.name=p.name||'';bt.role=p.role;
   try{if(p.role==='listen')a.btListen(p.code,false);else a.btConnect(p.addr,p.code);}catch(e){}}
 window.offBt=function(e){if(!e||typeof e!=='object')return;
   if(e.t==='msg'){let m;try{m=JSON.parse(e.data);}catch(x){return;}if(!m||typeof m!=='object')return;
+    if(m.k==='ok'){if(bt.pend&&bt.pend.n===m.n){clearTimeout(bt.pend.t);bt.pend=null;bt.tries=0;}return;}
     if(m.k==='hi'){if(String(m.code)!==bt.code){try{nat().btStop();}catch(x){}bt.live=false;bt.st='fail';btShow();return;}
+      bt.ack=m.ack===1;if(m.net&&m.at){learnClock({net:1,at:m.at},'bt');bt.hiClock=true;}
       bt.name=String(m.name||bt.name||'').replace(/[<>]/g,'').slice(0,40);
       ls.set(LS_BT,JSON.stringify({code:bt.code,role:bt.role,addr:bt.addr,name:bt.name,dev:String(m.dev||'').slice(0,40)}));btShow();return;}
-    if(m.k==='pk'&&typeof m.d==='string'){merge(m.d,'bt',bt.name).then(r=>{bt.sig=sig();btMark();if(!r)return;
+    if(m.k==='pk'&&typeof m.d==='string'){if(m.n)btSend({k:'ok',n:m.n});merge(m.d,'bt',bt.name).then(r=>{bt.sig=sig();btMark();if(!r)return;
       if(r.add+r.upd+r.del)flash('🔄 '+T('עודכן מ'+(bt.name||'הטלפון השני')+': ','Updated from '+(bt.name||'the other phone')+': ')+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated')+whereTxt(r));});}
     return;}
   if(e.t!=='state')return;
   bt.st=e.s;if(e.code)bt.code=e.code;if(e.ble)bt.ble=e.ble;
   if(e.s==='live'){bt.live=true;bt.retry=0;clearTimeout(bt.rt);bt.addr=e.addr||bt.addr;if(!bt.name)bt.name=e.name||'';
-    const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:myName()||String(ai.model||T('הטלפון השני','The other phone'))});btPush(true);}
+    clearTimeout(bt.pend&&bt.pend.t);bt.pend=null;bt.tries=0;bt.ack=false;bt.hiClock=false;
+    const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:myName()||String(ai.model||T('הטלפון השני','The other phone')),ack:1,at:Date.now(),net:netNow()});btPush(true);}
   else if(e.s==='lost'||e.s==='away'){bt.live=false;btLater();}
   else if(e.s!=='try'&&e.s!=='search')bt.live=false;
   btShow();};

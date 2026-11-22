@@ -2528,7 +2528,8 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   const OFFUA = 'Mozilla/5.0 (Linux; Android 11; Qin3Ultra) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.4';
   // הטלפון האופליין: הגשר של Bt.java (שולח טקסט, מקבל offBt)
   const A = await newPage({ userAgent: OFFUA, init: () => { window.__out = []; window.YamApp = { appInfo: () => JSON.stringify({ offline: true, offApp: true, ver: '1.4', model: 'Qin3Ultra' }),
-    btState: () => '{"has":true,"on":true}', btListen() {}, btJoin() {}, btConnect() {}, btStop() {}, btSend: (t) => { window.__out.push(t); return true; } }; } });
+    btState: () => '{"has":true,"on":true}', btListen: (c) => window.__ln.push(c), btJoin() {}, btConnect() {}, btStop() {}, keepScreen: (on) => window.__ks.push(on),
+    btSend: (t) => { window.__out.push(t); window.__all.push(t); return true; } }; window.__all = []; window.__ks = []; window.__ln = []; } });
   // המחשב: navigator.bluetooth מדומה — מה שנכתב ל-RX נאסף, וה-TX "מודיע" כשמגיעות חתיכות מהטלפון
   const B = await newPage({ init: () => { window.__wb = { req: [], out: [], tx: null };
     const tx = new EventTarget(); tx.startNotifications = async () => tx; window.__wb.tx = tx;
@@ -2593,6 +2594,24 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   const msgs = []; await B.page.exposeFunction('__fl', (m) => msgs.push(m)); await B.page.evaluate(() => { const f = flash; flash = (m) => { window.__fl(String(m)); return f(m); }; });
   await pump();
   assert(msgs.some((m) => /פארם/.test(m)), 'לא כתוב לאיזו רשימה נוסף: ' + msgs.join(' | '));
+  // ✔️ הטלפון מאשר כל חבילה שקיבל, ובזמן החיבור המסך נשאר דלוק
+  assert(await A.page.evaluate(() => window.__all.some((t) => JSON.parse(t).k === 'ok')), 'הטלפון לא שלח אישור קבלה');
+  assert(await A.page.evaluate(() => window.__ks[window.__ks.length - 1] === true), 'המסך לא נשאר דלוק בזמן החיבור');
+  // 📦 חבילה שהלכה לאיבוד (לא חזר אישור) — נשלחת שוב, מלאה
+  await A.page.evaluate(() => { addItem('מלח', ''); });
+  await A.page.waitForTimeout(1500);
+  assert((await A.page.evaluate(() => window.__out.splice(0).length)) > 0, 'השינוי לא נשלח');
+  await A.page.waitForFunction(() => window.__out.some((t) => JSON.parse(t).k === 'pk'), null, { timeout: 25000 });
+  await pump();
+  assert(/מלח/.test(await names(B)), 'חבילה שאבדה לא נשלחה שוב');
+  // 🔢 "ליצור קוד" שוב אחרי ניתוק: החזרה מחלון "להיות גלוי" לא מחזירה לקוד הישן
+  await A.page.evaluate(() => { offBt({ t: 'state', s: 'lost' }); offSyncOpen('bt'); });
+  assert(await A.page.evaluate(() => window.__ks[window.__ks.length - 1] === false), 'המסך נשאר דלוק אחרי הניתוק');
+  await A.page.evaluate(() => { window.__ln = []; });
+  await A.page.click('#offBtNew');
+  await A.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  const ln = await A.page.evaluate(() => window.__ln);
+  assert(ln.length === 1 && ln[0] !== '4321', 'הטלפון חזר לקוד הישן: ' + ln.join(','));
   // 📧 בקוד שיתוף באתר יש "לשלוח במייל", ובאופליין אין
   await B.page.evaluate(() => offSyncOpen('code')); await B.page.waitForSelector('#offMail', { timeout: 5000 });
   await A.page.evaluate(() => offSyncOpen('code')); await A.page.waitForSelector('#offMine', { timeout: 5000 });
