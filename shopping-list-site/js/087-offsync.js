@@ -278,6 +278,8 @@ function btLater(){clearTimeout(bt.rt);const p=btPeer();if(!p||bt.live)return;
   const wait=Math.min(120,30*Math.pow(2,bt.retry++))*1000;
   bt.rt=setTimeout(()=>{if(document.visibilityState==='visible')btAuto();else btLater();},wait);}
 /* חיבור לבד לטלפון שכבר הוצמד */
+/* בזמן חיבור (או ניסיון חיבור) בבלוטות' — האתר לא נטען מחדש לבד אחרי עדכון (js/064.js busy66) */
+window.offSyncBusy=()=>bt.live||!!wb.want||['wait','search','try','pick','again'].includes(bt.st);
 function btAuto(){const p=btPeer(),a=nat();if(!p||!hasBt()||bt.live||['wait','search','try'].includes(bt.st))return;
   try{if(!JSON.parse(a.btState()||'{}').on)return;}catch(e){return;}
   bt.code=p.code;bt.name=p.name||'';bt.role=p.role;

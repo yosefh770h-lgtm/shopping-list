@@ -2572,6 +2572,11 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   await B.page.evaluate(() => { addItem('קפה', ''); });
   await B.page.waitForTimeout(1500); await pump();
   assert(/קפה/.test(await names(A)), 'שינוי במחשב לא עבר לטלפון');
+  // ✨ עדכון לאתר בזמן חיבור: לא נטען מחדש (זה היה מנתק), רק "יש גרסה חדשה"
+  await B.page.evaluate(async () => { window.__mark = 1; let et = '"a"'; const f = window.fetch; window.fetch = (u, o) => (u === '/' && o && o.method === 'HEAD' ? Promise.resolve(new Response(null, { headers: { etag: et } })) : f(u, o));
+    await check66(true); et = '"b"'; await check66(true); });
+  await B.page.waitForTimeout(400);
+  assert(await B.page.evaluate(() => window.__mark === 1 && !!document.querySelector('#upd66')), 'עדכון לאתר טען מחדש את הדף באמצע חיבור בלוטות\'');
   // 🔌 החיבור נקטע — המחשב מתחבר שוב לבד (בלי חלון הבחירה) ושולח שוב הכל
   await B.page.evaluate(() => window.__wb.dev.dispatchEvent(new Event('gattserverdisconnected')));
   assert(/מתחבר שוב/.test(await B.page.locator('#offBtSt').textContent()), 'אחרי ניתוק לא כתוב שמתחבר שוב');
