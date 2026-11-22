@@ -132,7 +132,8 @@ async function rcQrUrl(file){if(!file||!/^image\//.test(file.type||''))return ''
   finally{cv.width=cv.height=0;try{img.close&&img.close();}catch(e){}}
   return '';}
 /* 📱 2.2: הטלפון מביא את נתוני הקבלה מאתר שחוסם את השרת (רק כתובת הנתונים של אושר עד — נבדק גם באפליקציה) */
-function rcNativeOk(){try{return !!(window.YamApp&&YamApp.receiptJson&&JSON.parse(YamApp.appInfo()||'{}').receiptJson);}catch(e){return false;}}
+/* 2.3: גם הקישור המקוצר מה-SMS (https://<רשת>.pairzon.com/<מספר>/<קוד>) — הטלפון עוקב אחרי ההפניה בעצמו */
+function rcNativeOk(cap){try{return !!(window.YamApp&&YamApp.receiptJson&&JSON.parse(YamApp.appInfo()||'{}')[cap||'receiptJson']);}catch(e){return false;}}
 const rcNativeWait={};let rcNativeSeq=0;
 window.yamReceiptJson=(id,txt)=>{const f=rcNativeWait[id];if(f){delete rcNativeWait[id];f(txt);}};
 function rcNativeJson(api){return new Promise(res=>{const id='r'+(++rcNativeSeq);const t=setTimeout(()=>{delete rcNativeWait[id];res(null);},30000);
@@ -151,8 +152,9 @@ async function rcLink(){if(rcLinking)return;rcLastOk=false;const inp=$r('#upUrl'
     if($r('#upUrlSt')!==st||upMode!=='receipt')return;
     let f=r&&r.ok&&data&&data.kind?data:null;
     /* 📱 אושר עד חוסם את השרת — באפליקציה (2.2) הטלפון מביא את נתוני הקבלה בעצמו, והשרת רק מסדר אותם */
-    if(!f&&data&&data.api&&rcNativeOk()){st.innerHTML='<div class="empty">📱 '+T('פותחת את הקבלה מהטלפון…','Opening the receipt from the phone…')+'</div>';
-      const raw=await rcNativeJson(data.api);if($r('#upUrlSt')!==st||upMode!=='receipt')return;
+    const nat=!f&&data?(data.api&&rcNativeOk()?data.api:(data.short&&rcNativeOk('receiptShort')?data.short:'')):'';
+    if(nat){st.innerHTML='<div class="empty">📱 '+T('פותחת את הקבלה מהטלפון…','Opening the receipt from the phone…')+'</div>';
+      const raw=await rcNativeJson(nat);if($r('#upUrlSt')!==st||upMode!=='receipt')return;
       let pj=null;if(raw){try{pj=JSON.parse(raw);}catch(e){pj=null;}}
       if(pj){try{const r2=await fetch((typeof PRICE_API!=='undefined'?PRICE_API:'/api/prices')+'/receipt/parse',{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify({kind:data.kind,data:pj})});
         const d2=await r2.json();if(r2.ok&&d2&&d2.kind)f=d2;else if(d2&&d2.error)data={error:d2.error};}catch(e){}}
