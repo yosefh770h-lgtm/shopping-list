@@ -290,8 +290,8 @@ if(!OFF_APP&&(/^#offapk$/i.test(location.hash)||/[?&]offapk(=|&|$)/i.test(locati
 /* ---------- כפתור הכניסה: בשורת "שיתוף עם המשפחה וגיבוי", ובאפליקציה האופליין גם פס קבוע מעל הרשימה ---------- */
 function mount(){const k=$o('#shKeep');if(k&&!$o('#shOff'))k.insertAdjacentHTML('beforeend','<button id="shOff">📡 '+T('סנכרון בלי אינטרנט','Offline sync')+'</button>');
   /* גם בתפריט (⚙️), ליד "מצב קנייה בחנות" — שלא יצטרכו לחפש בחלון השיתוף */
-  /* 📡 בכותרת, ליד הפעמון — הדרך הכי מהירה להתחבר. נקודה ירוקה כשיש חיבור חי */
-  const hb=$o('#btnBell')||$o('#btnMenu');if(hb&&!$o('#btnOff'))hb.insertAdjacentHTML('beforebegin','<button class="hbtn" id="btnOff" type="button" title="'+T('סנכרון בלי אינטרנט','Offline sync')+'" aria-label="'+T('סנכרון בלי אינטרנט — בלוטות\', QR או קוד','Offline sync')+'">'+
+  /* 📡 בכותרת, לפני הצ'אט והפעמון — הדרך הכי מהירה להתחבר. נקודה ירוקה כשיש חיבור חי */
+  const hb=$o('#btnChat')||$o('#btnBell')||$o('#btnMenu');if(hb&&!$o('#btnOff'))hb.insertAdjacentHTML('beforebegin','<button class="hbtn" id="btnOff" type="button" title="'+T('סנכרון בלי אינטרנט','Offline sync')+'" aria-label="'+T('סנכרון בלי אינטרנט — בלוטות\', QR או קוד','Offline sync')+'">'+
     '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="7" height="14" rx="1.6"/><rect x="14.5" y="5" width="7" height="14" rx="1.6"/><path d="M10.5 10h3M12 8.5l1.5 1.5-1.5 1.5M13.5 14h-3M12 12.5L10.5 14l1.5 1.5"/></svg><i class="offdot" hidden></i></button>');
   {const d=$o('#btnOff .offdot');if(d)d.hidden=!bt.live;}
   /* ⬇️ הורדת האפליקציה האופליין — בתפריט, ליד הורדת האפליקציה הרגילה (באתר בלבד) */
