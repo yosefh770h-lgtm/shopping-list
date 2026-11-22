@@ -278,6 +278,10 @@ function btLater(){clearTimeout(bt.rt);const p=btPeer();if(!p||bt.live)return;
   const wait=Math.min(120,30*Math.pow(2,bt.retry++))*1000;
   bt.rt=setTimeout(()=>{if(document.visibilityState==='visible')btAuto();else btLater();},wait);}
 /* חיבור לבד לטלפון שכבר הוצמד */
+/* עדכון לאתר בזמן חיבור בבלוטות': האתר נטען מחדש לבד כרגיל, כשאחרי הטעינה הוא יודע להתחבר שוב לבד (wbResume).
+   בדפדפן שלא זוכר את הטלפון (בלי getDevices), או באמצע חיבור — לא נטענים לבד (js/064.js busy66), ומופיע "יש גרסה חדשה" */
+window.offSyncBusy=()=>{const p=btPeer(),canResume=webBt()&&!!(navigator.bluetooth&&typeof navigator.bluetooth.getDevices==='function')&&!!(p&&p.wid);
+  if(['wait','search','try','pick','again'].includes(bt.st))return true;return (bt.live||!!wb.want)&&!canResume;};
 function btAuto(){const p=btPeer(),a=nat();if(!p||!hasBt()||bt.live||['wait','search','try'].includes(bt.st))return;
   try{if(!JSON.parse(a.btState()||'{}').on)return;}catch(e){return;}
   bt.code=p.code;bt.name=p.name||'';bt.role=p.role;
@@ -288,7 +292,7 @@ window.offBt=function(e){if(!e||typeof e!=='object')return;
     if(m.k==='hi'){if(String(m.code)!==bt.code){try{nat().btStop();}catch(x){}bt.live=false;bt.st='fail';btShow();return;}
       bt.ack=m.ack===1;if(m.net&&m.at){learnClock({net:1,at:m.at},'bt');bt.hiClock=true;}
       bt.name=String(m.name||bt.name||'').replace(/[<>]/g,'').slice(0,40);
-      ls.set(LS_BT,JSON.stringify({code:bt.code,role:bt.role,addr:bt.addr,name:bt.name,dev:String(m.dev||'').slice(0,40)}));btShow();return;}
+      ls.set(LS_BT,JSON.stringify({code:bt.code,role:bt.role,addr:bt.addr,name:bt.name,dev:String(m.dev||'').slice(0,40),wid:wb.want&&wb.want.id?String(wb.want.id).slice(0,80):''}));btShow();return;}
     if(m.k==='pk'&&typeof m.d==='string'){if(m.n)btSend({k:'ok',n:m.n});merge(m.d,'bt',bt.name).then(r=>{bt.sig=sig();btMark();if(!r)return;
       if(r.add+r.upd+r.del)flash('🔄 '+T('עודכן מ'+(bt.name||'הטלפון השני')+': ','Updated from '+(bt.name||'the other phone')+': ')+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated')+whereTxt(r));});}
     return;}
@@ -347,10 +351,18 @@ async function wbJoin(code){if(!wbOk()){bt.st='nowb';btShow();return;}
   let dev;try{dev=await navigator.bluetooth.requestDevice({filters:[{services:[wbSvc(code)]}]});}
   catch(e){bt.st=/adapter|not available|globally disabled/i.test(String(e&&e.message))?'wboff':e&&e.name==='NotFoundError'?'wbnone':'fail';btShow();return;}
   bt.name=String(dev.name||'').replace(/[<>]/g,'').slice(0,40);bt.st='try';btShow();
-  wb.want=dev;wb.code=code;wb.tries=0;
-  dev.addEventListener('gattserverdisconnected',()=>{if(wb.want!==dev||!wb.rx)return;wb.rx=null;bt.live=false;wbRetry(dev);});
+  wbWatch(dev,code);
   try{await wbLink(dev,code);}
   catch(e){if(wb.want===dev)wbClose();bt.st='fail';btShow();}}
+function wbWatch(dev,code){wb.want=dev;wb.code=code;wb.tries=0;
+  dev.addEventListener('gattserverdisconnected',()=>{if(wb.want!==dev||!wb.rx)return;wb.rx=null;bt.live=false;wbRetry(dev);});}
+/* 🔄 אחרי טעינה מחדש של הדף (עדכון לאתר, F5) — מתחברים שוב לבד לאותו טלפון, בלי להקליד קוד ובלי חלון בחירה.
+   הדפדפן זוכר את הטלפון שאושר (navigator.bluetooth.getDevices, כרום / אדג' חדשים); בדפדפן בלי זה נשאר הכפתור "להתחבר שוב" */
+async function wbResume(){const p=btPeer();if(!wbOk()||!p||p.role!=='join'||!p.wid||wb.want||typeof navigator.bluetooth.getDevices!=='function')return;
+  let dev=null;try{dev=(await navigator.bluetooth.getDevices()).find(d=>d.id===p.wid)||null;}catch(e){}
+  if(!dev||wb.want)return;bt.code=p.code;bt.role='join';bt.name=p.name||'';bt.addr='';bt.live=false;
+  wbWatch(dev,p.code);wbRetry(dev);}
+setTimeout(wbResume,800);
 
 /* ---------- ✉️ קוד שיתוף ---------- */
 async function showCode(){const t=$o('#offMine');if(!t)return;t.value=await pack();

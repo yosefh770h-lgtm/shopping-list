@@ -2534,8 +2534,8 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   const B = await newPage({ init: () => { window.__wb = { req: [], out: [], tx: null };
     const tx = new EventTarget(); tx.startNotifications = async () => tx; window.__wb.tx = tx;
     const rx = { writeValueWithResponse: async (v) => { window.__wb.out.push(Array.from(new Uint8Array(v.buffer || v, v.byteOffset || 0, v.byteLength))); } };
-    const dev = new EventTarget(); window.__wb.dev = dev; window.__wb.conn = 0; dev.name = 'Qin3Ultra'; dev.gatt = { connected: true, connect: async () => (window.__wb.conn++, { getPrimaryService: async () => ({ getCharacteristic: async (u) => (/0001-/.test(u) ? rx : tx) }) }), disconnect() {} };
-    Object.defineProperty(navigator, 'bluetooth', { value: { requestDevice: async (o) => { window.__wb.req.push(JSON.stringify(o)); return dev; } } }); } });
+    const dev = new EventTarget(); window.__wb.dev = dev; window.__wb.conn = 0; dev.name = 'Qin3Ultra'; dev.id = 'D1'; dev.gatt = { connected: true, connect: async () => (window.__wb.conn++, { getPrimaryService: async () => ({ getCharacteristic: async (u) => (/0001-/.test(u) ? rx : tx) }) }), disconnect() {} };
+    Object.defineProperty(navigator, 'bluetooth', { value: { requestDevice: async (o) => { window.__wb.req.push(JSON.stringify(o)); return dev; }, getDevices: async () => [dev] } }); } });
   await A.page.evaluate(() => { addItem('שמן', ''); });
   await B.page.evaluate(() => { addItem('סוכר', ''); });
   // בטלפון: "ליצור קוד" — הקוד מוצג, ונאמר שאפשר להקליד אותו גם במחשב
@@ -2572,11 +2572,26 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   await B.page.evaluate(() => { addItem('קפה', ''); });
   await B.page.waitForTimeout(1500); await pump();
   assert(/קפה/.test(await names(A)), 'שינוי במחשב לא עבר לטלפון');
+  // ✨ עדכון לאתר בזמן חיבור, בדפדפן שלא זוכר את הטלפון (בלי getDevices): לא נטען מחדש (זה היה מנתק), רק "יש גרסה חדשה"
+  const upd = (gd) => B.page.evaluate(async (gd) => { window.__mark = 1; const g = navigator.bluetooth.getDevices; if (!gd) navigator.bluetooth.getDevices = undefined;
+    let et = '"a"'; const f = window.fetch; window.fetch = (u, o) => (u === '/' && o && o.method === 'HEAD' ? Promise.resolve(new Response(null, { headers: { etag: et } })) : f(u, o));
+    await check66(true); et = '"b"'; await check66(true); navigator.bluetooth.getDevices = g; }, gd);
+  await B.page.evaluate(() => closeSheet()); await upd(false); await B.page.waitForTimeout(400);
+  assert(await B.page.evaluate(() => window.__mark === 1 && !!document.querySelector('#upd66')), 'עדכון לאתר טען מחדש את הדף באמצע חיבור בלוטות\'');
+  // 🔄 עדכון לאתר כשהדפדפן זוכר את הטלפון: האתר מתעדכן לבד (נטען מחדש) ומתחבר שוב לבד לאותו טלפון, בלי קוד ובלי חלון בחירה
+  await B.page.evaluate(() => closeSheet());
+  await Promise.all([B.page.waitForEvent('load', { timeout: 8000 }), upd(true)]);
+  await B.page.waitForFunction(() => window.__wb.conn >= 1, null, { timeout: 8000 });
+  assert((await B.page.evaluate(() => window.__wb.req.length)) === 0, 'אחרי טעינה מחדש נפתח חלון הבחירה');
+  await pump(); await B.page.evaluate(() => { addItem('דבש', ''); }); await B.page.waitForTimeout(1500); await pump();
+  assert(/דבש/.test(await names(A)), 'אחרי טעינה מחדש של האתר שינוי לא עבר לטלפון');
+  await B.page.evaluate(() => offSyncOpen('bt')); await B.page.waitForSelector('#offBtSt', { timeout: 5000 });
+  assert(/מחובר/.test(await B.page.locator('#offBtSt').textContent()), 'אחרי טעינה מחדש לא כתוב שמחובר');
   // 🔌 החיבור נקטע — המחשב מתחבר שוב לבד (בלי חלון הבחירה) ושולח שוב הכל
   await B.page.evaluate(() => window.__wb.dev.dispatchEvent(new Event('gattserverdisconnected')));
   assert(/מתחבר שוב/.test(await B.page.locator('#offBtSt').textContent()), 'אחרי ניתוק לא כתוב שמתחבר שוב');
   await B.page.waitForFunction(() => window.__wb.conn >= 2 && /מחובר/.test(document.querySelector('#offBtSt').textContent), null, { timeout: 5000 });
-  assert((await B.page.evaluate(() => window.__wb.req.length)) === 1, 'בחיבור מחדש נפתח שוב חלון הבחירה');
+  assert((await B.page.evaluate(() => window.__wb.req.length)) === 0, 'בחיבור מחדש נפתח שוב חלון הבחירה'); // (מאז הטעינה מחדש)
   await B.page.evaluate(() => { addItem('אורז', ''); }); await B.page.waitForTimeout(1500); await pump();
   assert(/אורז/.test(await names(A)), 'אחרי חיבור מחדש שינוי במחשב לא עבר');
   // 📦 שינוי בזמן חיבור חי שולח רק את הרשימה שהשתנתה, ובלי תמונות; התמונה נשארת בטלפון שצילם

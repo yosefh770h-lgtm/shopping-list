@@ -62,6 +62,8 @@ async function sig(){try{const r=await fetch('/',{method:'HEAD',cache:'no-store'
   return verKey66(r.headers.get('etag')||r.headers.get('last-modified')||'');}catch(e){return '';}}
 function busy66(){const a=document.activeElement;if(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&!/^(checkbox|radio|button)$/.test(a.type)))&&a.value)return true;
   if(document.querySelector('.overlay.open,.qp15.open,#updPop:not([hidden]),.ybpop:not([hidden])'))return true;
+  /* 📡 חיבור בלוטות' לאפליקציה האופליין שטעינה מחדש הייתה מנתקת בלי חיבור חוזר לבד (js/087-offsync.js) — מציגים "יש גרסה חדשה" במקום */
+  try{if(typeof window.offSyncBusy==='function'&&window.offSyncBusy())return true;}catch(e){}
   const t=$66('#botText');return !!(t&&t.value.trim());}
 function reload66(){ls66('yam_upd66',String(Date.now()));try{navigator.serviceWorker&&navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});}catch(e){}
   setTimeout(()=>location.reload(),150);}
