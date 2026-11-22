@@ -90,6 +90,8 @@ final class Bt {
     private final ByteArrayOutputStream rxBuf = new ByteArrayOutputStream(), prep = new ByteArrayOutputStream();
     private final ArrayDeque<byte[]> txQ = new ArrayDeque<>();
     private boolean txBusy;
+    private int txSeq;
+    private final android.os.Handler main;
 
     @SuppressWarnings("deprecation")
     Bt(Activity a, Out out) {
@@ -101,6 +103,7 @@ final class Bt {
         } catch (Exception ignored) {
         }
         ad = x;
+        main = new android.os.Handler(a.getMainLooper());
     }
 
     /** מזהה השירות של BLE לפי הקוד — אותו חישוב באתר (js/087-offsync.js) */
@@ -417,11 +420,20 @@ final class Bt {
             gs = bm.openGattServer(a, new BluetoothGattServerCallback() {
                 @Override
                 public void onConnectionStateChange(BluetoothDevice d, int status, int st) {
-                    if (st == BluetoothProfile.STATE_DISCONNECTED && d.equals(bleDev)) {
+                    if (st == BluetoothProfile.STATE_CONNECTED) {
+                        /* בלי זה אנדרואיד רואה שאף אפליקציה "לא מחזיקה" את החיבור שהמחשב פתח, ומנתק אחרי כמה שניות.
+                           connect(d, false) על חיבור שכבר קיים רק מסמן שהאפליקציה משתמשת בו */
+                        try { if (gs != null && g == gen) gs.connect(d, false); } catch (Exception ignored) { }
+                    } else if (st == BluetoothProfile.STATE_DISCONNECTED && d.equals(bleDev)) {
                         bleDev = null;
                         if (bleLive) {
                             bleLive = false;
-                            if (g == gen) emit("state", "s", "lost");
+                            synchronized (txQ) { txQ.clear(); txBusy = false; }
+                            if (g == gen) {
+                                emit("state", "s", "lost");
+                                /* מפרסמים שוב מיד — המחשב מנסה להתחבר שוב לבד, בלי להקליד את הקוד */
+                                main.post(() -> { if (g == gen && !bleLive && gs != null) advertise(svcId, true); });
+                            }
                         }
                     }
                 }
@@ -471,7 +483,7 @@ final class Bt {
 
                 @Override
                 public void onNotificationSent(BluetoothDevice d, int status) {
-                    synchronized (txQ) { txBusy = false; }
+                    synchronized (txQ) { txBusy = false; txSeq++; }
                     pump();
                 }
             });
@@ -558,11 +570,14 @@ final class Bt {
             if (c == null) return;
             txBusy = true;
         }
+        /* אם onNotificationSent לא חזר (קורה בחלק מהטלפונים) — לא נתקעים: ממשיכים לחתיכה הבאה אחרי שנייה */
+        final int seq = ++txSeq;
+        main.postDelayed(() -> { boolean go; synchronized (txQ) { go = txBusy && txSeq == seq; if (go) txBusy = false; } if (go) pump(); }, 1000);
         try {
             boolean ok;
             if (Build.VERSION.SDK_INT >= 33) ok = gs.notifyCharacteristicChanged(d, tx, false, c) == BluetoothGatt.GATT_SUCCESS;
             else { tx.setValue(c); ok = gs.notifyCharacteristicChanged(d, tx, false); }
-            if (!ok) { synchronized (txQ) { txQ.addFirst(c); txBusy = false; } new android.os.Handler(a.getMainLooper()).postDelayed(this::pump, 30); }
+            if (!ok) { synchronized (txQ) { txQ.addFirst(c); txBusy = false; txSeq++; } main.postDelayed(this::pump, 30); }
         } catch (SecurityException e) {
             synchronized (txQ) { txBusy = false; }
         }
