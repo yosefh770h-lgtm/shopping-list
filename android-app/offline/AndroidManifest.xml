@@ -4,8 +4,8 @@
      אין כאן INTERNET בכוונה — אל תוסיפו. הסנכרון בלי אינטרנט: QR, בלוטות' או קוד שיתוף (SMS). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.yamshopping.app"
-    android:versionCode="2"
-    android:versionName="1.1">
+    android:versionCode="3"
+    android:versionName="1.2">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
 
