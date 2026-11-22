@@ -40,9 +40,13 @@ async function unzip(t){const k=t[0],b=ub64u(t.slice(1));if(k==='j')return new T
 /* ב-QR כל תו הוא עוד ריבוע לסרוק: בלי מה שהטלפון השני משלים לבד (אימוג'י וקטגוריה רגילים, כמות ריקה, "לא נקנה") ובלי תמונות */
 function slim(l){return Object.assign({},l,{items:(l.items||[]).map(i=>{const o=Object.assign({},i);delete o.img;if(o.q==='')delete o.q;if(!o.done)delete o.done;
   try{if(o.e===emojiOf(o.n))delete o.e;if(o.c===resolveCat(o.n))delete o.c;}catch(e){}return o;})});}
-async function pack(qr){seenAdd();
+/* 🔵 בבלוטות' בלי תמונות: בלוטות' חסכוני מול מחשב מעביר כמה קילובייט בשנייה, ותמונה אחת (עד 90KB) תקעה את כל החבילה.
+   התמונה נשארת בטלפון שצילם (merge לא מוחק תמונה כשמגיע אותו מוצר בלעדיה) */
+const noImg=l=>Object.assign({},l,{items:(l.items||[]).map(i=>{if(!i||!i.img)return i;const o=Object.assign({},i);delete o.img;return o;})});
+/* opt.only = רק הרשימות האלה (שינוי בזמן חיבור חי: שולחים רק את מה שהשתנה, ובלי היסטוריה) */
+async function pack(qr,opt){seenAdd();opt=opt||{};const ls0=opt.only?state.lists.filter(l=>opt.only.includes(l.id)):state.lists;
   const o={v:1,dev:devId(),name:myName(),at:Date.now(),off:OFF_APP?1:0,net:!OFF_APP&&!!sb&&navigator.onLine!==false?1:0,
-    lists:qr?state.lists.map(slim):state.lists,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:qr?[]:(state.history||[]).slice(0,30)};/* ב-QR בלי היסטוריה — פחות קודים לסרוק */
+    lists:qr?ls0.map(slim):opt.bt?ls0.map(noImg):ls0,tomb:state.tomb,pantry:state.pantry,customPantry:state.customPantry,plans:state.plans,history:qr||opt.only?[]:(state.history||[]).slice(0,opt.bt?10:30)};/* ב-QR בלי היסטוריה — פחות קודים לסרוק */
   const ai=appInfo();o.kind=OFF_APP?'off':/YamShoppingApp\//.test(navigator.userAgent||'')?'app':'site';o.model=String(ai.model||uaDev()).slice(0,40);
   if(OFF_APP){o.ver=String(ai.ver||(navigator.userAgent.match(/YamShoppingOffline\/([0-9.]+)/)||[])[1]||'');o.android=String(ai.android||'');
     if(diagOk()==='1'){const d=jget(LS_DIAG,[]);if(Array.isArray(d)&&d.length)o.diag=d.slice(-20);}}
@@ -86,11 +90,13 @@ async function merge(code,via,peer){
     plans:obj(o.plans),history:arr(o.history).filter(h=>h&&typeof h==='object').slice(0,30)};
   learnClock(o,via);
   seenAdd();dropGone(remote);
-  align(remote);
+  align(remote);keepImg(remote);
   const a=snap();
   try{applyRemote(remote,false);}catch(e){flash(T('⚠️ המיזוג נכשל','⚠️ Merge failed'));try{window.logClientError&&logClientError('offsync merge: '+e.message,'087');}catch(x){}return null;}
   seenAdd();save();try{render();}catch(e){}
-  const b=snap();let add=0,upd=0,del=0;for(const k in b){if(!(k in a))add++;else if(b[k]!==a[k])upd++;}for(const k in a)if(!(k in b))del++;
+  const b=snap();let add=0,upd=0,del=0;const into={};for(const k in b){if(!(k in a)){add++;const id=k.split('|')[0];into[id]=(into[id]||0)+1;}else if(b[k]!==a[k])upd++;}for(const k in a)if(!(k in b))del++;
+  /* מוצרים שנוספו לרשימה אחרת (לא זו שפתוחה) — כותבים לאיזו, כדי שלא ייראה ש"נוסף אבל אין כלום" */
+  const where=Object.keys(into).filter(id=>id!==state.active).map(id=>(state.lists.find(l=>l.id===id)||{}).name).filter(Boolean).slice(0,3);
   const name=String(peer||o.name||o.model||'').replace(/[<>]/g,'').slice(0,40);
   const peers=obj(jget(LS_PEERS,{}));const cl=x=>String(x||'').replace(/[<>]/g,'').slice(0,40);
   peers[String(o.dev||'?').slice(0,40)]={at:Date.now(),via,name:cl(peer||o.name),off:o.off?1:0,kind:['off','app','site'].includes(o.kind)?o.kind:o.off?'off':'',model:cl(o.model),ver:cl(o.ver).slice(0,12)};ls.set(LS_PEERS,JSON.stringify(peers));ls.set(LS_LAST,String(Date.now()));try{mount();}catch(e){}
@@ -98,13 +104,15 @@ async function merge(code,via,peer){
   if(OFF_APP&&o.net)ls.del(LS_DIAG);
   if(!OFF_APP&&o.off)relay(o,via);
   try{window.YamApp&&typeof YamApp.buzz==='function'&&YamApp.buzz(80);}catch(e){}
-  return {add,upd,del,name,off:!!o.off};}
+  return {add,upd,del,name,off:!!o.off,where};}
 window.offMerge=merge;
 
 /* 🧠 "אותה רשימה" ו"אותו מוצר" גם כשנוצרו בנפרד בשני הטלפונים לפני שהם סונכרנו (למשל "סופר" ו"חלב" בשניהם).
    בלי זה היו שתי רשימות "סופר" ושני "חלב". מאחדים לפי השם, למזהה הקטן מבין השניים — כך ששני הטלפונים מגיעים
    לאותם מזהים, ומאז כל סנכרון (גם אחרי כמה ימים) מזהה הכל לפי מזהה: מה שנוסף — נוסף, מה שהשתנה — מתעדכן לפי
    השינוי האחרון, ומה שנמחק — נמחק גם בצד השני ולא חוזר (tomb, 30 יום). המזהה הישן נקבר, כדי שגם הענן לא יחזיר אותו */
+function keepImg(remote){const m={};state.lists.forEach(l=>(l.items||[]).forEach(i=>{if(i&&i.img)m[l.id+'|'+i.id]=i.img;}));
+  remote.lists.forEach(rl=>{if(rl&&Array.isArray(rl.items))rl.items.forEach(ri=>{const k=ri&&!ri.img&&m[rl.id+'|'+ri.id];if(k)ri.img=k;});});}
 function align(remote){
   const tomb=cleanTomb(state.tomb),lid=new Set(state.lists.map(l=>l.id)),rid=new Set(remote.lists.map(l=>l&&l.id));
   remote.lists.forEach(rl=>{if(!rl||!rl.id||lid.has(rl.id)||tomb.lists[rl.id])return;
@@ -210,8 +218,9 @@ async function scanQr(){rx={};qrScanClose();
 window.offQrScan=scanQr;
 
 /* ---------- אחרי שהגיעה חבילה (מכל דרך) ---------- */
+const whereTxt=r=>r&&r.where&&r.where.length?' '+T('(ברשימה: '+r.where.join(', ')+')','(in list: '+r.where.join(', ')+')'):'';
 async function got(code,via,peer){const r=await merge(code,via,peer);if(!r)return;
-  const msg='✅ '+T('סונכרן','Synced')+(r.name?' '+T('עם','with')+' '+r.name:'')+': '+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'+(r.del?', '+r.del+' removed':''));
+  const msg='✅ '+T('סונכרן','Synced')+(r.name?' '+T('עם','with')+' '+r.name:'')+': '+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'+(r.del?', '+r.del+' removed':''))+whereTxt(r);
   flash(msg);
   /* מי שסורק / מדביק מקבל את מה שיש בצד השני — וזהו, בלי לבקש "עכשיו לסרוק בחזרה" */
   open(via==='code'||via==='file'?via:'qr',msg);}
@@ -222,9 +231,14 @@ async function got(code,via,peer){const r=await merge(code,via,peer);if(!r)retur
 const LS_BT='yam_off_bt';
 let bt={live:false,name:'',addr:'',code:'',role:'',st:'',retry:0,rt:0,sig:'',sendT:0};
 const btPeer=()=>{const p=obj(jget(LS_BT,null));return p.code&&p.role?p:null;};
-const sig=()=>{const s=JSON.stringify([state.lists,state.tomb,state.pantry,state.customPantry,state.plans]);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return s.length+':'+h;};
+const sig=()=>hsh(JSON.stringify([state.lists,state.tomb,state.pantry,state.customPantry,state.plans]));
 const btSend=o=>{if(wb.dev)return wbSend(JSON.stringify(o));try{const a=nat();return !!(a&&a.btSend(JSON.stringify(o)));}catch(e){return false;}};
-async function btPush(){bt.sig=sig();btSend({k:'pk',d:await pack()});}
+/* בחיבור — הכל (בלי תמונות); אחר כך כל שמירה שולחת רק את הרשימות שהשתנו מאז (ומה שנמחק), כדי שההודעה קטנה ומגיעה מיד */
+const hsh=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return s.length+':'+h;};
+let btSent={};
+const btMark=()=>{btSent={};(state.lists||[]).forEach(l=>{btSent[l.id]=hsh(JSON.stringify(l));});};
+async function btPush(full){bt.sig=sig();const only=full?null:(state.lists||[]).filter(l=>btSent[l.id]!==hsh(JSON.stringify(l))).map(l=>l.id);btMark();
+  btSend({k:'pk',d:await pack(false,{bt:1,only})});}
 function btText(){const n=esc(bt.name||'');
   const S={none:T('אין בלוטות\' בטלפון הזה — משתמשים ב-QR או בקוד שיתוף','No Bluetooth here — use QR or the share code'),
     perm:T('צריך לאשר את הרשאת הבלוטות\' (מכשירים בקרבת מקום) — לוחצים שוב ומאשרים','Allow the Bluetooth permission and try again'),
@@ -240,6 +254,7 @@ function btText(){const n=esc(bt.name||'');
     'try':'🔄 '+T('בודק את ','Checking ')+n+'...',
     notfound:T('לא נמצא טלפון עם הקוד הזה. בודקים שבטלפון השני מוצג הקוד, שהטלפונים קרובים, ושהבלוטות\' דלוק בשניהם — ומנסים שוב.','No phone with this code was found. Check the code, distance and Bluetooth, then retry.')+(navigator.userAgent.match(/Android (8|9|10|11)\b/)?' '+T('בטלפון ישן צריך גם שהמיקום יהיה דלוק בזמן החיפוש.','On older phones, Location must be on while searching.'):''),
     live:'🟢 '+T('מחובר ל'+n+' — כל שינוי עובר מיד, כל עוד הטלפונים קרובים','Connected to '+n+' — every change syncs live'),
+    again:'🔄 '+T('החיבור ל'+n+' נקטע לרגע — מתחבר שוב לבד...','Reconnecting to '+n+'...'),
     lost:'🟠 '+(webBt()?T('החיבור ל'+n+' נקטע. לוחצים "להתחבר שוב" (בטלפון צריך שיהיה פתוח חלון הסנכרון או האפליקציה)','Connection lost. Click Reconnect'):T('החיבור ל'+n+' נקטע (התרחקו?). מתחבר שוב לבד כשיהיו קרובים','Connection lost. Will reconnect when close')),
     away:'🟠 '+T(n+' לא בטווח כרגע. מתחבר לבד כשיהיו קרובים',n+' is out of range. Will reconnect'),
     fail:'⚠️ '+T('לא הצליח. מנסים שוב','Failed — try again')};
@@ -259,13 +274,13 @@ window.offBt=function(e){if(!e||typeof e!=='object')return;
     if(m.k==='hi'){if(String(m.code)!==bt.code){try{nat().btStop();}catch(x){}bt.live=false;bt.st='fail';btShow();return;}
       bt.name=String(m.name||bt.name||'').replace(/[<>]/g,'').slice(0,40);
       ls.set(LS_BT,JSON.stringify({code:bt.code,role:bt.role,addr:bt.addr,name:bt.name,dev:String(m.dev||'').slice(0,40)}));btShow();return;}
-    if(m.k==='pk'&&typeof m.d==='string'){merge(m.d,'bt',bt.name).then(r=>{bt.sig=sig();if(!r)return;
-      if(r.add+r.upd+r.del)flash('🔄 '+T('עודכן מ'+(bt.name||'הטלפון השני')+': ','Updated from '+(bt.name||'the other phone')+': ')+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated'));});}
+    if(m.k==='pk'&&typeof m.d==='string'){merge(m.d,'bt',bt.name).then(r=>{bt.sig=sig();btMark();if(!r)return;
+      if(r.add+r.upd+r.del)flash('🔄 '+T('עודכן מ'+(bt.name||'הטלפון השני')+': ','Updated from '+(bt.name||'the other phone')+': ')+T('נוספו '+r.add+', עודכנו '+r.upd+(r.del?', נמחקו '+r.del:''),r.add+' added, '+r.upd+' updated')+whereTxt(r));});}
     return;}
   if(e.t!=='state')return;
   bt.st=e.s;if(e.code)bt.code=e.code;if(e.ble)bt.ble=e.ble;
   if(e.s==='live'){bt.live=true;bt.retry=0;clearTimeout(bt.rt);bt.addr=e.addr||bt.addr;if(!bt.name)bt.name=e.name||'';
-    const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:myName()||String(ai.model||T('הטלפון השני','The other phone'))});btPush();}
+    const ai=appInfo();btSend({k:'hi',code:bt.code,dev:devId(),name:myName()||String(ai.model||T('הטלפון השני','The other phone'))});btPush(true);}
   else if(e.s==='lost'||e.s==='away'){bt.live=false;btLater();}
   else if(e.s!=='try'&&e.s!=='search')bt.live=false;
   btShow();};
@@ -290,7 +305,7 @@ const webBt=()=>!nat()&&!OFF_APP;
 const wbOk=()=>webBt()&&!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
 const WB_MAGIC=0x59414d31,WB_RX='59414d31-0001-4000-8000-000000000000',WB_TX='59414d31-0002-4000-8000-000000000000';
 const wbSvc=c=>'59414d31-0000-4000-8000-00000000'+c;
-let wb={dev:null,rx:null,buf:new Uint8Array(0),q:Promise.resolve()};
+let wb={dev:null,rx:null,buf:new Uint8Array(0),q:Promise.resolve(),want:null,code:'',tries:0,rt:0,subs:new WeakSet()};
 function wbFeed(u){const n=new Uint8Array(wb.buf.length+u.length);n.set(wb.buf);n.set(u,wb.buf.length);wb.buf=n;
   for(;;){if(wb.buf.length<8)return;const v=new DataView(wb.buf.buffer,wb.buf.byteOffset,wb.buf.byteLength),len=v.getUint32(4);
     if(v.getUint32(0)!==WB_MAGIC||len>2097152){wb.buf=new Uint8Array(0);return;}if(wb.buf.length<8+len)return;
@@ -298,19 +313,28 @@ function wbFeed(u){const n=new Uint8Array(wb.buf.length+u.length);n.set(wb.buf);
 function wbSend(str){const c=wb.rx;if(!c)return false;const b=new TextEncoder().encode(str),f=new Uint8Array(8+b.length),v=new DataView(f.buffer);
   v.setUint32(0,WB_MAGIC);v.setUint32(4,b.length);f.set(b,8);
   wb.q=wb.q.then(async()=>{for(let i=0;i<f.length;i+=500){if(wb.rx!==c)return;const p=f.slice(i,i+500);await(c.writeValueWithResponse?c.writeValueWithResponse(p):c.writeValue(p));}}).catch(()=>{});return true;}
-function wbClose(){const d=wb.dev;wb.dev=null;wb.rx=null;wb.buf=new Uint8Array(0);try{if(d&&d.gatt&&d.gatt.connected)d.gatt.disconnect();}catch(e){}}
+function wbClose(){const d=wb.dev||wb.want;wb.dev=null;wb.want=null;wb.rx=null;wb.buf=new Uint8Array(0);clearTimeout(wb.rt);try{if(d&&d.gatt&&d.gatt.connected)d.gatt.disconnect();}catch(e){}}
+/* מתחברים לטלפון שכבר נבחר (גם אחרי ניתוק — בלי חלון הבחירה, שדורש לחיצה) */
+async function wbLink(dev,code){wb.dev=dev;
+  const sv=await(await dev.gatt.connect()).getPrimaryService(wbSvc(code)),rx=await sv.getCharacteristic(WB_RX),tx=await sv.getCharacteristic(WB_TX);
+  if(!wb.subs.has(tx)){wb.subs.add(tx);tx.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value;wbFeed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength));});}
+  wb.buf=new Uint8Array(0);await tx.startNotifications();if(wb.want!==dev)return;wb.rx=rx;wb.tries=0;
+  offBt({t:'state',s:'live',name:bt.name,addr:''});}
+/* החיבור נקטע (הטלפון התרחק לרגע, נכבה המסך...) — מנסים שוב לבד: אחרי שנייה, 2, 4... עד כ-3 דקות */
+function wbRetry(dev){clearTimeout(wb.rt);if(wb.want!==dev)return;if(wb.tries>=12){bt.st='lost';btShow();return;}
+  const d=[1,2,4,6,10,15][Math.min(wb.tries,5)]*1000;wb.tries++;bt.st='again';btShow();
+  wb.rt=setTimeout(async()=>{if(wb.want!==dev||wb.rx)return;
+    try{await wbLink(dev,wb.code);}catch(e){if(wb.want!==dev)return;try{dev.gatt.disconnect();}catch(x){}wbRetry(dev);}},d);}
 /* חייב להיקרא ישר מלחיצה (הדפדפן פותח חלון בחירה רק אחרי לחיצה) */
 async function wbJoin(code){if(!wbOk()){bt.st='nowb';btShow();return;}
   wbClose();bt.code=code;bt.role='join';bt.name='';bt.addr='';bt.live=false;bt.st='pick';btShow();
   let dev;try{dev=await navigator.bluetooth.requestDevice({filters:[{services:[wbSvc(code)]}]});}
   catch(e){bt.st=/adapter|not available|globally disabled/i.test(String(e&&e.message))?'wboff':e&&e.name==='NotFoundError'?'wbnone':'fail';btShow();return;}
   bt.name=String(dev.name||'').replace(/[<>]/g,'').slice(0,40);bt.st='try';btShow();
-  try{wb.dev=dev;dev.addEventListener('gattserverdisconnected',()=>{if(wb.dev!==dev)return;wb.rx=null;wb.dev=null;offBt({t:'state',s:'lost'});});
-    const sv=await(await dev.gatt.connect()).getPrimaryService(wbSvc(code)),rx=await sv.getCharacteristic(WB_RX),tx=await sv.getCharacteristic(WB_TX);
-    tx.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value;wbFeed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength));});
-    wb.buf=new Uint8Array(0);await tx.startNotifications();if(wb.dev!==dev)return;wb.rx=rx;
-    offBt({t:'state',s:'live',name:bt.name,addr:''});}
-  catch(e){if(wb.dev===dev)wbClose();bt.st='fail';btShow();}}
+  wb.want=dev;wb.code=code;wb.tries=0;
+  dev.addEventListener('gattserverdisconnected',()=>{if(wb.want!==dev||!wb.rx)return;wb.rx=null;bt.live=false;wbRetry(dev);});
+  try{await wbLink(dev,code);}
+  catch(e){if(wb.want===dev)wbClose();bt.st='fail';btShow();}}
 
 /* ---------- ✉️ קוד שיתוף ---------- */
 async function showCode(){const t=$o('#offMine');if(!t)return;t.value=await pack();
@@ -405,7 +429,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
   if(t.closest('#offBtNew')){btCreate();return;}
   if(t.closest('#offBtType')){const j=$o('#offBtJoin');if(j){j.hidden=false;$o('#offBtCode').focus();}return;}
   if(t.closest('#offBtGo')){btJoin();return;}
-  if(t.closest('#offBtAgain')){if(webBt()){const p=btPeer();if(p)wbJoin(p.code);return;}bt.retry=0;btAuto();return;}
+  if(t.closest('#offBtAgain')){if(webBt()){const p=btPeer();if(wb.want&&p&&wb.code===p.code){wb.tries=0;wbRetry(wb.want);}else if(p)wbJoin(p.code);return;}bt.retry=0;btAuto();return;}
   if(t.closest('#offBtDis')){btForget();return;}
   if(t.closest('#offCopy')){const v=($o('#offMine')||{}).value||'';(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(()=>flash('📋 '+T('הועתק','Copied')),()=>{const x=$o('#offMine');x.select();try{document.execCommand('copy');flash('📋 '+T('הועתק','Copied'));}catch(er){}});return;}
   if(t.closest('#offMail')){offMail();return;}
