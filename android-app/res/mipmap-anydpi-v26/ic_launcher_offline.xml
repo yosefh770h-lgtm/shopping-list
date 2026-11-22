@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 📴 "רשימת קניות אופליין": אותו לוגו בירוק מנטה, עם "100% אופליין" -->
+<!-- 📴 "רשימת קניות אופליין": אותו לוגו בתכלת, עם "100% OFFLINE" -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_bg_mint" />
+    <background android:drawable="@color/ic_bg_sky" />
     <foreground android:drawable="@mipmap/ic_launcher_offline_fg" />
     <monochrome android:drawable="@drawable/ic_launcher_mono" />
 </adaptive-icon>
