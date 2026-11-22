@@ -2572,13 +2572,16 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   await B.page.evaluate(() => { addItem('קפה', ''); });
   await B.page.waitForTimeout(1500); await pump();
   assert(/קפה/.test(await names(A)), 'שינוי במחשב לא עבר לטלפון');
-  // ✨ עדכון לאתר בזמן חיבור: לא נטען מחדש (זה היה מנתק), רק "יש גרסה חדשה"
-  await B.page.evaluate(async () => { window.__mark = 1; let et = '"a"'; const f = window.fetch; window.fetch = (u, o) => (u === '/' && o && o.method === 'HEAD' ? Promise.resolve(new Response(null, { headers: { etag: et } })) : f(u, o));
-    await check66(true); et = '"b"'; await check66(true); });
-  await B.page.waitForTimeout(400);
+  // ✨ עדכון לאתר בזמן חיבור, בדפדפן שלא זוכר את הטלפון (בלי getDevices): לא נטען מחדש (זה היה מנתק), רק "יש גרסה חדשה"
+  const upd = (gd) => B.page.evaluate(async (gd) => { window.__mark = 1; const g = navigator.bluetooth.getDevices; if (!gd) navigator.bluetooth.getDevices = undefined;
+    let et = '"a"'; const f = window.fetch; window.fetch = (u, o) => (u === '/' && o && o.method === 'HEAD' ? Promise.resolve(new Response(null, { headers: { etag: et } })) : f(u, o));
+    await check66(true); et = '"b"'; await check66(true); navigator.bluetooth.getDevices = g; }, gd);
+  await B.page.evaluate(() => closeSheet()); await upd(false); await B.page.waitForTimeout(400);
   assert(await B.page.evaluate(() => window.__mark === 1 && !!document.querySelector('#upd66')), 'עדכון לאתר טען מחדש את הדף באמצע חיבור בלוטות\'');
-  // 🔄 הדף במחשב נטען מחדש (עדכון / F5) — מתחבר שוב לבד לאותו טלפון, בלי קוד ובלי חלון בחירה
-  await B.page.reload(); await B.page.waitForFunction(() => window.__wb.conn >= 1, null, { timeout: 8000 });
+  // 🔄 עדכון לאתר כשהדפדפן זוכר את הטלפון: האתר מתעדכן לבד (נטען מחדש) ומתחבר שוב לבד לאותו טלפון, בלי קוד ובלי חלון בחירה
+  await B.page.evaluate(() => closeSheet());
+  await Promise.all([B.page.waitForEvent('load', { timeout: 8000 }), upd(true)]);
+  await B.page.waitForFunction(() => window.__wb.conn >= 1, null, { timeout: 8000 });
   assert((await B.page.evaluate(() => window.__wb.req.length)) === 0, 'אחרי טעינה מחדש נפתח חלון הבחירה');
   await pump(); await B.page.evaluate(() => { addItem('דבש', ''); }); await B.page.waitForTimeout(1500); await pump();
   assert(/דבש/.test(await names(A)), 'אחרי טעינה מחדש של האתר שינוי לא עבר לטלפון');
