@@ -112,10 +112,10 @@ const CITY_LOOSE={};Object.keys(CITIES).forEach(c=>{CITY_LOOSE[cityLoose(c)]=c;}
 function knownCity(v){if(!v)return null;if(CITIES[v])return v;return CITY_LOOSE[cityLoose(v)]||null;}
 function userCity(){const me=state.me||{};return knownCity(me.city)||knownCity(me.address&&me.address.city)||knownCity(state.city)||'ירושלים';}
 const cityName=c=>prefs.lang==='en'&&CITIES[c]&&CITIES[c][4]?CITIES[c][4]:c;
-/* ימי פטירה של צדיקים וגדולי ישראל (חודש לפי מספור hebcal: ניסן=1 … תשרי=7, אדר=12 — בשנה מעוברת נחשב אדר ב׳) */
+/* ימי פטירה של צדיקים וגדולי ישראל — רק תאריכים שנבדקו מול מקורות (חודש לפי מספור hebcal: ניסן=1 … תשרי=7, אדר=12 — בשנה מעוברת נחשב אדר ב׳) */
 const HILULOT=[[8,11,'רחל אמנו','Rachel Imeinu'],[8,3,'הרב עובדיה יוסף','Rav Ovadia Yosef'],[8,15,'החזון איש','the Chazon Ish'],[8,16,'הרב אלעזר מנחם מן שך','Rav Elazar Menachem Man Shach'],
-  [9,12,'הרב אהרן יהודה לייב שטינמן','Rav Aharon Yehuda Leib Steinman'],[10,20,'הרמב״ם','the Rambam'],[11,4,'בבא סאלי','the Baba Sali'],[12,7,'משה רבנו','Moshe Rabbeinu'],
-  [12,17,'הרב חיים קניבסקי','Rav Chaim Kanievsky'],[2,14,'רבי מאיר בעל הנס','Rabbi Meir Baal HaNes'],[4,28,'הרב יוסף שלום אלישיב','Rav Yosef Shalom Elyashiv'],
+  [9,24,'הרב אהרן יהודה לייב שטינמן','Rav Aharon Yehuda Leib Steinman'],[10,20,'הרמב״ם','the Rambam'],[11,4,'בבא סאלי','the Baba Sali'],[12,7,'משה רבנו','Moshe Rabbeinu'],
+  [12,15,'הרב חיים קניבסקי','Rav Chaim Kanievsky'],[2,14,'רבי מאיר בעל הנס','Rabbi Meir Baal HaNes'],[4,28,'הרב יוסף שלום אלישיב','Rav Yosef Shalom Elyashiv'],
   [5,5,'האר״י הקדוש','the Arizal'],[6,24,'החפץ חיים','the Chafetz Chaim'],[7,19,'הגר״א','the Vilna Gaon']];
 function hilulotOn(hd){const leap=hd.isLeapYear(),m=hd.getMonth(),dd=hd.getDate();
   return HILULOT.filter(([hm,hday])=>hday===dd&&(hm===12?m===(leap?13:12):hm===m)).map(([,,he,en])=>({getFlags:()=>0,render:l=>l==='en'?'Yahrzeit of '+en:'יום פטירת '+he}));}
