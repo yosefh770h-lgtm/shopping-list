@@ -2538,6 +2538,10 @@ await test('💻 בלוטות\' מהמחשב: מקלידים באתר את הק�
   const names = (X) => X.page.evaluate(() => state.lists.flatMap((l) => l.items.map((i) => i.n)).sort().join(','));
   assert((await names(A)) === (await names(B)) && /שמן/.test(await names(B)) && /סוכר/.test(await names(A)), 'אחרי החיבור למחשב לא זהים: ' + (await names(A)) + ' ≠ ' + (await names(B)));
   assert(/מחובר/.test(await B.page.locator('#offBtSt').textContent()), 'במחשב לא כתוב שמחובר');
+  // מי הוסיף עובר גם הוא: "👤 השם" ליד המוצר בצד השני
+  const byA = await A.page.evaluate(() => (state.lists.flatMap((l) => l.items).find((i) => i.n === 'שמן') || {}).by || '');
+  const byB = await B.page.evaluate(() => (state.lists.flatMap((l) => l.items).find((i) => i.n === 'שמן') || {}).by || '');
+  assert(byA && byA === byB, 'מי הוסיף לא עבר למחשב: ' + byA + ' / ' + byB);
   // שינוי במחשב עובר לטלפון מיד (חי)
   await B.page.evaluate(() => { addItem('קפה', ''); });
   await B.page.waitForTimeout(1500); await pump();
