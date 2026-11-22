@@ -191,6 +191,10 @@
     if(/^no_settings/.test(e))return['⚙️ אין מסך הרשאה להתקנה','בטלפון הזה אין את המסך "לאפשר התקנה ממקור זה" (כנראה הוסר או נחסם).'];
     return['❓ אחר','שגיאה לא מוכרת. הקוד המדויק מופיע למטה.'];};
   const ERR61=e=>WHY61(e)[0];
+  /* אותה שגיאה, מאותו אדם ומכשיר, באותו מעבר גרסאות, בהפרש של עד שעה (למשל לחץ "לעדכן" 3 פעמים) = שורה אחת עם "× 3".
+     הרשימה מגיעה מהחדש לישן; n = כמה ניסיונות, first = הניסיון הראשון */
+  const GRP61=L=>{const out=[];L.forEach(r=>{const k=[r.user_id||r.ip||'',r.device,r.app_ver,r.target_ver,r.err].join('|'),g=out.find(x=>x.k===k&&new Date(x.first)-new Date(r.at)<36e5);
+    if(g){g.n++;g.first=r.at;}else out.push(Object.assign({},r,{k,n:1,first:r.at}));});return out;};
   /* דגם הטלפון בשם מוכר (סמסונג גלקסי S), למשל SM-S901B ← Galaxy S22 */
   const PH61=d=>{const m=String(d||'').match(/SM-S9(0[168]|1[168]|2[168]|3[168])/);if(!m)return '';const g={0:'22',1:'23',2:'24',3:'25'}[m[1][0]],k={1:'',6:'+',8:' Ultra'}[m[1][1]];return 'Samsung Galaxy S'+g+k;};
   window.phName61=PH61;
@@ -207,7 +211,7 @@
     main.querySelector('#err61go').onclick=()=>{const b=document.querySelector('#boNav [data-s="errors"]');if(b)b.click();};});
   /* בלוח הראשי של הבק אופיס: אם השבוע נכשלו עדכונים — שורה בולטת עם קפיצה לפרטים */
   window.boAfter&&window.boAfter('dash',async main=>{if(!main||main.querySelector('#upf61d0'))return;
-    const {data,error}=await sb.rpc('staff_app_update_errors',{p_days:7});if(error||!Array.isArray(data)||!data.length)return;
+    let {data,error}=await sb.rpc('staff_app_update_errors',{p_days:7});if(error||!Array.isArray(data)||!data.length)return;data=GRP61(data);
     main.insertAdjacentHTML('afterbegin','<div class="card" id="upf61d0" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-color:#d68a45"><b>⚠️</b><span style="flex:1">'+
       esc('השבוע נכשלו '+data.length+' עדכוני אפליקציה'+(data[0]?' · האחרון: '+WHY61(data[0].err)[0]+(PH61(data[0].device)?' ב-'+PH61(data[0].device):''):''))+'</span><button class="btn sec" id="upf61go">לפרטים</button></div>');
     main.querySelector('#upf61go').onclick=()=>{const b=document.querySelector('#boNav [data-s="guests"]');if(b)b.click();
@@ -220,11 +224,11 @@
     main.prepend(card);
     const load=async()=>{const b=card.querySelector('#upf61b');const {data,error}=await sb.rpc('staff_app_update_errors',{p_days:+card.querySelector('#upf61d').value||7});
       if(error){b.textContent='⚠️ '+(/forbidden|42501/.test(error.message)?'אין לך הרשאה':'צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)');return;}
-      const L=data||[];if(!L.length){b.textContent='אין עדכונים שנכשלו בטווח הזה 🙂';return;}
+      const L=GRP61(data||[]);if(!L.length){b.textContent='אין עדכונים שנכשלו בטווח הזה 🙂';return;}
       const cnt={};L.forEach(r=>{const k=ERR61(r.err);cnt[k]=(cnt[k]||0)+1;});
       b.className='';b.innerHTML='<p>'+Object.entries(cnt).sort((a,c)=>c[1]-a[1]).map(([k,n])=>esc(k)+': <b>'+n+'</b>').join(' · ')+'</p>'+
         '<div class="tw" tabindex="0" role="region" aria-label="עדכונים שנכשלו"><table><thead><tr><th>מתי</th><th>מי</th><th>גרסה</th><th>חיבור</th><th>מכשיר</th><th>מה קרה</th></tr></thead><tbody>'+
-        L.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+'</td><td>'+(r.user_id?'<b>'+esc(r.name||'משתמש/ת')+'</b>'+(r.email?'<br><small class="muted" dir="ltr">'+esc(r.email)+'</small>':''):'<span class="muted">אורח/ת</span>')+(r.ip?'<br><small dir="ltr">'+esc(r.ip)+'</small>':'')+'</td>'+
+        L.map(r=>'<tr><td style="white-space:nowrap">'+when55(r.at)+(r.n>1?'<br><span class="kd55 o" title="'+esc('מהניסיון הראשון: '+when55(r.first))+'">× '+r.n+' ניסיונות</span>':'')+'</td><td>'+(r.user_id?'<b>'+esc(r.name||'משתמש/ת')+'</b>'+(r.email?'<br><small class="muted" dir="ltr">'+esc(r.email)+'</small>':''):'<span class="muted">אורח/ת</span>')+(r.ip?'<br><small dir="ltr">'+esc(r.ip)+'</small>':'')+'</td>'+
           '<td data-l="גרסה" dir="ltr">'+esc(r.app_ver||'?')+' → '+esc(r.target_ver||'?')+'</td><td data-l="חיבור">'+({wifi:'📶 Wi-Fi',cellular:'📱 סלולרי',ethernet:'🔌 כבל',none:'אין'}[r.net]||'<span class="muted">לא ידוע</span>')+'</td>'+
           '<td data-l="מכשיר">'+(PH61(r.device)?'<b>'+esc(PH61(r.device))+'</b><br>':'')+'<small>'+esc(r.device||'')+'</small></td><td data-l="מה קרה"><b>'+esc(WHY61(r.err)[0])+'</b><br><small>'+esc(WHY61(r.err)[1])+'</small><br><small class="muted" dir="ltr">'+esc(r.err)+'</small></td></tr>').join('')+'</tbody></table></div>';};
     card.querySelector('#upf61d').onchange=load;await load();});
