@@ -33,7 +33,7 @@ import java.io.ByteArrayInputStream;
  * האתר מזהה אותה לפי YamShoppingOffline/ ב-User-Agent: בלי ענן, בלי מחירים, ועם 📡 סנכרון — QR, בלוטות' (Bt.java) וקוד שיתוף.
  */
 public class OfflineActivity extends Activity implements Bt.Out {
-    static final String VER = "1.2";
+    static final String VER = "1.3";
     static final String HOME = "https://www.yamshopping.com/";
     static final int REQ_CAM = 7401, REQ_FILE = 7402;
 

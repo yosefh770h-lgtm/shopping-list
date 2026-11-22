@@ -2328,6 +2328,9 @@ await test('📡 סנכרון בלי אינטרנט: אפליקציה אופלי
   assert(await A.page.evaluate(() => { const hid = (s) => { const e = document.querySelector(s); return !e || getComputedStyle(e).display === 'none'; };
     return ['.r2tile[data-r2tile="2"]', '#r2s2', '.r2tc', '.pro2tag', '#miTour', '#miLock51', 'details.mgrp[data-g="acct"]'].every(hid); }), 'נשאר באופליין משהו שדורש אינטרנט');
   assert(await A.page.locator('.offpill').isVisible(), 'אין פס סנכרון באופליין');
+  // 📴 אין פרסומת בצד באופליין (גם לא "המבצע שלכם כאן"), ובאתר הרגיל היא נשארת
+  assert(await A.page.evaluate(() => { setTab('list'); renderSideAd(); const s = document.querySelector('#ybSide'); return !s || (s.hidden && !s.textContent); }), 'יש פרסומת בצד באופליין');
+  assert(await B.page.evaluate(() => { applyConfig('ads', { audience: 'all', house: true }); setTab('list'); renderSideAd(); return document.querySelector('#ybSide').textContent.includes('המבצע שלכם כאן'); }), 'הפרסומת בצד נעלמה גם מהאתר');
   await A.page.evaluate(() => { addItem('חלב', ''); addItem('לחם', ''); });
   await B.page.evaluate(() => { addItem('ביצים', ''); });
   // ✉️ קוד: אופליין → אתר
