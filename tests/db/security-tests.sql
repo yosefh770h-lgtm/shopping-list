@@ -2023,7 +2023,7 @@ reset role;
 select tst.ok((select count(*) from public.admin_ids() a where a = '00000000-0000-0000-0000-000000000001') = 1, 'owner: the flagged owner gets admin alerts');
 select tst.ok(not exists (select 1 from public.admin_ids() a where a in ('00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000b3','00000000-0000-0000-0000-0000000000b4')), 'owner: the others do not');
 delete from auth.users where id in ('00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000b3','00000000-0000-0000-0000-0000000000b4');
--- אתר אידישקייט אתרים: טופס פניות לציבור (גם בלי חשבון)
+-- אתר יסוד שביסוד: טופס פניות לציבור (גם בלי חשבון)
 reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.headers', '{"x-real-ip":"9.9.9.9"}', false);
 set role anon;
 select tst.ok(public.studio_contact('ראובן', '050-1234567', 'site', 'שלום, רוצה אתר', true, '', 5000), 'studio: anon can send an inquiry');

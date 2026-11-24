@@ -9223,7 +9223,7 @@ do $$ begin
 exception when others then raise notice 'db_pre_request: %', sqlerrm; end $$;
 
 -- =====================================================================
--- אתר הבית של אידישקייט אתרים (/yiddishkeit/): טופס "צרו קשר" לציבור, גם בלי חשבון.
+-- אתר הבית של יסוד שביסוד (/yiddishkeit/): טופס "צרו קשר" לציבור, גם בלי חשבון.
 -- הפנייה נשמרת ב-feedback (בלי user_id) ומופיעה בבק אופיס יחד עם שאר ההודעות.
 -- הגנה מספאם: שדה מלכודת, זמן מילוי מינימלי, עד 3 פניות ב-10 דקות ו-8 ביום מאותה כתובת, ועד 60 ביום בסך הכל.
 -- פרטיות: נשמר רק מה שהפונה כתב + שעת ההסכמה. פניות מהאתר נמחקות אחרי 12 חודשים (כך כתוב בהודעת הפרטיות).
@@ -9251,7 +9251,7 @@ begin
   if char_length(msg) < 5 or char_length(msg) > 2000 then raise exception 'ההודעה צריכה להיות בין 5 ל-2000 תווים' using errcode = 'P0001'; end if;
 
   delete from public.studio_contact_hits where at < now() - interval '1 day';
-  delete from public.feedback where user_id is null and message like '🌐 פנייה מאתר אידישקייט אתרים%' and created_at < now() - interval '12 months';
+  delete from public.feedback where user_id is null and message like '🌐 פנייה מאתר יסוד שביסוד%' and created_at < now() - interval '12 months';
   if v_ip <> '' and ((select count(*) from public.studio_contact_hits where ip = v_ip and at > now() - interval '10 minutes') >= 3
                or (select count(*) from public.studio_contact_hits where ip = v_ip) >= 8) then
     raise exception 'נשלחו כבר כמה פניות מהמכשיר הזה. נסו שוב מאוחר יותר' using errcode = 'P0001', hint = 'rate_limit';
@@ -9263,7 +9263,7 @@ begin
 
   insert into public.feedback (user_id, name, email, message)
   values (null, nm, ct,
-          '🌐 פנייה מאתר אידישקייט אתרים · ' ||
+          '🌐 פנייה מאתר יסוד שביסוד · ' ||
           case tp when 'site' then 'אתר חדש' when 'app' then 'אפליקציה' when 'yam' then 'רשימת קניות' else 'אחר' end ||
           E'\n' || msg || E'\n\n(אישר/ה את הודעת הפרטיות ' || to_char(now() at time zone 'Asia/Jerusalem', 'DD.MM.YYYY HH24:MI') || ')')
   returning id into fid;
