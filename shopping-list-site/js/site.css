@@ -2616,3 +2616,7 @@ html.r2m body.r2 .tabs.bot52 .tabx14[data-x="receipt"]{order:6}
 .r2hx .r2hits li small{color:var(--muted)}
 .r2hw .r2ch{font-style:normal;display:inline-block;transition:transform .2s}.r2hw.open .r2ch{transform:rotate(180deg)}
 
+/* 🛠️ חלון העדכון: דרכים אחרות להתקין (js/064.js) */
+details.ways66{margin-top:12px;border-top:1px solid var(--line,#ddd);padding-top:10px}
+details.ways66 summary{cursor:pointer;font-weight:700;font-size:14px}
+details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:10px;text-align:center}
