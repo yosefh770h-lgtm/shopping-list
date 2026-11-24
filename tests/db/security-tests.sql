@@ -2026,10 +2026,10 @@ delete from auth.users where id in ('00000000-0000-0000-0000-0000000000b1','0000
 -- אתר יסוד שביסוד: טופס פניות לציבור (גם בלי חשבון)
 reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.headers', '{"x-real-ip":"9.9.9.9"}', false);
 set role anon;
-select tst.ok(public.studio_contact('ראובן', '050-1234567', 'site', 'שלום, רוצה אתר', true, '', 5000), 'studio: anon can send an inquiry');
-select tst.err($$select public.studio_contact('ראובן', '050-1234567', 'site', 'שלום, רוצה אתר', false, '', 5000)$$, 'studio: no consent → refused');
-select tst.err($$select public.studio_contact('ראובן', 'לא טלפון', 'site', 'שלום, רוצה אתר', true, '', 5000)$$, 'studio: bad phone/email → refused');
-select tst.ok(public.studio_contact('בוט', 'x@y.com', 'site', 'spam spam', true, 'http://spam', 5000), 'studio: honeypot answers ok');
+select tst.ok(public.studio_contact('ראובן', '050-1234567', 'yam', 'שלום, רוצה אתר', true, '', 5000), 'studio: anon can send an inquiry');
+select tst.err($$select public.studio_contact('ראובן', '050-1234567', 'yam', 'שלום, רוצה אתר', false, '', 5000)$$, 'studio: no consent → refused');
+select tst.err($$select public.studio_contact('ראובן', 'לא טלפון', 'yam', 'שלום, רוצה אתר', true, '', 5000)$$, 'studio: bad phone/email → refused');
+select tst.ok(public.studio_contact('בוט', 'x@y.com', 'yam', 'spam spam', true, 'http://spam', 5000), 'studio: honeypot answers ok');
 select tst.ok(public.studio_contact('ראובן', 'r@x.com', 'app', 'שאלה שנייה', true, '', 5000) and public.studio_contact('ראובן', 'r@x.com', 'app', 'שאלה שלישית', true, '', 5000), 'studio: up to 3 in 10 minutes');
 select tst.err($$select public.studio_contact('ראובן', 'r@x.com', 'app', 'רביעית', true, '', 5000)$$, 'studio: 4th in 10 minutes from same IP → refused');
 select tst.ok((select count(*) from public.feedback) = 0, 'studio: anon sees no inquiries');

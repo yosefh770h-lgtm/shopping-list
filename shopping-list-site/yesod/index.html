@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>יסוד שביסוד</title>
-<meta name="description" content="יסוד שביסוד: בונים אתרים, אפליקציות וכלים לציבור שומר תורה ומצוות. הסיפור, העבודות, ויצירת קשר.">
+<meta name="description" content="יסוד שביסוד: אתר הבית של המפתח של רשימת קניות. הסיפור, הכלים שנבנו, הורדת הגרסאות העדכניות ויצירת קשר.">
 <meta name="theme-color" content="#13203a">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313203a'/%3E%3Ctext x='35' y='47' font-size='40' text-anchor='middle' fill='%23c9a227' font-family='sans-serif' font-weight='800'%3E%D7%99%D7%A9%3C/text%3E%3Ctext x='32' y='44' font-size='40' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='800'%3E%D7%99%D7%A9%3C/text%3E%3C/svg%3E">
 <link href="/vendor/fonts/fonts-1.css" rel="stylesheet">
@@ -102,9 +102,16 @@ h2{font:700 clamp(30px,4vw,44px)/1.15 var(--display);margin:0 0 10px}
 .work p{margin:0;color:var(--ink-2);font-size:16px}
 
 /* איך אנחנו עובדים */
-.ways{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-inline-start:144px}
-.way h3{font:700 20px/1.3 var(--display);margin:0 0 8px;padding-top:14px;border-top:2px solid var(--ink)}
-.way p{margin:0;color:var(--ink-2);font-size:16px}
+.dls{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-inline-start:144px}
+.dl{border-top:2px solid var(--accent);padding-top:16px;display:flex;flex-direction:column}
+.dl h3{font:700 22px/1.3 var(--display);margin:0 0 4px}
+.dl .ver{font-size:14px;color:var(--muted);margin:0 0 10px}
+.dl .ver span:not(:empty)::before{content:" · "}
+.dl p{margin:0 0 18px;color:var(--ink-2);font-size:16px;flex:1}
+.dl .btn{align-self:flex-start}
+.news{margin:36px 0 0 0;margin-inline-start:144px;color:var(--ink-2);font-size:15.5px}
+.news summary{cursor:pointer;color:var(--ink);font-weight:500}
+.news ul{margin:12px 0 0;padding-inline-start:20px}
 
 /* פניות */
 .contact{display:grid;grid-template-columns:120px 1fr 300px;gap:24px}
@@ -138,7 +145,7 @@ footer a{color:var(--ink-2)}
 .hero-shot{border:none;outline:1.5px solid #d4af5a;outline-offset:12px;border-radius:2px}
 .btn.solid{background:#d4af5a;border-color:#d4af5a;color:#13203a}
 .btn{border-color:#d4af5a}
-#ways{background:#13203a;color:#f2ead8;--ink:#f2ead8;--ink-2:#c9c0ad;--accent:#d4af5a;--rule:rgba(212,175,90,.3)}
+#downloads{background:#13203a;color:#f2ead8;--ink:#f2ead8;--ink-2:#c9c0ad;--accent:#d4af5a;--rule:rgba(212,175,90,.3)}
 footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
 
 @media (max-width:880px){
@@ -151,7 +158,8 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
   .feature{grid-template-columns:1fr;padding:24px 20px}
   .works{grid-template-columns:1fr}
   .work:nth-child(odd),.work:nth-child(even){padding-inline:0;border-inline-end:none}
-  .ways{grid-template-columns:1fr;margin:0;gap:22px}
+  .dls{grid-template-columns:1fr;margin:0;gap:28px}
+  .news{margin-inline-start:0}
   form{grid-template-columns:1fr;padding:22px 18px}
   section{padding:52px 0}
 }
@@ -173,7 +181,7 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
     <nav class="nav" aria-label="ניווט ראשי">
       <a href="#story">הסיפור</a>
       <a href="#work">מה בנינו</a>
-      <a href="#ways">איך עובדים</a>
+      <a href="#downloads">הורדות</a>
       <a class="cta" href="#contact">צרו קשר</a>
     </nav>
   </div>
@@ -183,11 +191,11 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
   <div class="herozone"><div class="wrap">
     <div class="hero">
       <div>
-        <p class="kicker">סטודיו קטן לבניית אתרים ואפליקציות</p>
+        <p class="kicker">אתר הבית של המפתח</p>
         <h1>כלים דיגיטליים<br>שמתאימים <em>לבית שלנו</em></h1>
-        <p class="lead">אנחנו בונים אתרים, אפליקציות ומערכות לציבור שומר תורה ומצוות. בלי פרסומות לא ראויות, עם תוכן נקי, ושעובדים גם בחיבור מסונן וגם בלי אינטרנט בכלל.</p>
+        <p class="lead">כאן מרוכזים הכלים שנבנו לציבור שומר תורה ומצוות: רשימת קניות, השוואת מחירים והאפליקציות. בלי פרסומות לא ראויות, עם תוכן נקי, ועובדים גם בחיבור מסונן וגם בלי אינטרנט בכלל.</p>
         <div class="btns">
-          <a class="btn solid" href="#contact">לפנות אלינו</a>
+          <a class="btn solid" href="#downloads">להורדות</a>
           <a class="btn" href="#work">לראות מה בנינו</a>
         </div>
       </div>
@@ -211,7 +219,7 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
         <h2 id="story-h">הסיפור שלנו</h2>
         <p>זה התחיל מרשימת קניות. רצינו דרך פשוטה לכתוב מה חסר בבית, לשתף את הרשימה עם המשפחה, ולדעת איפה הכי זול לקנות. חיפשנו כלי שמתאים לציבור שלנו, שנפתח בנטפרי, שאין בו תמונות ופרסומות לא ראויות, ושלא מבקש להיות מחובר כל הזמן. לא מצאנו, אז בנינו.</p>
         <p>הרשימה הפכה לאתר <a href="/">yamshopping.com</a>, ואחריה הגיעו השוואת מחירים מכל רשתות השיווק, אפליקציה לאנדרואיד, אפליקציה מיוחדת לטלפון בלי אינטרנט, ותוסף שעוזר לצוות לענות לפניות הציבור. כל אחד מהם נולד מבקשה אמיתית של משתמש.</p>
-        <p>מתוך העבודה הזאת קמה יסוד שביסוד. אנחנו לוקחים את מה שלמדנו ובונים גם לאחרים: לעסקים, למוסדות ולמי שצריך כלי דיגיטלי שמכבד את הדרך שלו.</p>
+        <p>יסוד שביסוד הוא הבית של כל הכלים האלה. כאן אפשר לקרוא איך הם נבנו, להוריד את הגרסאות העדכניות, ולכתוב לנו שאלה, הצעה או דיווח על תקלה.</p>
       </div>
       <aside class="side" aria-label="מה חשוב לנו">
         <h3>מה חשוב לנו</h3>
@@ -290,20 +298,39 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
     </div>
   </section>
 
-  <section id="ways" aria-labelledby="ways-h">
+  <section id="downloads" aria-labelledby="dl-h">
     <div class="wrap">
       <div class="head">
         <div class="num" aria-hidden="true">ג׳</div>
         <div>
-          <h2 id="ways-h">איך אנחנו עובדים</h2>
-          <p class="sub">פרויקט קטן או גדול, הדרך דומה.</p>
+          <h2 id="dl-h">הורדות</h2>
+          <p class="sub">הגרסאות העדכניות, ישר מהאתר. מתאים לטלפונים עם אנדרואיד.</p>
         </div>
       </div>
-      <div class="ways">
-        <div class="way"><h3>מקשיבים</h3><p>שיחה קצרה כדי להבין מה צריך, למי זה מיועד, ואיך אנשים ישתמשו בזה בפועל.</p></div>
-        <div class="way"><h3>בונים בשלבים</h3><p>גרסה ראשונה מהר, ואז משפרים לפי מה שהמשתמשים באמת עושים. רואים כל שלב לפני שהוא עולה.</p></div>
-        <div class="way"><h3>נשארים ליד</h3><p>אחרי שהאתר עולה אנחנו ממשיכים לתחזק, לעדכן ולענות. לא בונים ונעלמים.</p></div>
+      <div class="dls">
+        <div class="dl">
+          <h3>רשימת קניות לאנדרואיד</h3>
+          <p class="ver">גרסה <b id="apkV">2.2</b><span id="apkD"></span></p>
+          <p>האפליקציה המלאה: התראות על מבצעים, וידג'ט למסך הבית, סריקת ברקוד וצילום קבלות. מתעדכנת מתוך עצמה.</p>
+          <a class="btn solid" href="/download/yamshopping.apk" download="yamshopping.apk">להורדה</a>
+        </div>
+        <div class="dl">
+          <h3>רשימת קניות אופליין</h3>
+          <p class="ver">לטלפון בלי אינטרנט</p>
+          <p>הרשימה נשמרת בטלפון ומסתנכרנת עם המחשב או עם טלפון אחר בבלוטות׳, בברקוד או בקוד קצר.</p>
+          <a class="btn solid" href="/download/yamshopping-offline.apk" download="yamshopping-offline.apk">להורדה</a>
+        </div>
+        <div class="dl">
+          <h3>באתר, בלי התקנה</h3>
+          <p class="ver">מכל מחשב וטלפון</p>
+          <p>רשימת קניות עובדת גם ישר מהדפדפן, ונפתחת בנטפרי ובחיבורים מסוננים.</p>
+          <a class="btn" href="/">לאתר רשימת קניות</a>
+        </div>
       </div>
+      <details class="news" id="news" hidden>
+        <summary>מה חדש בגרסה האחרונה</summary>
+        <ul id="apkN"></ul>
+      </details>
     </div>
   </section>
 
@@ -312,7 +339,7 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
       <div class="num" aria-hidden="true">ד׳</div>
       <div>
         <h2 id="contact-h">צרו קשר</h2>
-        <p class="sub" style="margin-bottom:24px">רוצים אתר, אפליקציה או כלי לעסק? יש שאלה על רשימת קניות? כתבו לנו ונחזור אליכם.</p>
+        <p class="sub" style="margin-bottom:24px">יש שאלה, הצעה או תקלה? כתבו לנו ונחזור אליכם.</p>
         <form id="f" novalidate>
           <div class="f">
             <label for="nm">שם</label>
@@ -325,10 +352,9 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
           <div class="f wide">
             <label for="tp">במה מדובר?</label>
             <select id="tp" name="topic">
-              <option value="site">אתר חדש</option>
-              <option value="app">אפליקציה או כלי לעסק</option>
               <option value="yam">שאלה על רשימת קניות</option>
-              <option value="other">משהו אחר</option>
+              <option value="app">התקנה או עדכון של האפליקציה</option>
+              <option value="other">הצעה או משהו אחר</option>
             </select>
           </div>
           <div class="f wide">
@@ -370,6 +396,13 @@ footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
   const SB = 'https://ygyfodxfbebnkwdcbjrp.supabase.co', KEY = 'sb_publishable_ePRvA2OrDbBN3tbjbD3p-w_8maEwTCK';
   const t0 = Date.now(), $ = (id) => document.getElementById(id);
   $('yr').textContent = new Date().getFullYear();
+  fetch('/download/app-version.json', { cache: 'no-cache' }).then((r) => r.ok ? r.json() : null).then((v) => {
+    if (!v || !v.version) return;
+    $('apkV').textContent = v.version;
+    if (v.date) $('apkD').textContent = v.date.split('-').reverse().join('.');
+    (v.notes || []).forEach((n) => { const li = document.createElement('li'); li.textContent = n; $('apkN').appendChild(li); });
+    if ((v.notes || []).length) $('news').hidden = false;
+  }).catch(() => {});
   const out = $('out'), go = $('go'), f = $('f');
   const say = (t, ok) => { out.textContent = t; out.className = 'msg ' + (ok ? 'ok' : 'bad'); };
   const okContact = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || /^(0[2-9]\d{7,8}|972[2-9]\d{7,8})$/.test(v.replace(/\D/g, ''));

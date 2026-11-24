@@ -9243,7 +9243,7 @@ begin
   nm := left(btrim(regexp_replace(coalesce(p_name, ''), '[\r\n\t<>]+', ' ', 'g')), 60);
   ct := left(btrim(regexp_replace(coalesce(p_contact, ''), '[\r\n\t<>]+', ' ', 'g')), 120);
   msg := btrim(coalesce(p_message, ''));
-  tp := case when p_topic in ('site', 'app', 'yam', 'other') then p_topic else 'other' end;
+  tp := case when p_topic in ('app', 'yam', 'other') then p_topic else 'other' end;
   if char_length(nm) < 2 then raise exception 'נא לכתוב שם' using errcode = 'P0001'; end if;
   if ct !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' and regexp_replace(ct, '[^0-9]', '', 'g') !~ '^(0[2-9][0-9]{7,8}|972[2-9][0-9]{7,8})$' then
     raise exception 'נא לכתוב טלפון או כתובת מייל תקינים' using errcode = 'P0001';
@@ -9264,7 +9264,7 @@ begin
   insert into public.feedback (user_id, name, email, message)
   values (null, nm, ct,
           '🌐 פנייה מאתר יסוד שביסוד · ' ||
-          case tp when 'site' then 'אתר חדש' when 'app' then 'אפליקציה' when 'yam' then 'רשימת קניות' else 'אחר' end ||
+          case tp when 'app' then 'אפליקציה' when 'yam' then 'רשימת קניות' else 'אחר' end ||
           E'\n' || msg || E'\n\n(אישר/ה את הודעת הפרטיות ' || to_char(now() at time zone 'Asia/Jerusalem', 'DD.MM.YYYY HH24:MI') || ')')
   returning id into fid;
   -- הטריגר fill_author ממלא שם ומייל מהחשבון; כאן הפונה כתב אותם בעצמו
