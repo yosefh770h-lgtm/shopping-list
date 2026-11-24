@@ -14,13 +14,8 @@ function updHtml29(u){const lines=String(u.body||'').split('\n').map(x=>x.replac
   return '<div class="u"><b>'+esc(u.title)+'</b>'+(lines.length>1?'<ul style="margin:6px 0 0;padding-inline-start:18px">'+lines.map(l=>'<li style="margin:3px 0">'+esc(l)+'</li>').join('')+'</ul>':'<p>'+esc(lines[0]||'')+'</p>')+'</div>';}
 showUpdates=function(list){const body=$29('#updBody'),ok=$29('#updOk'),hint=$29('#updHint');
   body.innerHTML=list.slice(0,3).map(updHtml29).join('');ok.disabled=false;ok.textContent=T('הבנתי 👍','Got it 👍');if(hint)hint.hidden=true;$29('#updPop').hidden=false;body.scrollTop=0;setTimeout(()=>ok.focus(),50);};
-async function openNews29(){if(!sb){flash(T('אין חיבור כרגע','Offline'));return;}const b=openSheet('🆕 '+T('מה חדש באתר','What\'s new'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');
-  const {data}=await sb.from('site_updates').select('id,title,body,created_at,active').order('created_at',{ascending:false}).limit(10);const list=(data||[]).filter(u=>u.active!==false);
-  /* בראש: "מה חדש" של גרסת האתר הנוכחית */
-  const c=typeof CHANGELOG!=='undefined'&&CHANGELOG[0]&&CHANGELOG[0][0]===APP_VERSION&&CHANGELOG[0];const ver=c?'<div class="v26card">'+updHtml29({title:T('גרסה ','Version ')+c[0],body:String(c[3]).replace(/^\s*מה חדש:\s*/,'')}).replace('<div class="u">','<div>')+'<small class="muted-note">'+esc(c[1])+'</small></div>':'';
-  b.innerHTML=ver+(list.length?list.map(u=>'<div class="v26card">'+updHtml29(u).replace('<div class="u">','<div>')+'<small class="muted-note">'+esc(fmtDate(new Date(u.created_at)))+'</small></div>').join(''):(ver?'':'<div class="empty">'+T('עוד אין עדכונים 🙂','No updates yet 🙂')+'</div>'));}
-add26('miNews29','🆕','מה חדש באתר','What\'s new','miAbout',openNews29);
-yamiStep(async raw=>{if(sb&&authUser&&/^(מה חדש|מה חדש באתר|עדכונים|מה התחדש)\??$/.test(String(raw||'').trim())){openNews29();botSay('🆕 '+T('פתחתי את "מה חדש באתר"','Opened what\'s new'));return true;}return false;});
+/* 🆕 "מה חדש" — מסך אחד לאתר ולאפליקציה, עם היסטוריית עדכונים: js/091-whatsnew.js */
+add26('miNews29','🆕','מה חדש','What\'s new','miAbout',()=>window.openWhatsNew&&openWhatsNew());
 /* ---------- 📢 בבק אופיס: פרסום עדכון — בוחרים הודעה קצרה לכולם או "מה חדש" ---------- */
 const DRAFT29T='חדש באתר רשימת קניות';
 const DRAFT29=['🔢 כמויות לבד לפי מספר הנפשות בבית','🛍️ מצב קנייה, מסך נוח לקנייה בחנות לפי מחלקות','🏪 הרשימה מתחלקת לפי חנויות, ירקן, אטליז וסופר','📅 תזכורת מיאמי יום לפני הקנייה','💰 כמה חסכתם החודש','🛒 באיזו חנות הקנייה הקבועה שלכם הכי זולה השבוע','🔔 התראה כשמוצר שאתם מחכים לו יורד במחיר','🧮 כמה לקנות לשבת ולאירועים לפי מספר האורחים','📋 רשימות מוכנות לברית, בר מצווה, שבע ברכות וקידוש','⚠️ אזהרה על אלרגיות כשסורקים ברקוד','⌨️ הצעות כבר מהאות הראשונה שמקלידים','🏆 טבלת המדווחים של החודש','💌 קישור אישי לכל אחד, רואים כמה נרשמו דרככם ומקבלים תג שגריר'];

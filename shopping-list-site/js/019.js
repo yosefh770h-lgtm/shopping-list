@@ -2,7 +2,7 @@
 /* ================= גרסה 16: הרשמה/כניסה/איפוס מוגנים בשרת (בלי שום שלב נוסף), מונה מחוברים,
    מכונות אוטומטיות לעסקים, יומן פעילות, תיקון עדכונים בפעמון, גרסה וסיפור באודות ================= */
 const $16=s=>document.querySelector(s);
-const APP_VERSION='20';
+const APP_VERSION='21'; /* גרסת האתר. מה חדש בכל גרסה: CHANGELOG (הגרסה האחרונה ב-js/091-whatsnew.js) */
 let CHANGELOG=[
  ['16.5','אוקטובר 2026',
   'מה היה: משתמש חדש היה צריך לגלות לבד מה יש באתר; רשימה לשבת או לחג בנו מאפס; ומוצר שנגמר בבית היה צריך להוסיף לרשימה בעצמכם.',
@@ -166,11 +166,6 @@ const _v16RenderNotif=renderNotif;
 renderNotif=function(){_v16RenderNotif.apply(this,arguments);document.querySelectorAll('#notifBody [data-nid]').forEach(el=>{if(el.querySelector('.ndel16'))return;el.insertAdjacentHTML('beforeend','<button class="ndel16" data-ndel="'+esc(el.dataset.nid)+'" aria-label="'+T('מחיקת העדכון','Delete')+'">🗑️</button>');});};
 $16('#notifBody').addEventListener('click',e=>{const d=e.target.closest('[data-ndel]');if(!d)return;e.stopPropagation();seen16.add(d.dataset.ndel);saveSeen16();inbox=inbox.filter(x=>x.id!==d.dataset.ndel);saveInbox();updateBell(false);renderNotif();},true);
 
-/* גרסת האתר — בתחתית התפריט ☰, כדי לבדוק בקלות שהדפדפן טען את העדכון האחרון */
-const SITE_BUILD='13.10.26';
-(function(){const m=document.querySelector('#hMenu');if(!m||document.querySelector('#siteBuild'))return;
-  m.insertAdjacentHTML('beforeend','<div id="siteBuild" style="text-align:center;font-size:11px;color:var(--muted);padding:8px 0 2px">'+T('גרסת האתר: ','Version: ')+SITE_BUILD+'</div>');})();
-
 /* ---------- 🛠️ יומן פעילות (המנהל רואה מה כל אחד עושה) ---------- */
 function logAct(action,detail){if(!sb||!authUser)return;try{sb.rpc('log_activity',{p_action:action,p_detail:String(detail||'').slice(0,300)}).then(()=>{},()=>{});}catch(e){}}
 const _v16AddItem=addItem;
@@ -258,8 +253,7 @@ let ABOUT_STORY='רציתי מאוד לשתף בבית מה חסר — שכל א
 const _v16OpenAbout=openAbout;
 openAbout=function(){_v16OpenAbout.apply(this,arguments);const b=$16('#aboutBody');if(!b||b.querySelector('.ver16'))return;
   const story='<div class="story16"><h3>💚 '+T('איך זה התחיל','How it started')+'</h3>'+ABOUT_STORY.split(/\n{2,}/).map(x=>'<p>'+esc(x).replace(/\n/g,'<br>')+'</p>').join('')+'</div>';
-  const log='<details class="chg16"><summary>🆕 '+T('מה חדש — לפי גרסאות','What\'s new by version')+'</summary>'+CHANGELOG.map(([v,d,was,now])=>'<div class="chgv"><b>'+T('גרסה ','Version ')+esc(v)+'</b> <small>'+esc(d)+'</small><p>'+esc(was)+'</p><p>'+esc(now)+'</p></div>').join('')+'</details>';
-  const copy=b.querySelector('.about-copy');const html=story+log+'<p class="ver16">'+T('גרסה ','Version ')+APP_VERSION+'</p>';
+  const copy=b.querySelector('.about-copy');const html=story+'<div class="ver16"></div>'; /* הגרסאות והקרדיט: js/091-whatsnew.js */
   if(copy)copy.insertAdjacentHTML('beforebegin',html);else b.insertAdjacentHTML('beforeend',html);};
 /* כל עדכון גרסה מספר פעם אחת מה היה ומה חדש */
 setTimeout(()=>{try{const seenV=localStorage.getItem('yam_ver_seen');if(seenV===APP_VERSION)return;if(!state.user){return;}
@@ -287,7 +281,6 @@ let HOWTO16=[
  [/(מכונה|מכונות|מכונת).*(פחיות|חטיפים|קפה|אוטומטי)|ניהול מכונות/,T('🎰 בעלי עסקים: "האתר העסקי" ← לשונית "🎰 מכונות" ← מוסיפים מכונה (פחיות, חטיפים, קפה...) ← לכל תא: מוצר, מחיר, קיבולת. "−" רושם מכירה, "מילוי מלא" ממלא הכל, "מה להביא למילוי" נותן רשימה לשליחה בוואטסאפ, ויש רישום של כסף שנאסף.','Business site → Machines tab.')]];
 async function v16BotPre(raw){const t=norm(raw);
   if(/^(מה|איזה)\s.*(יש|אפשר|יודע|יודעת|עושה|עושים)\s.*(באתר|האתר|באפליקציה|האפליקציה)|^(הסבר|תסבירי|תסביר|ספרי|ספר)\s.*(על )?(האתר|האפליקציה)|איך (עובד|עובדת) (האתר|האפליקציה)|^(סיור|מדריך)( באתר)?$/.test(t)){botSay(SITE_TOUR16);return true;}
-  if(/^(מה חדש|מה התחדש|עדכונים|מה השתנה|איזו גרסה|גרסה)(\s+(באתר|באפליקציה|בגרסה|בגרסה החדשה|בגרסה האחרונה|יש|עכשיו))*[?？!.]*$/.test(t)){const c=CHANGELOG[0];botSay('🆕 '+T('גרסה ','Version ')+c[0]+' ('+c[1]+')\n\n'+c[2]+'\n\n'+c[3]+'\n\n'+T('את כל הגרסאות אפשר לראות ב-⚙️ ← אודות האתר.','All versions: Menu → About.'));return true;}
   for(const [rx,ans] of HOWTO16)if(rx.test(t)){botSay(ans);return true;}
   return false;}
 yamiStep(v16BotPre);

@@ -579,7 +579,7 @@ document.head.insertAdjacentHTML('beforeend','<style id="offsync87">'+
   '@media (prefers-color-scheme:dark){.offsync .offok{background:#12301f;color:#c9f0d6;border-color:#2f6b47}}'+
   /* 📴 באפליקציה האופליין: מסתירים את מה שדורש אינטרנט (מחירים, וואטסאפ, ג׳ימייל) */
   'html.offapp .tab[data-t="prices"],html.offapp .tabx14,html.offapp #shWa,html.offapp #shGmail,html.offapp #btnChat,html.offapp #btnBell,html.offapp #btnShareSite,html.offapp #botFab,'+
-  ['miMail','miBizDir','miMyOrders','miSave26','miWeek26','miCl27','miAlert26','miUpload','miProdUp','miDeal','miChatSite','miReviews','miTop26','miInv26','miComm44','miNews29','miNetfree','miMembers','miMerge20','miAcct','miLogout','miDelete','miTour','miLock51'].map(i=>'html.offapp #'+i).join(',')+','+
+  ['miMail','miBizDir','miMyOrders','miSave26','miWeek26','miCl27','miAlert26','miUpload','miProdUp','miDeal','miChatSite','miReviews','miTop26','miInv26','miComm44','miNetfree','miMembers','miMerge20','miAcct','miLogout','miDelete','miTour','miLock51'].map(i=>'html.offapp #'+i).join(',')+','+
   /* חנויות, סניפים, מבצעים, "מוצר אחד" וביגוד — הכל נתונים מהאינטרנט; PRO וצבעי לוגו נעולים (קנייה דורשת אינטרנט); התראות וירידות מחיר; מוניטין (נקודות על פרסום מחירים) */
   'html.offapp .r2tile[data-r2tile="2"],html.offapp #r2s2,html.offapp .r2tc,html.offapp .pro2tag,html.offapp .r2pro,html.offapp [data-metab="rep"],html.offapp details.mgrp[data-g="acct"]{display:none!important}html.offapp .r2tile[data-r2tile="3"]{grid-column:1/-1}'+
   '.offtabs{display:flex;gap:6px;margin:4px 0 8px}.offtabs button{flex:1;border:1px solid var(--chipbr);background:var(--inputbg);color:var(--text);border-radius:18px;padding:8px 6px;font:inherit;font-size:14px;cursor:pointer}'+
