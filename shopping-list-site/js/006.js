@@ -1993,7 +1993,7 @@ async function renderAdminPanel(){
   const box=document.querySelector('#adminBody');if(!isStaff()){box.innerHTML='';return;}
   box.innerHTML='<div class="empty">טוען...</div>';
   const d=await adminFetch();
-  let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px"><button class="btn" onclick="openBO()">🏢 פתיחת הבק אופיס המלא</button></div>';
+  let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px"><button class="btn" data-ui="openBO">🏢 פתיחת הבק אופיס המלא</button></div>';
   if(isAdmin())html+='<h4>👥 המשתמשים שהצטרפו ('+d.users.length+') · מחוברים עכשיו: '+d.users.filter(isOnline).length+'</h4><div style="overflow-x:auto;margin:6px 0 14px">'+usersTable(d.users)+'</div>';
   html+='<h4 style="margin-top:14px">🧠 דברים שלימדו את הבוט — ממתינים ('+d.kb.length+')</h4>';
   html+=d.kb.length?d.kb.map(k=>'<div class="mrow" style="flex-wrap:wrap"><span style="flex:1">❓ '+esc(k.question)+'<br>💬 '+esc(k.answer)+' <small style="color:var(--muted)">'+crSlot('kb',k.id)+'</small></span><button data-kapprove="'+k.id+'">✅</button><button data-kreject="'+k.id+'" style="background:#b23b3b">🗑️</button></div>').join(''):'<div class="empty">אין</div>';
