@@ -269,7 +269,7 @@ await test('נגישות (ת״י 5568 / WCAG AA): בלי הפרות במסכים
   const axeSrc = fs.readFileSync(axePath, 'utf8'); const bad = [];
   for (const dark of [false, true]) {
     const { ctx, page } = await newPage();
-    await page.addScriptTag({ content: axeSrc });
+    await page.evaluate(axeSrc); // evaluate ולא addScriptTag: תג script עם קוד בפנים נחסם ב-CSP של האתר
     await page.evaluate((dark) => { [['חלב', '2'], ['לחם', '']].forEach(([n, q]) => addItem(n, q)); errAdd('לעבור בדואר'); if (dark) { state.dark = true; document.body.classList.add('dark'); } }, dark);
     for (const [name, prep] of [['list', () => setTab('list')], ['home', () => setTab('home')], ['prices', () => setTab('prices')], ['stores', () => setTab('stores')], ['bot', () => { setTab('list'); openBot(); sendToBot('שלום'); }], ['errands', () => { document.querySelector('#botSheet').classList.remove('open'); openErrands(false); }]]) {
       await page.evaluate(prep); await page.waitForTimeout(500);
@@ -320,7 +320,7 @@ await test('קטגוריית שימורים + דיווחי מחיר: לפי קט
   assert(r.open && r.hist.length === 5, 'היסטוריה: ' + JSON.stringify(r.hist));
   assert(/7\.10|7\.1/.test(r.hist[r.hist.length - 1]) && /5\.90|5\.9/.test(r.hist[0]), 'ההיסטוריה לא מהחדש לישן: ' + r.hist.join(' | '));
   assert(r.hist.some((t) => /ממתין לאישור/.test(t)) && r.hist.every((t) => !/חלב/.test(t)), 'סטטוס / סינון מוצר בהיסטוריה: ' + r.hist.join(' | '));
-  await page.addScriptTag({ content: fs.readFileSync(process.env.AXE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8') });
+  await page.evaluate(fs.readFileSync(process.env.AXE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8'));
   for (const dark of [false, true]) {
     const v = await page.evaluate(async (dark) => { document.body.classList.toggle('dark', dark); return (await axe.run('#panePrices', { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } })).violations.map((x) => x.id + '×' + x.nodes.length + ' ' + (x.nodes[0] && x.nodes[0].target.join(' '))); }, dark);
     assert(!v.length, 'נגישות' + (dark ? ' (כהה)' : '') + ': ' + v.join(' | '));
