@@ -2,7 +2,7 @@
    • מספר גרסה אמיתי (לא תאריך): האתר — APP_VERSION (js/019.js), האפליקציה — download/app-version.json והגרסה המותקנת בטלפון (UA).
    • מסך אחד "🆕 מה חדש" עם שתי לשוניות: 🌐 באתר / 📱 באפליקציה. בכל אחת: מה חדש בעדכון האחרון, ומתחת היסטוריית עדכונים.
      באתר — גם ההודעות שהצוות פרסם בבק אופיס (site_updates). באפליקציה — גם "בקרוב בגרסה הבאה" והאפליקציה האופליין.
-   • קרדיט "נוצר על ידי אידישקייט אתרים" — בתחתית התפריט ☰, באודות ובמסך מה חדש.
+   • קרדיט "נוצר על ידי יסוד שביסוד" — בתחתית התפריט ☰, באודות ובמסך מה חדש.
    כשמשחררים APK חדש: מעבירים את הסעיפים מ-APP_NEXT ל-download/app-version.json (שם הם נקראים אוטומטית כ"מה חדש"),
    מוסיפים את הגרסה הקודמת ל-APP_HIST, ומעדכנים את APP_NEXT מתוך android/לגרסה-*.md שבתיקיית הפרויקט.
    באפליקציה האופליין: מוסיפים ל-OFF_HIST בכל גרסה (הקוד שלה ארוז בתוכה, אז השינוי מגיע אליה רק בגרסה הבאה שלה). */
@@ -55,14 +55,15 @@ function mark91(sz){const g='yk91g'+(++gid91);
   return '<svg class="yk91m" viewBox="0 0 40 40" width="'+sz+'" height="'+sz+'" aria-hidden="true" focusable="false"><defs><linearGradient id="'+g+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e3a5f"/><stop offset="1" stop-color="#2a8f87"/></linearGradient></defs>'+
     '<rect x="1" y="1" width="38" height="38" rx="11" fill="url(#'+g+')"/>'+
     '<path d="M11 14.5 6.5 20 11 25.5M29 14.5 33.5 20 29 25.5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
-    '<text x="20" y="27.5" text-anchor="middle" font-size="20" font-weight="800" fill="#fff" font-family="\'Frank Ruhl Libre\',David,\'Times New Roman\',serif">א</text>'+
+    '<text x="20" y="27.5" text-anchor="middle" font-size="20" font-weight="800" fill="#fff" font-family="\'Frank Ruhl Libre\',David,\'Times New Roman\',serif">י</text>'+
     '<path d="M31 4.5l1.1 2.4 2.4 1.1-2.4 1.1L31 11.5l-1.1-2.4-2.4-1.1 2.4-1.1z" fill="#f2c14e"/></svg>';}
-/* 🔗 כתובת האתר של אידישקייט אתרים — כשיש כתובת, כותבים אותה כאן (https://...) והקרדיט נהיה קישור. ריק = בלי קישור.
+/* ✏️ השם והסמל של החברה: כאן ובפונקציה mark91 (הסמל הזמני — האות י׳; יוחלף בלוגו כשיאושר)
+   🔗 כתובת האתר של יסוד שביסוד — כשיש כתובת, כותבים אותה כאן (https://...) והקרדיט נהיה קישור. ריק = בלי קישור.
    באפליקציה האופליין אין אינטרנט, אז שם הקרדיט אף פעם לא קישור */
 const CREDIT_URL='https://yamshopping.com/yiddishkeit/';
 const credit91=(big)=>{const tag=CREDIT_URL&&!OFF_APP?'a':'div';
-  return '<'+tag+' class="yk91'+(big?' big':'')+'"'+(tag==='a'?' href="'+esc(CREDIT_URL)+'" target="_blank" rel="noopener"':' role="note"')+' aria-label="'+L('נוצר על ידי אידישקייט אתרים','Created by Yiddishkeit Websites')+'">'+mark91(big?40:26)+
-  '<span class="yk91t"><small>'+(OFF_APP||myApp?L('האפליקציה נוצרה על ידי','App created by'):L('האתר נוצר על ידי','Site created by'))+'</small><b>אידישקייט אתרים</b></span></'+tag+'>';};
+  return '<'+tag+' class="yk91'+(big?' big':'')+'"'+(tag==='a'?' href="'+esc(CREDIT_URL)+'" target="_blank" rel="noopener"':' role="note"')+' aria-label="'+L('נוצר על ידי יסוד שביסוד','Created by Yesod Shebiyesod')+'">'+mark91(big?40:26)+
+  '<span class="yk91t"><small>'+(OFF_APP||myApp?L('האפליקציה נוצרה על ידי','App created by'):L('האתר נוצר על ידי','Site created by'))+'</small><b>יסוד שביסוד</b></span></'+tag+'>';};
 
 /* ---------- 🆕 המסך ---------- */
 function siteTab91(news){const c=CHANGELOG[0]||[];
