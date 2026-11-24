@@ -2023,6 +2023,20 @@ reset role;
 select tst.ok((select count(*) from public.admin_ids() a where a = '00000000-0000-0000-0000-000000000001') = 1, 'owner: the flagged owner gets admin alerts');
 select tst.ok(not exists (select 1 from public.admin_ids() a where a in ('00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000b3','00000000-0000-0000-0000-0000000000b4')), 'owner: the others do not');
 delete from auth.users where id in ('00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000b3','00000000-0000-0000-0000-0000000000b4');
+-- אתר אידישקייט אתרים: טופס פניות לציבור (גם בלי חשבון)
+reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.headers', '{"x-real-ip":"9.9.9.9"}', false);
+set role anon;
+select tst.ok(public.studio_contact('ראובן', '050-1234567', 'site', 'שלום, רוצה אתר', true, '', 5000), 'studio: anon can send an inquiry');
+select tst.err($$select public.studio_contact('ראובן', '050-1234567', 'site', 'שלום, רוצה אתר', false, '', 5000)$$, 'studio: no consent → refused');
+select tst.err($$select public.studio_contact('ראובן', 'לא טלפון', 'site', 'שלום, רוצה אתר', true, '', 5000)$$, 'studio: bad phone/email → refused');
+select tst.ok(public.studio_contact('בוט', 'x@y.com', 'site', 'spam spam', true, 'http://spam', 5000), 'studio: honeypot answers ok');
+select tst.ok(public.studio_contact('ראובן', 'r@x.com', 'app', 'שאלה שנייה', true, '', 5000) and public.studio_contact('ראובן', 'r@x.com', 'app', 'שאלה שלישית', true, '', 5000), 'studio: up to 3 in 10 minutes');
+select tst.err($$select public.studio_contact('ראובן', 'r@x.com', 'app', 'רביעית', true, '', 5000)$$, 'studio: 4th in 10 minutes from same IP → refused');
+select tst.ok((select count(*) from public.feedback) = 0, 'studio: anon sees no inquiries');
+select tst.ok((select count(*) from public.studio_contact_hits) = 0, 'studio: anon sees no IP log');
+reset role;
+select tst.ok((select count(*) from public.feedback where user_id is null and message like '🌐%') = 3 and (select name from public.feedback where email = '050-1234567') = 'ראובן', 'studio: 3 saved with the name the visitor typed, honeypot not saved');
+select set_config('request.headers', '', false);
 select tst.ok(true, 'ALL DONE');
 -- auth_user_state: only the server may call it
 do $$ begin

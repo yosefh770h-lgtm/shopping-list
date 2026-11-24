@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>אידישקייט אתרים</title>
+<meta name="description" content="אידישקייט אתרים: בונים אתרים, אפליקציות וכלים לציבור שומר תורה ומצוות. הסיפור, העבודות, ויצירת קשר.">
+<meta name="theme-color" content="#f3ede1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%231f2c3d'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23f3ede1' font-family='serif' font-weight='700'%3E%D7%90%3C/text%3E%3C/svg%3E">
+<link href="/vendor/fonts/fonts-1.css" rel="stylesheet">
+<style>
+@font-face{font-family:'Frank';font-weight:400;font-display:swap;src:url(/vendor/fonts/frank-hebrew-400-a1.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+FB1D-FB4F}
+@font-face{font-family:'Frank';font-weight:700;font-display:swap;src:url(/vendor/fonts/frank-hebrew-700-a1.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+FB1D-FB4F}
+@font-face{font-family:'Frank';font-weight:900;font-display:swap;src:url(/vendor/fonts/frank-hebrew-900-a1.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+FB1D-FB4F}
+@font-face{font-family:'Frank';font-weight:700 900;font-display:swap;src:url(/vendor/fonts/frank-latin-700-a1.woff2) format('woff2');unicode-range:U+0000-00FF}
+
+:root{
+  --paper:#f3ede1; --paper-2:#ebe3d3; --card:#fbf8f1;
+  --ink:#1f2c3d; --ink-2:#4a5566; --muted:#7b7466;
+  --rule:#d8cdb8; --accent:#8c3b1f; --accent-ink:#fbf8f1; --ok:#2f6b3a; --bad:#a3261b;
+  --serif:'Frank','Heebo',Georgia,serif; --sans:'Heebo',Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#191c21; --paper-2:#20242a; --card:#22262d;
+    --ink:#ece5d6; --ink-2:#c4bcad; --muted:#958d7f;
+    --rule:#3a3d42; --accent:#e08b63; --accent-ink:#191c21; --ok:#7cc08a; --bad:#f08a7e;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#191c21; --paper-2:#20242a; --card:#22262d;
+  --ink:#ece5d6; --ink-2:#c4bcad; --muted:#958d7f;
+  --rule:#3a3d42; --accent:#e08b63; --accent-ink:#191c21; --ok:#7cc08a; --bad:#f08a7e;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.75 var(--sans)}
+a{color:inherit;text-decoration-color:var(--accent);text-underline-offset:4px;text-decoration-thickness:1.5px}
+a:hover{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+.skip{position:absolute;inset-inline-start:-999px;top:8px;background:var(--ink);color:var(--paper);padding:8px 14px;z-index:9}
+.skip:focus{inset-inline-start:8px}
+
+/* כותרת עליונה */
+.top{border-bottom:1px solid var(--rule)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
+.mark{display:flex;align-items:center;gap:12px;text-decoration:none}
+.seal{width:40px;height:40px;border:1.5px solid var(--ink);display:grid;place-items:center;font:900 24px/1 var(--serif);transform:rotate(-3deg)}
+.mark b{font:700 21px/1.1 var(--serif);letter-spacing:.2px}
+.mark small{display:block;font-size:12.5px;color:var(--muted);letter-spacing:.3px}
+.nav{display:flex;gap:22px;font-size:15.5px}
+.nav a{text-decoration:none;color:var(--ink-2)}
+.nav a:hover{color:var(--accent)}
+.nav .cta{color:var(--ink);border-bottom:1.5px solid var(--accent)}
+
+/* פתיחה */
+.hero{padding:72px 0 56px;display:grid;grid-template-columns:1.25fr .75fr;gap:48px;align-items:end}
+.kicker{font-size:14px;color:var(--accent);letter-spacing:.5px;margin:0 0 18px}
+h1{font:900 clamp(40px,6.4vw,74px)/1.06 var(--serif);margin:0 0 26px;letter-spacing:-.5px}
+h1 em{font-style:normal;color:var(--accent)}
+.lead{font-size:19px;color:var(--ink-2);max-width:34em;margin:0 0 30px}
+.btns{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-block;font:500 16px/1 var(--sans);padding:15px 24px;border:1.5px solid var(--ink);text-decoration:none;color:var(--ink);background:transparent;cursor:pointer}
+.btn.solid{background:var(--ink);color:var(--paper)}
+.btn.solid:hover{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:hover{color:var(--accent);border-color:var(--accent)}
+.ledger{border-top:2px solid var(--ink);font-size:15px}
+.ledger div{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.ledger dt{color:var(--muted)}
+.ledger dd{margin:0;font:700 17px/1.4 var(--serif);text-align:end}
+
+/* מקטעים */
+section{padding:72px 0;border-top:1px solid var(--rule)}
+.head{display:grid;grid-template-columns:120px 1fr;gap:24px;margin-bottom:40px}
+.num{font:900 54px/1 var(--serif);color:var(--accent)}
+h2{font:700 clamp(30px,4vw,42px)/1.15 var(--serif);margin:0 0 10px}
+.sub{color:var(--ink-2);margin:0;max-width:36em}
+
+/* הסיפור */
+.story{display:grid;grid-template-columns:120px 1fr 280px;gap:24px}
+.story .text{max-width:38em}
+.story .text p{margin:0 0 1.1em}
+.story .text p:first-child::first-letter{font:900 3.4em/0.8 var(--serif);float:right;margin:.08em 0 0 .12em;color:var(--accent)}
+.side{border-inline-start:1px solid var(--rule);padding-inline-start:24px;font-size:15px;color:var(--ink-2)}
+.side h3{font:700 17px/1.3 var(--serif);color:var(--ink);margin:0 0 12px}
+.side ol{margin:0;padding:0;list-style:none;counter-reset:s}
+.side li{padding:0 0 14px;position:relative;padding-inline-start:30px}
+.side li::before{counter-increment:s;content:counter(s,hebrew) "׳";position:absolute;inset-inline-start:0;font:700 16px/1.6 var(--serif);color:var(--accent)}
+
+/* עבודות */
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;background:var(--card);border:1px solid var(--rule);padding:36px;margin-bottom:28px}
+.tag{display:inline-block;font-size:13px;color:var(--muted);border:1px solid var(--rule);padding:2px 10px;margin:0 0 14px}
+.feature h3{font:900 34px/1.15 var(--serif);margin:0 0 12px}
+.feature p{color:var(--ink-2);margin:0 0 16px}
+.facts{list-style:none;margin:0 0 22px;padding:0;font-size:15.5px}
+.facts li{padding:7px 0;border-bottom:1px dashed var(--rule)}
+.facts li b{font-family:var(--serif);font-size:17px;color:var(--ink)}
+.phones{display:flex;justify-content:center;gap:16px}
+.phone{width:46%;max-width:210px;border:7px solid var(--ink);border-radius:26px;overflow:hidden;background:#fff;box-shadow:0 1px 0 var(--rule)}
+.phone:nth-child(2){transform:translateY(28px)}
+.phone img{display:block;width:100%;height:auto}
+.works{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:2px solid var(--ink)}
+.work{padding:28px 0 28px;border-bottom:1px solid var(--rule)}
+.work:nth-child(odd){padding-inline-end:32px;border-inline-end:1px solid var(--rule)}
+.work:nth-child(even){padding-inline-start:32px}
+.work h3{font:700 24px/1.25 var(--serif);margin:0 0 8px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.work h3 span{font:400 13px/1 var(--sans);color:var(--muted);white-space:nowrap}
+.work p{margin:0;color:var(--ink-2);font-size:16px}
+
+/* איך אנחנו עובדים */
+.ways{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-inline-start:144px}
+.way h3{font:700 20px/1.3 var(--serif);margin:0 0 8px;padding-top:14px;border-top:2px solid var(--ink)}
+.way p{margin:0;color:var(--ink-2);font-size:16px}
+
+/* פניות */
+.contact{display:grid;grid-template-columns:120px 1fr 300px;gap:24px}
+form{background:var(--card);border:1px solid var(--rule);padding:32px;display:grid;grid-template-columns:1fr 1fr;gap:18px 20px}
+.f{display:flex;flex-direction:column;gap:6px}
+.f.wide{grid-column:1/-1}
+label{font-weight:500;font-size:15px}
+label .opt{color:var(--muted);font-weight:400}
+input,select,textarea{font:400 16px/1.5 var(--sans);color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-bottom:1.5px solid var(--ink-2);padding:11px 12px;border-radius:0;width:100%}
+textarea{min-height:140px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-bottom-color:var(--accent);background:var(--card)}
+.hint{font-size:13px;color:var(--muted)}
+.consent{grid-column:1/-1;display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.6}
+.consent input{width:20px;height:20px;flex:none;margin-top:3px;accent-color:var(--accent)}
+.hp{position:absolute;inset-inline-start:-9999px;width:1px;height:1px;overflow:hidden}
+.send{grid-column:1/-1;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.msg{font-size:15px;margin:0}
+.msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
+.privacy{font-size:14.5px;color:var(--ink-2);border-inline-start:1px solid var(--rule);padding-inline-start:24px}
+.privacy h3{font:700 17px/1.3 var(--serif);color:var(--ink);margin:0 0 10px}
+.privacy p{margin:0 0 10px}
+
+footer{border-top:2px solid var(--ink);padding:28px 0 40px;font-size:14.5px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:var(--ink-2)}
+
+@media (max-width:880px){
+  .hero{grid-template-columns:1fr;padding:44px 0 40px;gap:36px}
+  .head,.story,.contact{grid-template-columns:1fr;gap:12px}
+  .num{font-size:40px}
+  .side,.privacy{border-inline-start:none;padding-inline-start:0;border-top:1px solid var(--rule);padding-top:20px}
+  .feature{grid-template-columns:1fr;padding:24px 20px}
+  .works{grid-template-columns:1fr}
+  .work:nth-child(odd),.work:nth-child(even){padding-inline:0;border-inline-end:none}
+  .ways{grid-template-columns:1fr;margin:0;gap:22px}
+  form{grid-template-columns:1fr;padding:22px 18px}
+  section{padding:52px 0}
+}
+@media (max-width:600px){
+  .wrap{padding:0 16px}
+  .nav a:not(.cta){display:none}
+  .mark small{display:none}
+  .phone{border-width:5px;border-radius:20px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">דילוג לתוכן</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#" aria-label="אידישקייט אתרים, לראש העמוד">
+      <span class="seal" aria-hidden="true">א</span>
+      <span><b>אידישקייט אתרים</b><small>אתרים · אפליקציות · כלים</small></span>
+    </a>
+    <nav class="nav" aria-label="ניווט ראשי">
+      <a href="#story">הסיפור</a>
+      <a href="#work">מה בנינו</a>
+      <a href="#ways">איך עובדים</a>
+      <a class="cta" href="#contact">צרו קשר</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <p class="kicker">סטודיו קטן לבניית אתרים ואפליקציות</p>
+        <h1>כלים דיגיטליים<br>שמתאימים <em>לבית שלנו</em></h1>
+        <p class="lead">אנחנו בונים אתרים, אפליקציות ומערכות לציבור שומר תורה ומצוות. בלי פרסומות לא ראויות, עם תוכן נקי, ושעובדים גם בחיבור מסונן וגם בלי אינטרנט בכלל.</p>
+        <div class="btns">
+          <a class="btn solid" href="#contact">לפנות אלינו</a>
+          <a class="btn" href="#work">לראות מה בנינו</a>
+        </div>
+      </div>
+      <dl class="ledger" aria-label="במספרים">
+        <div><dt>המוצר הראשון</dt><dd>רשימת קניות</dd></div>
+        <div><dt>רשתות שיווק בהשוואת המחירים</dt><dd>29</dd></div>
+        <div><dt>גרסת האפליקציה לאנדרואיד</dt><dd>2.2</dd></div>
+        <div><dt>עובד גם בלי אינטרנט</dt><dd>כן</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <section id="story" aria-labelledby="story-h">
+    <div class="wrap story">
+      <div class="num" aria-hidden="true">א׳</div>
+      <div class="text">
+        <h2 id="story-h">הסיפור שלנו</h2>
+        <p>זה התחיל מרשימת קניות. רצינו דרך פשוטה לכתוב מה חסר בבית, לשתף את הרשימה עם המשפחה, ולדעת איפה הכי זול לקנות. חיפשנו כלי שמתאים לציבור שלנו, שנפתח בנטפרי, שאין בו תמונות ופרסומות לא ראויות, ושלא מבקש להיות מחובר כל הזמן. לא מצאנו, אז בנינו.</p>
+        <p>הרשימה הפכה לאתר <a href="/">yamshopping.com</a>, ואחריה הגיעו השוואת מחירים מכל רשתות השיווק, אפליקציה לאנדרואיד, אפליקציה מיוחדת לטלפון בלי אינטרנט, ותוסף שעוזר לצוות לענות לפניות הציבור. כל אחד מהם נולד מבקשה אמיתית של משתמש.</p>
+        <p>מתוך העבודה הזאת קמה אידישקייט אתרים. אנחנו לוקחים את מה שלמדנו ובונים גם לאחרים: לעסקים, למוסדות ולמי שצריך כלי דיגיטלי שמכבד את הדרך שלו.</p>
+      </div>
+      <aside class="side" aria-label="מה חשוב לנו">
+        <h3>מה חשוב לנו</h3>
+        <ol>
+          <li>תוכן נקי וצנוע, בלי תמונות לא ראויות.</li>
+          <li>עובד בנטפרי ובחיבורים מסוננים.</li>
+          <li>שומר על הפרטיות ועומד בחוק.</li>
+          <li>נגיש וקל, גם למי שלא רגיל למחשב.</li>
+        </ol>
+      </aside>
+    </div>
+  </section>
+
+  <section id="work" aria-labelledby="work-h">
+    <div class="wrap">
+      <div class="head">
+        <div class="num" aria-hidden="true">ב׳</div>
+        <div>
+          <h2 id="work-h">מה בנינו</h2>
+          <p class="sub">כל מה שכאן תוכנן, נבנה ומתוחזק אצלנו, מהשורה הראשונה ועד השרת.</p>
+        </div>
+      </div>
+
+      <article class="feature">
+        <div>
+          <span class="tag">אתר ואפליקציה</span>
+          <h3>רשימת קניות</h3>
+          <p>רשימת קניות משותפת למשפחה, עם השוואת מחירים בין הסופרים, מצב קנייה בחנות, קבלות ותקציב הבית.</p>
+          <ul class="facts">
+            <li><b>29</b> רשתות שיווק, לפי מאגרי המחירים שהרשתות מפרסמות לפי החוק</li>
+            <li>רשימה אחת שכל בני הבית רואים ומעדכנים</li>
+            <li>נפתח בנטפרי, בלי פרסומות לא ראויות</li>
+          </ul>
+          <a class="btn" href="/">לאתר רשימת קניות</a>
+        </div>
+        <div class="phones">
+          <figure class="phone" style="margin:0"><img src="v2-1-list.webp" width="540" height="960" alt="מסך הרשימה באפליקציה: חלב, לחם, ביצים ועוד" loading="lazy"></figure>
+          <figure class="phone" style="margin:0"><img src="v2-2-prices.webp" width="540" height="960" alt="מסך המחירים: השוואת סל מלא בין החנויות" loading="lazy"></figure>
+        </div>
+      </article>
+
+      <div class="works">
+        <article class="work">
+          <h3>אפליקציה לאנדרואיד <span>גרסה 2.2</span></h3>
+          <p>האתר כאפליקציה מלאה: התראות, סריקת ברקוד, צילום קבלות, וכפתורי קיצור מהאייקון. מתעדכנת מתוך עצמה.</p>
+        </article>
+        <article class="work">
+          <h3>אפליקציה בלי אינטרנט <span>אופליין</span></h3>
+          <p>לטלפונים בלי חיבור לאינטרנט. הרשימה נשמרת בטלפון ומסתנכרנת עם המחשב בבלוטות׳, בברקוד או בקוד קצר.</p>
+        </article>
+        <article class="work">
+          <h3>תוסף לצוות <span>לדפדפן כרום</span></h3>
+          <p>כלי עבודה לצוות: מראה פניות חדשות, הודעות ודיווחים, ומוביל בלחיצה אחת לפריט שמחכה לטיפול.</p>
+        </article>
+        <article class="work">
+          <h3>מערכת איסוף מחירים <span>שרת</span></h3>
+          <p>מערכת שרצה בשרת שלנו, מורידה כל שעה את קובצי המחירים של הרשתות, ומעדכנת את השוואת המחירים.</p>
+        </article>
+        <article class="work">
+          <h3>ניהול ובק אופיס <span>מערכת פנימית</span></h3>
+          <p>מסך ניהול אחד: משתמשים, מחירים, פניות, דיווחי תקלות לפי גרסה, ומעקב אחרי עדכוני האפליקציה.</p>
+        </article>
+        <article class="work">
+          <h3>אבטחה והגנה <span>תשתית</span></h3>
+          <p>חומת הגנה מעומסים ומבוטים, הגבלת קצב במסד הנתונים, ובדיקה אוטומטית של כל גרסה לפני שהיא עולה לאוויר.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="ways" aria-labelledby="ways-h">
+    <div class="wrap">
+      <div class="head">
+        <div class="num" aria-hidden="true">ג׳</div>
+        <div>
+          <h2 id="ways-h">איך אנחנו עובדים</h2>
+          <p class="sub">פרויקט קטן או גדול, הדרך דומה.</p>
+        </div>
+      </div>
+      <div class="ways">
+        <div class="way"><h3>מקשיבים</h3><p>שיחה קצרה כדי להבין מה צריך, למי זה מיועד, ואיך אנשים ישתמשו בזה בפועל.</p></div>
+        <div class="way"><h3>בונים בשלבים</h3><p>גרסה ראשונה מהר, ואז משפרים לפי מה שהמשתמשים באמת עושים. רואים כל שלב לפני שהוא עולה.</p></div>
+        <div class="way"><h3>נשארים ליד</h3><p>אחרי שהאתר עולה אנחנו ממשיכים לתחזק, לעדכן ולענות. לא בונים ונעלמים.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" aria-labelledby="contact-h">
+    <div class="wrap contact">
+      <div class="num" aria-hidden="true">ד׳</div>
+      <div>
+        <h2 id="contact-h">צרו קשר</h2>
+        <p class="sub" style="margin-bottom:24px">רוצים אתר, אפליקציה או כלי לעסק? יש שאלה על רשימת קניות? כתבו לנו ונחזור אליכם.</p>
+        <form id="f" novalidate>
+          <div class="f">
+            <label for="nm">שם</label>
+            <input id="nm" name="name" autocomplete="name" maxlength="60" required>
+          </div>
+          <div class="f">
+            <label for="ct">טלפון או מייל</label>
+            <input id="ct" name="contact" autocomplete="email" inputmode="email" maxlength="120" required dir="ltr" style="text-align:right">
+          </div>
+          <div class="f wide">
+            <label for="tp">במה מדובר?</label>
+            <select id="tp" name="topic">
+              <option value="site">אתר חדש</option>
+              <option value="app">אפליקציה או כלי לעסק</option>
+              <option value="yam">שאלה על רשימת קניות</option>
+              <option value="other">משהו אחר</option>
+            </select>
+          </div>
+          <div class="f wide">
+            <label for="ms">ההודעה</label>
+            <textarea id="ms" name="message" maxlength="2000" required></textarea>
+            <span class="hint">עד 2000 תווים. אין צורך לכתוב פרטים אישיים מעבר למה שנחוץ.</span>
+          </div>
+          <div class="hp" aria-hidden="true"><label for="wb">אתר</label><input id="wb" name="website" tabindex="-1" autocomplete="off"></div>
+          <label class="consent"><input type="checkbox" id="ok" required>
+            <span>קראתי את <a href="#privacy">הודעת הפרטיות</a>, ואני מסכים/ה שהפרטים ישמשו רק כדי לחזור אליי בעניין הפנייה.</span></label>
+          <div class="send">
+            <button class="btn solid" type="submit" id="go">שליחה</button>
+            <p class="msg" id="out" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+      <aside class="privacy" id="privacy" aria-labelledby="pv-h">
+        <h3 id="pv-h">הודעת פרטיות</h3>
+        <p><b>מי אוסף:</b> אידישקייט אתרים, מפעילת האתר.</p>
+        <p><b>מה נשמר:</b> השם, הטלפון או המייל וההודעה שכתבתם, ושעת השליחה. אין חובה חוקית למסור את הפרטים, אבל בלעדיהם לא נוכל לחזור אליכם.</p>
+        <p><b>למה:</b> רק כדי לענות לפנייה. לא נשלח לכם פרסומות, ולא נמסור את הפרטים לאף אחד.</p>
+        <p><b>איפה:</b> במסד נתונים מאובטח אצל ספק ענן (Supabase), שהגישה אליו רק לצוות שלנו. ייתכן שהשרתים נמצאים מחוץ לישראל.</p>
+        <p><b>כמה זמן:</b> הפנייה נמחקת אוטומטית אחרי 12 חודשים.</p>
+        <p><b>הזכויות שלכם:</b> לעיין בפרטים, לתקן אותם או לבקש למחוק אותם. כתבו לנו דרך הטופס ונטפל בזה.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="yr">2026</span> אידישקייט אתרים</span>
+    <span><a href="/accessibility.html">הצהרת נגישות</a> · <a href="#privacy">פרטיות</a> · <a href="/">רשימת קניות</a></span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const SB = 'https://ygyfodxfbebnkwdcbjrp.supabase.co', KEY = 'sb_publishable_ePRvA2OrDbBN3tbjbD3p-w_8maEwTCK';
+  const t0 = Date.now(), $ = (id) => document.getElementById(id);
+  $('yr').textContent = new Date().getFullYear();
+  const out = $('out'), go = $('go'), f = $('f');
+  const say = (t, ok) => { out.textContent = t; out.className = 'msg ' + (ok ? 'ok' : 'bad'); };
+  const okContact = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || /^(0[2-9]\d{7,8}|972[2-9]\d{7,8})$/.test(v.replace(/\D/g, ''));
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('nm').value.trim(), contact = $('ct').value.trim(), message = $('ms').value.trim();
+    if (name.length < 2) { say('נא לכתוב שם'); $('nm').focus(); return; }
+    if (!okContact(contact)) { say('נא לכתוב טלפון או מייל תקינים'); $('ct').focus(); return; }
+    if (message.length < 5) { say('נא לכתוב כמה מילים על הפנייה'); $('ms').focus(); return; }
+    if (!$('ok').checked) { say('כדי לשלוח צריך לאשר את הודעת הפרטיות'); $('ok').focus(); return; }
+    go.disabled = true; say('שולחים…', true);
+    try {
+      const r = await fetch(SB + '/rest/v1/rpc/studio_contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + KEY },
+        body: JSON.stringify({ p_name: name, p_contact: contact, p_topic: $('tp').value, p_message: message,
+                               p_consent: true, p_hp: $('wb').value, p_ms: Date.now() - t0 })
+      });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ''); }
+      f.reset(); say('תודה! הפנייה התקבלה, ונחזור אליכם בהקדם.', true);
+    } catch (err) {
+      say((err && err.message) || 'השליחה לא הצליחה. בדקו את החיבור ונסו שוב.');
+    } finally { go.disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

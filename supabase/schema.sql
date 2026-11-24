@@ -9221,3 +9221,55 @@ do $$ begin
     notify pgrst, 'reload config';
   end if;
 exception when others then raise notice 'db_pre_request: %', sqlerrm; end $$;
+
+-- =====================================================================
+-- אתר הבית של אידישקייט אתרים (/yiddishkeit/): טופס "צרו קשר" לציבור, גם בלי חשבון.
+-- הפנייה נשמרת ב-feedback (בלי user_id) ומופיעה בבק אופיס יחד עם שאר ההודעות.
+-- הגנה מספאם: שדה מלכודת, זמן מילוי מינימלי, עד 3 פניות ב-10 דקות ו-8 ביום מאותה כתובת, ועד 60 ביום בסך הכל.
+-- פרטיות: נשמר רק מה שהפונה כתב + שעת ההסכמה. פניות מהאתר נמחקות אחרי 12 חודשים (כך כתוב בהודעת הפרטיות).
+-- =====================================================================
+create table if not exists public.studio_contact_hits (ip text not null, at timestamptz not null default now());
+create index if not exists studio_contact_hits_ip on public.studio_contact_hits (ip, at);
+alter table public.studio_contact_hits enable row level security;
+
+create or replace function public.studio_contact(p_name text, p_contact text, p_topic text, p_message text,
+                                                 p_consent boolean, p_hp text default '', p_ms int default 0) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v_ip text := coalesce(public.req_ip(), ''); fid uuid; nm text; ct text; msg text; tp text;
+begin
+  -- בוט: מילא את שדה המלכודת או שלח תוך פחות מ-3 שניות. עונים "נשלח" ולא שומרים
+  if coalesce(p_hp, '') <> '' or coalesce(p_ms, 0) < 3000 then return true; end if;
+  if p_consent is not true then raise exception 'צריך לאשר את הודעת הפרטיות' using errcode = 'P0001'; end if;
+  nm := left(btrim(regexp_replace(coalesce(p_name, ''), '[\r\n\t<>]+', ' ', 'g')), 60);
+  ct := left(btrim(regexp_replace(coalesce(p_contact, ''), '[\r\n\t<>]+', ' ', 'g')), 120);
+  msg := btrim(coalesce(p_message, ''));
+  tp := case when p_topic in ('site', 'app', 'yam', 'other') then p_topic else 'other' end;
+  if char_length(nm) < 2 then raise exception 'נא לכתוב שם' using errcode = 'P0001'; end if;
+  if ct !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' and regexp_replace(ct, '[^0-9]', '', 'g') !~ '^(0[2-9][0-9]{7,8}|972[2-9][0-9]{7,8})$' then
+    raise exception 'נא לכתוב טלפון או כתובת מייל תקינים' using errcode = 'P0001';
+  end if;
+  if char_length(msg) < 5 or char_length(msg) > 2000 then raise exception 'ההודעה צריכה להיות בין 5 ל-2000 תווים' using errcode = 'P0001'; end if;
+
+  delete from public.studio_contact_hits where at < now() - interval '1 day';
+  delete from public.feedback where user_id is null and message like '🌐 פנייה מאתר אידישקייט אתרים%' and created_at < now() - interval '12 months';
+  if v_ip <> '' and ((select count(*) from public.studio_contact_hits where ip = v_ip and at > now() - interval '10 minutes') >= 3
+               or (select count(*) from public.studio_contact_hits where ip = v_ip) >= 8) then
+    raise exception 'נשלחו כבר כמה פניות מהמכשיר הזה. נסו שוב מאוחר יותר' using errcode = 'P0001', hint = 'rate_limit';
+  end if;
+  if (select count(*) from public.studio_contact_hits) >= 60 then
+    raise exception 'הטופס עמוס כרגע. נסו שוב מחר' using errcode = 'P0001', hint = 'rate_limit';
+  end if;
+  insert into public.studio_contact_hits (ip) values (v_ip);
+
+  insert into public.feedback (user_id, name, email, message)
+  values (null, nm, ct,
+          '🌐 פנייה מאתר אידישקייט אתרים · ' ||
+          case tp when 'site' then 'אתר חדש' when 'app' then 'אפליקציה' when 'yam' then 'רשימת קניות' else 'אחר' end ||
+          E'\n' || msg || E'\n\n(אישר/ה את הודעת הפרטיות ' || to_char(now() at time zone 'Asia/Jerusalem', 'DD.MM.YYYY HH24:MI') || ')')
+  returning id into fid;
+  -- הטריגר fill_author ממלא שם ומייל מהחשבון; כאן הפונה כתב אותם בעצמו
+  update public.feedback set user_id = null, name = nm, email = ct where id = fid;
+  return true;
+end $$;
+revoke all on function public.studio_contact(text, text, text, text, boolean, text, int) from public;
+grant execute on function public.studio_contact(text, text, text, text, boolean, text, int) to anon, authenticated;
