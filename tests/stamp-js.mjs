@@ -15,7 +15,9 @@ const changed = [];
 // 🛡️ כל דפי האתר: אסור קוד בתוך הדף עצמו (<script> בלי src) — כל הקוד בקבצים ב-js/.
 // ככה אפשר לחסום בדפדפן כל קוד "מוזרק" (CSP בלי 'unsafe-inline'). מותר רק <script type="application/ld+json"> (נתונים לגוגל, לא קוד)
 // ו-<script type="text/lazy" src=...> (נטען אחר כך, ראו js/lazy.js).
-const pages = fs.readdirSync(SITE).filter((f) => f.endsWith('.html'));
+// וגם דפים בתיקיות משנה (כמו yesod/index.html, אתר יסוד שביסוד)
+const pages = fs.readdirSync(SITE).filter((f) => f.endsWith('.html'))
+  .concat(['yesod/index.html'].filter((f) => fs.existsSync(path.join(SITE, f))));
 for (const page of pages) {
   const file = path.join(SITE, page);
   const html = fs.readFileSync(file, 'utf8');

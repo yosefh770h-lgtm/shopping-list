@@ -9309,3 +9309,50 @@ begin
 end $$;
 revoke all on function public.studio_contact(text, text, text, text, boolean, text, int) from public;
 grant execute on function public.studio_contact(text, text, text, text, boolean, text, int) to anon, authenticated;
+
+-- =====================================================================
+-- אתר יסוד שביסוד (yesod.yamshopping.com): סטטיסטיקה אנונימית של כניסות ולחיצות על הורדה.
+-- לא נשמר שום מזהה: לא חשבון, לא כתובת IP. רק סוג האירוע, מאיזה מקור/קישור, וסוג המכשיר. נשמר 180 יום.
+-- =====================================================================
+create table if not exists public.yesod_events (
+  id bigserial primary key,
+  kind text not null check (kind in ('view','download')),
+  item text not null default '',
+  src text not null default 'direct',
+  referrer text not null default '',
+  device text not null default '',
+  at timestamptz not null default now()
+);
+create index if not exists yesod_events_at on public.yesod_events (at desc);
+alter table public.yesod_events enable row level security;
+revoke all on public.yesod_events from anon, authenticated;
+
+create or replace function public.yesod_event(p_kind text, p_item text default '', p_src text default '', p_referrer text default '', p_device text default '')
+returns void language plpgsql volatile security definer set search_path = public as $$
+declare it text;
+begin
+  if p_kind = 'view' then it := '';
+  elsif p_kind = 'download' and p_item in ('apk', 'offline', 'web') then it := p_item;
+  else return; end if;
+  -- הגנה מהצפה: עד 2000 אירועים בשעה בסך הכל
+  if (select count(*) from public.yesod_events where at > now() - interval '1 hour') >= 2000 then return; end if;
+  insert into public.yesod_events(kind, item, src, referrer, device)
+  values (p_kind, it, coalesce(public.visit_src_clean(p_src), 'direct'), public.visit_url_clean(p_referrer),
+          left(regexp_replace(coalesce(p_device, ''), '[^[:alnum:][:space:]·./()_-]', '', 'g'), 60));
+  if random() < 0.01 then delete from public.yesod_events where at < now() - interval '180 days'; end if;
+end $$;
+revoke all on function public.yesod_event(text, text, text, text, text) from public;
+grant execute on function public.yesod_event(text, text, text, text, text) to anon, authenticated;
+
+-- לצוות עם הרשאת "מבקרים": האירועים בטווח הימים שנבחר
+create or replace function public.staff_yesod_events(p_days int default 30)
+returns table(at timestamptz, kind text, item text, src text, referrer text, device text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_staff() or not public.staff_can('visitors') then raise exception 'forbidden' using errcode = '42501'; end if;
+  return query select e.at, e.kind, e.item, e.src, e.referrer, e.device from public.yesod_events e
+    where e.at > now() - make_interval(days => least(greatest(coalesce(p_days, 30), 1), 180))
+    order by e.at desc limit 10000;
+end $$;
+revoke all on function public.staff_yesod_events(int) from public, anon;
+grant execute on function public.staff_yesod_events(int) to authenticated;

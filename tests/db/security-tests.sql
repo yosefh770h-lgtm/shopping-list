@@ -2036,6 +2036,19 @@ select tst.ok((select count(*) from public.feedback) = 0, 'studio: anon sees no 
 select tst.ok((select count(*) from public.studio_contact_hits) = 0, 'studio: anon sees no IP log');
 reset role;
 select tst.ok((select count(*) from public.feedback where user_id is null and message like '🌐%') = 3 and (select name from public.feedback where email = '050-1234567') = 'ראובן', 'studio: 3 saved with the name the visitor typed, honeypot not saved');
+-- אתר יסוד שביסוד: סטטיסטיקה אנונימית של כניסות והורדות
+set role anon;
+select public.yesod_event('view', '', 'wa', 'https://example.com/x', 'טלפון · Android');
+select public.yesod_event('download', 'apk', '', '', '');
+select public.yesod_event('download', 'evil', '', '', '');
+select public.yesod_event('hack', '', '', '', '');
+select tst.err($$select count(*) from public.yesod_events$$, 'yesod: anon cannot read the events table');
+select tst.err($$select * from public.staff_yesod_events(30)$$, 'yesod: anon cannot read the stats');
+reset role;
+select tst.ok((select count(*) from public.yesod_events) = 2 and (select src from public.yesod_events where kind = 'view') = 'wa', 'yesod: view + apk download saved, unknown kind/item ignored');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a');
+select tst.err($$select * from public.staff_yesod_events(30)$$, 'yesod: a regular user cannot read the stats');
+reset role;
 select set_config('request.headers', '', false);
 select tst.ok(true, 'ALL DONE');
 -- auth_user_state: only the server may call it
