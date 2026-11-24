@@ -43,7 +43,7 @@ async function newPage(opts = {}) {
   await ctx.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   if (process.env.CDN_DIR) {
   }
-  await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1'); }, opts.state || { user: { name: 'בודק', email: '', offline: true } });
+  await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); }, opts.state || { user: { name: 'בודק', email: '', offline: true } });
   await ctx.addInitScript(STUB);
   const page = await ctx.newPage();
   const errors = [];

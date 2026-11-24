@@ -44,7 +44,7 @@ async function newPage({ user = null, stub = true } = {}) {
   await ctx.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   await ctx.route(/supabase\.co\//, (r) => r.abort());
   if (stub) await ctx.route(/\/vendor\/supabase-js[^/]*\/supabase\.js/, (r) => r.abort());
-  await ctx.addInitScript((st) => { localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1'); if (st && !localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); }, user ? { user } : null);
+  await ctx.addInitScript((st) => { localStorage.setItem('yam_tour165', '1'); if (st && !localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); }, user ? { user } : null);
   if (stub) await ctx.addInitScript(STUB);
 
   const page = await ctx.newPage();

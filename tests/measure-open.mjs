@@ -48,7 +48,7 @@ const rows = [];
 for (let i = 0; i < RUNS; i++) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL' });
   await ctx.route(/supabase\.co/, (r) => r.abort());
-  await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
+  await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
   await ctx.addInitScript(STUB);
   const page = await ctx.newPage();
   const cdp = await ctx.newCDPSession(page);
