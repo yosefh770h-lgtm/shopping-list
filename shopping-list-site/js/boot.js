@@ -31,3 +31,8 @@ document.addEventListener('DOMContentLoaded',done);setTimeout(done,15000);})();
 /* 🧩 קובץ קוד שלא נטען (קליטה חלשה / סינון) נרשם כאן — כדי שיומן התקלות יראה תקלה אחת ברורה ("קובץ js/009.js לא נטען"),
    ולא עשר תקלות "חסר רכיב בקוד" שכולן נובעות ממנו, ושהמשתמש יקבל כפתור לטעון מחדש (ראו 026.js) */
 window.__jsFail=[];window.addEventListener('error',function(e){var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&/\/js\/[^\/?]+\.js/.test(t.src||''))window.__jsFail.push(String(t.src).replace(location.origin,'').replace(/\?.*$/,''));},true);
+/* 🛡️ כפתורים ותמונות בלי קוד בתוך ה-HTML (onclick=/onerror= נחסמים ב-CSP): במקום זה data-ui="<פעולה>" / data-gone, ומאזין אחד לכל הדף */
+document.addEventListener('click',function(e){var t=e.target&&e.target.closest&&e.target.closest('[data-ui]');if(!t)return;var a=t.getAttribute('data-ui');
+  if(a==='unblur')t.style.filter='none';else if(a==='openBO'){if(window.openBO)window.openBO();}else if(a==='pro2'){if(window.pro2)window.pro2.open();}},true);
+/* תמונה שלא נטענה: data-gone="1" מוחק אותה, data-gone="parent" מוחק את מה שעוטף אותה */
+document.addEventListener('error',function(e){var t=e.target;if(!t||t.tagName!=='IMG'||!t.hasAttribute('data-gone'))return;var r=t.getAttribute('data-gone')==='parent'?t.parentNode:t;if(r&&r.parentNode)r.remove();},true);

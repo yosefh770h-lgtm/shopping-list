@@ -68,6 +68,9 @@ window.errCtx=errCtx;
   window.addEventListener('error',e=>{if(e&&e.filename&&!e.filename.startsWith(location.origin))return;const fn=fnOf(e&&e.error&&e.error.stack);send(e.message,(fn?fn+' · ':'')+(e.filename||'').replace(location.origin,'')+':'+(e.lineno||0)+':'+(e.colno||0));});
   window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const fn=r&&r.stack?fnOf(r.stack):'';send((r&&(r.message||r))||'promise',r&&r.stack?(fn?fn+' · ':'')+(String(r.stack).split('\n')[1]||'').trim():'');});
   window.logClientError=send;
+  /* 🛡️ CSP: קוד שנחסם (או שהיה נחסם, במדיניות "לדיווח בלבד" — Report-Only) נרשם ביומן התקלות. ככה יודעים בבטחה מתי אפשר לאכוף. תוספים בדפדפן מסוננים (IGN) */
+  document.addEventListener('securitypolicyviolation',e=>{const d=e.effectiveDirective||e.violatedDirective||'';if(!/^script-src/.test(d))return;
+    post('🛡️ CSP'+(e.disposition==='report'?' (דיווח בלבד)':'')+': '+d+' '+(e.blockedURI||''),(e.sourceFile||'').replace(location.origin,'')+':'+(e.lineNumber||0)+' '+String(e.sample||'').slice(0,80));});
   /* 💥 אפליקציה מגרסה 2.2: אם האפליקציה עצמה קרסה (או שחלון האתר קרס) — בפתיחה הבאה זה נשלח ליומן התקלות, פעם אחת */
   setTimeout(()=>{try{const y=window.YamApp,c=y&&typeof y.lastCrash==='function'?y.lastCrash():'';if(!c)return;const o=JSON.parse(c);
     post(String(o.msg||'💥 האפליקציה נסגרה בגלל תקלה'),'native · '+String(o.where||'')+(o.at?' · '+new Date(+o.at).toISOString().slice(0,16).replace('T',' '):''));}catch(e){}},6000);
@@ -422,7 +425,7 @@ function offProduct(code){code=String(code||'').replace(/\D/g,'');if(code.length
       const allergens=Array.from(new Set((p.allergens_tags||[]).map(t=>{const k=String(t).replace(/^[a-z]{2}:/,'');return OFF_ALLERGENS[k]||k;}).filter(Boolean))).slice(0,10);
       return {name,brand:String(p.brands||'').split(',')[0].trim().slice(0,40),qty:String(p.quantity||'').slice(0,20),img,allergens,code};})
     .catch(()=>null).finally(()=>clearTimeout(tm));}
-function offCard(o){return '<div class="offcard">'+(o.img?'<img src="'+esc(o.img)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':'')+'<div><b>'+esc(o.name)+'</b>'+
+function offCard(o){return '<div class="offcard">'+(o.img?'<img src="'+esc(o.img)+'" alt="" loading="lazy" referrerpolicy="no-referrer" data-gone="1">':'')+'<div><b>'+esc(o.name)+'</b>'+
   ((o.brand||o.qty)?'<small>'+esc([o.brand,o.qty].filter(Boolean).join(' · '))+'</small>':'')+
   (o.allergens.length?'<small class="offal">⚠️ '+T('אלרגנים: ','Allergens: ')+esc(o.allergens.join(', '))+'</small>':'')+
   '<small class="muted-note" style="margin:2px 0 0">'+T('מקור: ','Source: ')+'<a href="https://world.openfoodfacts.org/product/'+esc(o.code)+'" target="_blank" rel="noopener">Open Food Facts</a></small></div></div>';}
