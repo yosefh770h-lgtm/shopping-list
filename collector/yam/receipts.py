@@ -15,9 +15,12 @@ import html as htmllib
 import ipaddress
 import re
 import socket
+import threading
+from contextlib import contextmanager
 from urllib.parse import urljoin, urlsplit, parse_qs
 
 import requests
+import urllib3.util.connection as _uconn
 
 GUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 PAIRZON = re.compile(r"^[a-z0-9-]{1,40}\.pairzon\.com$")
@@ -192,6 +195,37 @@ def public_host(u):
         return False
 
 
+# 🛡️ נגד "DNS rebinding": public_host בודק את הכתובת לפני הבקשה, אבל requests שואל את ה-DNS שוב כשהוא מתחבר — ואתר זדוני
+# יכול לענות בפעם השנייה 127.0.0.1 / 10.x / כתובת המטא-דאטה. לכן בזמן ההבאה בודקים גם את הכתובת שאליה החיבור באמת נפתח.
+_guard = threading.local()
+_orig_connect = _uconn.create_connection
+
+
+def _guarded_connect(address, *a, **kw):
+    sock = _orig_connect(address, *a, **kw)
+    if getattr(_guard, "on", False):
+        try:
+            ok = ipaddress.ip_address(sock.getpeername()[0].split("%")[0]).is_global
+        except (OSError, ValueError):
+            ok = False
+        if not ok:
+            sock.close()
+            raise OSError("blocked: not a public address")
+    return sock
+
+
+_uconn.create_connection = _guarded_connect
+
+
+@contextmanager
+def public_only():
+    _guard.on = True
+    try:
+        yield
+    finally:
+        _guard.on = False
+
+
 def html_to_text(page):
     """הטקסט של הדף, שורה לכל שורת טבלה, ותא אחרי תא עם |. גם נתונים שמוטמעים בדף כ-JSON"""
     data = "\n".join(m.strip() for m in re.findall(r"<script\b[^>]*(?:type=[\"']?application/(?:ld\+)?json|id=[\"']__NEXT_DATA__)[^>]*>([\s\S]*?)</script>", page, re.I)
@@ -213,8 +247,9 @@ def _get(url, timeout):
         if not public_host(u):
             return None, (400, "הקישור לא תקין — מעתיקים את כל הקישור של הקבלה (מתחיל ב-https://)"), None
         try:
-            r = requests.get(url, headers={"User-Agent": UA, "Accept": "text/html,application/pdf,image/*;q=0.9,*/*;q=0.5", "Accept-Language": "he-IL,he;q=0.9"},
-                             timeout=timeout, allow_redirects=False, stream=True)
+            with public_only():
+                r = requests.get(url, headers={"User-Agent": UA, "Accept": "text/html,application/pdf,image/*;q=0.9,*/*;q=0.5", "Accept-Language": "he-IL,he;q=0.9"},
+                                 timeout=timeout, allow_redirects=False, stream=True)
         except requests.RequestException:
             return None, (502, "לא הצלחתי לפתוח את הקישור (האתר לא ענה). נסו שוב, או שמרו את הקבלה כ-PDF והעלו אותה."), None
         if r.is_redirect and r.headers.get("location"):
@@ -228,7 +263,7 @@ def _get(url, timeout):
         if r.status_code != 200:
             return None, (502, f"האתר של הקבלה החזיר שגיאה ({r.status_code}). נסו שוב מאוחר יותר."), None
         buf = b""
-        for chunk in r.iter_content(65536):
+        for chunk in r.iter_content(65536):  # החיבור כבר פתוח ונבדק — הקריאה ממנו לא פותחת חיבור חדש
             buf += chunk
             if len(buf) > MAX_BYTES:
                 r.close()

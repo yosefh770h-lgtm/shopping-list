@@ -166,6 +166,17 @@ def _note(req, ip, peer, site, status):
         pass
 
 
+# 🛡️ השרת מחזיר רק נתונים (JSON) — אסור שדפדפן יריץ ממנו קוד, יציג אותו בתוך מסגרת או ישלח הלאה את הכתובת
+SEC_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "X-Permitted-Cross-Domain-Policies": "none",
+}
+
+
 @app.middleware("http")
 async def limits(req: Request, call_next):
     ip, peer, via = who(req)
@@ -192,7 +203,7 @@ async def limits(req: Request, call_next):
         res.headers["Cache-Control"] = "private, no-store"  # קבלה אישית — לא נשמרת בשום מטמון
     elif res.status_code == 200:
         res.headers["Cache-Control"] = "public, max-age=300"
-    res.headers["X-Content-Type-Options"] = "nosniff"
+    res.headers.update(SEC_HEADERS)
     return res
 
 
