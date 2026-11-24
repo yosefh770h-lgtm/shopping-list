@@ -444,7 +444,7 @@ async function repHtml(){
     '<div class="merow"><span>📷</span><span class="grow">'+T('צילום מוצר שהמנהל מאשר — מופיע לכולם בבחירת המוצר','A product photo the admin approves')+'</span><b>+'+repPts('pts_photo')+'</b></div>'+
     '<div class="merow"><span>🧾</span><span class="grow">'+T('צילום קבלה — מפרסם הרבה מחירים בבת אחת','Upload a receipt — many prices at once')+'</span><b>+'+T('הרבה','lots')+'</b></div>'+
     '<div class="merow"><span>🤝</span><span class="grow">'+T('חברים, שיתופים ותרומה לקהילה — הרשימה המלאה במסך הפרו','Friends, shares and community — full list on the Pro screen')+'</span><b>+</b></div>'+
-    '<div class="merow"><span>💎</span><span class="grow">'+T(repPts('solo_points')+' מוניטין = Yam shopping PRO','Reach '+repPts('solo_points')+' for Pro')+'</span><button type="button" class="mini pri" onclick="window.pro2&&pro2.open()">⭐ PRO</button></div>'+
+    '<div class="merow"><span>💎</span><span class="grow">'+T(repPts('solo_points')+' מוניטין = Yam shopping PRO','Reach '+repPts('solo_points')+' for Pro')+'</span><button type="button" class="mini pri" data-ui="pro2">⭐ PRO</button></div>'+
     '<p class="muted-note">💚 '+T('האתר נועד לעזור לאנשים — נא לדווח רק מחירים ומידע נכונים. דיווח שמשתמשים מסמנים "לא נכון" נבדק ע״י המנהל.','Please report only correct information.')+'</p>'+
     '<div class="row2"><button class="btn" data-q9="report">💰 '+T('לדווח מחיר','Report a price')+'</button><button class="btn sec" data-q9="receipt">🧾 '+T('לצלם קבלה','Upload receipt')+'</button></div></div>';
 }

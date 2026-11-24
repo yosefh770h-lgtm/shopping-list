@@ -1193,7 +1193,7 @@ def test_api_history(built, monkeypatch):
     r = c.get("/history", params={"code": "7290004131074"})
     assert r.status_code == 200, r.text
     days = r.json()["days"]
-    assert len(days) == 14
+    assert len(days) == api.HISTORY_SHOW_DAYS == 60
     assert days[-8]["min"] == 7.1 and days[-1]["min"] == 6.5  # לפני שבוע היה יקר יותר
     assert c.get("/history", params={"code": "7290004131074", "exclude": "SHUFERSAL,RAMI_LEVY"}).status_code == 404
     assert c.get("/history", params={"code": "abc"}).status_code == 422

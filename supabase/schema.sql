@@ -4763,6 +4763,42 @@ begin
     end loop;
     sent := sent + 1;
   end loop;
+
+  -- (ח) 🛰️ שרת המחירים הפסיק לדווח (נובמבר 2026). השרת מדווח בכל ריצה (כל שעה 07:15–23:15 ו-05:30, וגם בשבת כשהוא מושהה),
+  -- אז 7 שעות בלי דיווח (יותר מהפער של הלילה) = השרת נפל או נתקע. התראה לכל היותר פעם ב-every
+  if coalesce(c->>'alert_collector_off', '') <> 'true' then
+    select s.last_run into r from public.collector_status s where s.chain = '_server';
+    if found and r.last_run is not null and r.last_run < now() - interval '7 hours'
+       and not exists (select 1 from public.admin_alerts_sent x where x.kind = 'collector_down' and x.sent_at > now() - every) then
+      insert into public.admin_alerts_sent(kind, sent_at, n) values ('collector_down', now(), 1)
+        on conflict (kind) do update set sent_at = excluded.sent_at, n = excluded.n;
+      for a in select distinct id from public.admin_ids() id loop
+        perform public.push_enqueue(a.id, 'staff', '🛰️ שרת המחירים לא דיווח ' || floor(extract(epoch from now() - r.last_run) / 3600)::int || ' שעות',
+          'ייתכן שהשרת נפל או נתקע, והמחירים באתר לא מתעדכנים. כדאי להיכנס לשרת (sl-update / systemctl status) ולבדוק.',
+          '/#admin-prices', 'alert:collector_down');
+      end loop;
+      sent := sent + 1;
+    end if;
+  end if;
+
+  -- (ט) 📊 סיכום שבועי לצוות: יום ראשון ב-09:00 (שעון ישראל) — כמה נרשמו, כמה הורידו את האפליקציה וכמה תקלות היו השבוע
+  if coalesce(c->>'weekly_summary_off', '') <> 'true'
+     and extract(dow from now() at time zone 'Asia/Jerusalem') = 0
+     and extract(hour from now() at time zone 'Asia/Jerusalem') = 9
+     and not exists (select 1 from public.admin_alerts_sent x where x.kind = 'weekly_summary' and x.sent_at > now() - interval '6 days') then
+    select (select count(*)::int from auth.users u where u.created_at > now() - interval '7 days') users,
+           (select count(*)::int from public.apk_downloads d where d.kind = 'download' and d.at > now() - interval '7 days') dl,
+           (select count(*)::int from public.client_errors e where e.created_at > now() - interval '7 days' and e.ver <> 'collector') errs
+      into r;
+    insert into public.admin_alerts_sent(kind, sent_at, n) values ('weekly_summary', now(), r.users)
+      on conflict (kind) do update set sent_at = excluded.sent_at, n = excluded.n;
+    for a in select distinct id from public.admin_ids() id loop
+      perform public.push_enqueue(a.id, 'staff', '📊 סיכום השבוע ברשימת קניות',
+        r.users || ' משתמשים חדשים · ' || r.dl || ' הורדות של האפליקציה · ' || r.errs || ' תקלות. הפירוט בבק אופיס.',
+        '/#admin-dash', 'alert:weekly_summary');
+    end loop;
+    sent := sent + 1;
+  end if;
   return sent;
 end $$;
 revoke all on function public.admin_alerts_check() from public, anon, authenticated;
@@ -9221,3 +9257,55 @@ do $$ begin
     notify pgrst, 'reload config';
   end if;
 exception when others then raise notice 'db_pre_request: %', sqlerrm; end $$;
+
+-- =====================================================================
+-- אתר הבית של יסוד שביסוד (/yesod/): טופס "צרו קשר" לציבור, גם בלי חשבון.
+-- הפנייה נשמרת ב-feedback (בלי user_id) ומופיעה בבק אופיס יחד עם שאר ההודעות.
+-- הגנה מספאם: שדה מלכודת, זמן מילוי מינימלי, עד 3 פניות ב-10 דקות ו-8 ביום מאותה כתובת, ועד 60 ביום בסך הכל.
+-- פרטיות: נשמר רק מה שהפונה כתב + שעת ההסכמה. פניות מהאתר נמחקות אחרי 12 חודשים (כך כתוב בהודעת הפרטיות).
+-- =====================================================================
+create table if not exists public.studio_contact_hits (ip text not null, at timestamptz not null default now());
+create index if not exists studio_contact_hits_ip on public.studio_contact_hits (ip, at);
+alter table public.studio_contact_hits enable row level security;
+
+create or replace function public.studio_contact(p_name text, p_contact text, p_topic text, p_message text,
+                                                 p_consent boolean, p_hp text default '', p_ms int default 0) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v_ip text := coalesce(public.req_ip(), ''); fid uuid; nm text; ct text; msg text; tp text;
+begin
+  -- בוט: מילא את שדה המלכודת או שלח תוך פחות מ-3 שניות. עונים "נשלח" ולא שומרים
+  if coalesce(p_hp, '') <> '' or coalesce(p_ms, 0) < 3000 then return true; end if;
+  if p_consent is not true then raise exception 'צריך לאשר את הודעת הפרטיות' using errcode = 'P0001'; end if;
+  nm := left(btrim(regexp_replace(coalesce(p_name, ''), '[\r\n\t<>]+', ' ', 'g')), 60);
+  ct := left(btrim(regexp_replace(coalesce(p_contact, ''), '[\r\n\t<>]+', ' ', 'g')), 120);
+  msg := btrim(coalesce(p_message, ''));
+  tp := case when p_topic in ('app', 'yam', 'other') then p_topic else 'other' end;
+  if char_length(nm) < 2 then raise exception 'נא לכתוב שם' using errcode = 'P0001'; end if;
+  if ct !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' and regexp_replace(ct, '[^0-9]', '', 'g') !~ '^(0[2-9][0-9]{7,8}|972[2-9][0-9]{7,8})$' then
+    raise exception 'נא לכתוב טלפון או כתובת מייל תקינים' using errcode = 'P0001';
+  end if;
+  if char_length(msg) < 5 or char_length(msg) > 2000 then raise exception 'ההודעה צריכה להיות בין 5 ל-2000 תווים' using errcode = 'P0001'; end if;
+
+  delete from public.studio_contact_hits where at < now() - interval '1 day';
+  delete from public.feedback where user_id is null and message like '🌐 פנייה מאתר יסוד שביסוד%' and created_at < now() - interval '12 months';
+  if v_ip <> '' and ((select count(*) from public.studio_contact_hits where ip = v_ip and at > now() - interval '10 minutes') >= 3
+               or (select count(*) from public.studio_contact_hits where ip = v_ip) >= 8) then
+    raise exception 'נשלחו כבר כמה פניות מהמכשיר הזה. נסו שוב מאוחר יותר' using errcode = 'P0001', hint = 'rate_limit';
+  end if;
+  if (select count(*) from public.studio_contact_hits) >= 60 then
+    raise exception 'הטופס עמוס כרגע. נסו שוב מחר' using errcode = 'P0001', hint = 'rate_limit';
+  end if;
+  insert into public.studio_contact_hits (ip) values (v_ip);
+
+  insert into public.feedback (user_id, name, email, message)
+  values (null, nm, ct,
+          '🌐 פנייה מאתר יסוד שביסוד · ' ||
+          case tp when 'app' then 'אפליקציה' when 'yam' then 'רשימת קניות' else 'אחר' end ||
+          E'\n' || msg || E'\n\n(אישר/ה את הודעת הפרטיות ' || to_char(now() at time zone 'Asia/Jerusalem', 'DD.MM.YYYY HH24:MI') || ')')
+  returning id into fid;
+  -- הטריגר fill_author ממלא שם ומייל מהחשבון; כאן הפונה כתב אותם בעצמו
+  update public.feedback set user_id = null, name = nm, email = ct where id = fid;
+  return true;
+end $$;
+revoke all on function public.studio_contact(text, text, text, text, boolean, text, int) from public;
+grant execute on function public.studio_contact(text, text, text, text, boolean, text, int) to anon, authenticated;

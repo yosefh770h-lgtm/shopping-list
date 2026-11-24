@@ -4,7 +4,7 @@
    ומוצרים / סניפים / מתכונים נשמרים בטלפון ב-IndexedDB (ראו cachedLoad ב-index.html). */
 /* v15 (נובמבר 2026): מוחק את כל מה שנשמר עד עכשיו, כולל עותקים ישנים של האתר, וטוען מחדש פעם אחת חלונות פתוחים */
 const CACHE = 'yam-shopping-v15';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/app-192.png', './icons/app-512.png', './privacy.html', './accessibility.html', './logo.png', './logo-2.svg', './vendor/fonts/fonts-2.css', './favicon.png', './cities-il.json'];
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/app-192.png', './icons/app-512.png', './privacy.html', './terms.html', './accessibility.html', './logo.png', './logo-2.svg', './vendor/fonts/fonts-2.css', './favicon.png', './cities-il.json'];
 /* כמה זמן מחכים לשרת כשפותחים את האתר. בחנות עם קליטה חלשה מאוד — אחרי הזמן הזה נפתח העותק השמור,
    כדי שהרשימה לא "תיתקע" על מסך לבן. כשיש קליטה רגילה השרת עונה מהר, ותמיד נטענת הגרסה העדכנית */
 const NAV_TIMEOUT = 6000;
@@ -18,10 +18,12 @@ const CDN = [
    כך הדפדפן שומר אותם כבר מהודרים, והפתיחה מהירה בהרבה מקריאת 2.4MB קוד מתוך הדף בכל פתיחה.
    כתובת עם ?v= לא משתנה לעולם — אז נשמרת לתמיד ונטענת מהשמור בלי לשאול את השרת.
    חשוב: העמוד הראשי נשמר רק יחד עם כל קבצי ה-js שלו, כדי שבלי אינטרנט תמיד תהיה גרסה שלמה ותואמת */
-const isJs = (url) => url.origin === self.location.origin && /^\/js\/[^/]+\.js$/.test(url.pathname);
+/* גם העיצוב (js/site.css, נובמבר 2026) נשמר כך — אותה תיקייה ואותו ?v= */
+const isJs = (url) => url.origin === self.location.origin && /^\/js\/[^/]+\.(js|css)$/.test(url.pathname);
 /* lazy=false: רק מה שנטען בכל פתיחה. קבצים עם data-lazy (הבק אופיס, ראו js/lazy.js) לא יורדים מראש — רוב המשתמשים לא צריכים אותם,
    והם נשמרים כשמישהו נכנס אליהם בפעם הראשונה */
-const jsOf = (html, lazy) => [...html.matchAll(/<script\b([^>]*)\ssrc="(\/js\/[^"]+)"/g)].filter((m) => lazy || !/\sdata-lazy=/.test(m[1])).map((m) => new URL(m[2], self.location).href);
+const jsOf = (html, lazy) => [...html.matchAll(/<script\b([^>]*)\ssrc="(\/js\/[^"]+)"/g)].filter((m) => lazy || !/\sdata-lazy=/.test(m[1])).map((m) => new URL(m[2], self.location).href)
+  .concat([...html.matchAll(/<link\b[^>]*\shref="(\/js\/[^"]+\.css[^"]*)"/g)].map((m) => new URL(m[1], self.location).href));
 async function storeHome(res) {
   const html = await res.clone().text();
   const c = await caches.open(CACHE);

@@ -121,6 +121,10 @@ const instErr66=m=>{m=String(m||'');
     '🛡️ Downloaded, but the phone did not let the app start the install (probably the filter that manages the phone). Download the new version from yamshopping.com in the browser, or ask the filter to approve it. The current app keeps working');
   if(/^install_2\b|restrict|block|polic|not allowed|DISALLOW|Security|permission/i.test(m))return T('🛡️ הקובץ ירד, אבל הטלפון לא מרשה להתקין אותו. זה קורה כשיש סינון שמנהל את הטלפון (למשל הדרן) — הוא מאשר כל אפליקציה וכל גרסה בנפרד — או כש"חוסם אוטומטי" של סמסונג דלוק. מבקשים מהסינון לאשר את הגרסה החדשה של "רשימת קניות" ומנסים שוב. האפליקציה הנוכחית ממשיכה לעבוד כרגיל',
     '🛡️ The file downloaded, but the phone does not allow installing it. A filter that manages the phone (or Samsung Auto Blocker) is blocking it. Ask the filter to approve the new version and try again. The current app keeps working');
+  /* 🛠️ 2.3: דרכי ההתקנה לבחירה */
+  if(/^root_denied\b/.test(m))return T('#️⃣ אפליקציית הרוט לא אישרה. מאשרים לרשימת קניות בחלון של הרוט ומנסים שוב, או בוחרים דרך אחרת','#️⃣ The root app did not allow it. Allow it and try again, or pick another way');
+  if(/^root_/.test(m))return T('#️⃣ ההתקנה דרך רוט נכשלה. אפשר לבחור דרך אחרת למטה','#️⃣ Installing with root failed. Pick another way below')+' ('+m.slice(5,65)+')';
+  if(/^system_installer\b/.test(m))return T('📲 מסך ההתקנה של אנדרואיד לא נפתח. אפשר להוריד בדפדפן ולהתקין','📲 The Android install screen did not open. Download in the browser instead');
   if(/^install_5\b/.test(m))return T('📦 האפליקציה שבטלפון הותקנה ממקור אחר (למשל חנות של הסינון), ולכן אי אפשר לעדכן אותה מכאן. מעדכנים מאותו מקום שממנו הותקנה','📦 This app was installed from another source (e.g. the filter\'s store), so update it from there');
   if(/^install_6\b/.test(m))return T('📦 אין מספיק מקום בטלפון. מפנים קצת מקום ומנסים שוב','📦 Not enough storage on the phone. Free some space and try again');
   if(/^install_/.test(m))return T('📦 הקובץ ירד, אבל ההתקנה בטלפון נכשלה','📦 Downloaded, but installing failed')+' ('+m.slice(0,60)+')';
@@ -131,17 +135,29 @@ function openNatUpd66(){
     '<p class="muted-note">📱 '+T('הגרסה שלך: ','Your version: ')+'<b>'+esc(n.ver||'')+'</b></p>'+
     '<button type="button" class="go66" id="nuGo66">⬇️ '+T('לעדכן עכשיו','Update now')+'</button>'+
     '<div class="bar66" hidden><i></i></div><p class="st66" id="nuSt66" role="status" aria-live="polite"></p><p class="muted-note" id="nuDet66" dir="ltr" hidden></p><div id="nuAlt66" hidden></div>'+
-    '<p class="muted-note">'+T('הכל קורה בתוך האפליקציה. הרשימות והחשבון נשארים כמו שהם.','Everything happens inside the app. Your lists and account stay.')+'</p></div>');
+    '<p class="muted-note">'+T('הכל קורה בתוך האפליקציה. הרשימות והחשבון נשארים כמו שהם.','Everything happens inside the app. Your lists and account stay.')+'</p>'+ways66(n)+'</div>');
   if(window.apkInfo57)apkInfo57(b.querySelector('#nuInfo66'),true);
-  b.querySelector('#nuGo66').onclick=e=>{e.currentTarget.disabled=true;b.querySelector('.bar66').hidden=false;$66('#nuSt66').textContent=ST.start;try{YamApp.installUpdate();}catch(x){$66('#nuSt66').textContent=ST.error;e.currentTarget.disabled=false;}};
+  const run=(way,btn)=>{if(btn)btn.disabled=true;b.querySelector('.bar66').hidden=false;$66('#nuSt66').textContent=ST.start;
+    try{if(way==='auto'||typeof YamApp.installUpdateWith!=='function')YamApp.installUpdate();else YamApp.installUpdateWith(way);}catch(x){$66('#nuSt66').textContent=ST.error;if(btn)btn.disabled=false;}};
+  b.querySelector('#nuGo66').onclick=e=>run('auto',e.currentTarget);
+  b.querySelectorAll('[data-way66]').forEach(x=>x.onclick=e=>{const g=$66('#nuGo66');if(g)g.disabled=true;run(x.dataset.way66,e.currentTarget);});
 }
+/* 🛠️ דרכים אחרות להתקין — כל אחד בוחר מה שעובד בטלפון שלו. מגרסה 2.3 האפליקציה מדווחת אילו דרכים יש (installWays);
+   "להוריד בדפדפן" עובד בכל גרסה. רוט מופיע רק בטלפון שכבר יש בו רוט */
+function ways66(n){const w=Array.isArray(n.installWays)?n.installWays:[];
+  const row=(way,icon,he,en,nh,ne)=>'<button type="button" class="btn sec" data-way66="'+way+'">'+icon+' '+T(he,en)+'</button><p class="muted-note">'+T(nh,ne)+'</p>';
+  return '<details class="ways66"><summary>🛠️ '+T('העדכון לא עובד? דרכים אחרות להתקין','Update not working? Other ways to install')+'</summary>'+
+    (w.includes('system')?row('system','📲','מסך ההתקנה של אנדרואיד','Android install screen','הקובץ יורד, ואז נפתח החלון הרגיל של אנדרואיד "לעדכן?". מתאים לטלפונים שבהם העדכון בתוך האפליקציה נתקע.','Downloads the file, then opens the regular Android "Update?" window.'):'')+
+    (w.includes('root')?row('root','#️⃣','התקנה דרך רוט','Install with root','רק לטלפון עם רוט: אפליקציית הרוט תשאל אם לאשר. מתאים למשל לשיאומי שבו רק זה עובד. האפליקציה תיסגר ותתעדכן.','Rooted phones only: your root app will ask to allow it. The app closes and updates.'):'')+
+    '<a class="apkdl53" href="'+APK66+'" download="yamshopping.apk">🌐 '+T('להוריד בדפדפן ולהתקין','Download in the browser and install')+'</a>'+
+    '<p class="muted-note">'+T('הקובץ יורד בדפדפן של הטלפון. פותחים אותו מההורדות ולוחצים "עדכון". עובד גם כשכל השאר לא.','The file downloads in the phone browser. Open it from downloads and tap "Update".')+'</p></details>';}
 window.openNatUpd66=openNatUpd66;
 /* 🧭 כשהעדכון מתוך האפליקציה נכשל בגלל סינון או בגלל הטלפון — דרך אחרת, בלחיצה:
    "להוריד בדפדפן" פותח את הקובץ בדפדפן של הטלפון (גם בגרסאות 2.0/2.1, שאין בהן את העקיפה של 2.2), ושם מתקינים כרגיל.
    אם הסינון חוסם — בדפדפן מופיע דף החסימה שלו, ומשם אפשר לבקש ממנו לאשר את הקובץ. "להעתיק קישור" = לשלוח לסינון בבקשת אישור */
 const APK66='https://www.yamshopping.com/download/yamshopping.apk';
 function altUpd66(err){const box=$66('#nuAlt66');if(!box)return;
-  const f=filterErr66(err),ins=!f&&!!instErr66(err)&&!/^install_(5|6)\b/.test(String(err||''));
+  const f=filterErr66(err),ins=!f&&!!instErr66(err)&&!/^install_(5|6)\b|^root_/.test(String(err||''));
   box.hidden=!(f||ins);if(box.hidden){box.innerHTML='';return;}
   box.innerHTML='<a class="apkdl53" href="'+APK66+'" download="yamshopping.apk">⬇️ '+T('להוריד בדפדפן ולהתקין','Download in the browser and install')+'</a>'+
     '<p class="muted-note">'+(f?T('אם גם בדפדפן מופיע דף חסימה — שם אפשר לבקש מהסינון לאשר את הקובץ. או להעתיק את הקישור ולשלוח לסינון:','If the browser shows a block page, request approval there. Or copy the link and send it to your filter:')

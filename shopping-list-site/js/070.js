@@ -76,7 +76,7 @@ const PK_OFF=/^https:\/\/images\.openfoodfacts\.org\//;
 const pkCredit=()=>'<p class="pkcred" hidden>📷 '+T('תמונות המוצרים: ','Product photos: ')+'<a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> · '+
   '<a href="https://creativecommons.org/licenses/by-sa/3.0/deed.he" target="_blank" rel="noopener">CC BY-SA</a></p>';
 function pkFillImgs(root){root.querySelectorAll('[data-pkimg]').forEach(el=>{const code=el.dataset.pkimg;
-  pkImg(code).then(src=>{if(!src||!el.isConnected)return;el.innerHTML='<img src="'+esc(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">';
+  pkImg(code).then(src=>{if(!src||!el.isConnected)return;el.innerHTML='<img src="'+esc(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer" data-gone="1">';
     const cr=PK_CR[code];if(cr&&src.startsWith('data:image/')){el.title=T('צילום: ','Photo: ')+cr;const by=root.querySelector('[data-pkby="'+code+'"]');if(by){by.textContent='📷 '+T('צילום: ','Photo: ')+cr;by.hidden=false;}}
     if(PK_OFF.test(src)){el.title=T('תמונה: Open Food Facts','Photo: Open Food Facts');const c=root.querySelector('.pkcred');if(c)c.hidden=false;}});});}
 /* 🖼️ תמונה קטנה בהשוואה בין הסניפים (לפי מחירים ולפי פריטים): אותו מקור כמו בבחירת המוצר — המוצרים שלי, תמונות שצילמו ואושרו, Open Food Facts.
@@ -145,7 +145,7 @@ async function pkOpen(id){const it=pkItem(id);if(!it)return;
     if(e.target.closest('[data-pkhist]')){const c=pkChosen(it);if(c)phOpen(c.bc,c.bn);return;}
     if(e.target.closest('[data-pksnap]')){const c=pkChosen(it);if(c&&await pkSnap(c.bc,c.bn)&&PK_OWN[c.bc]){PK_OWN[c.bc].then(src=>{if(src){delete c.bimg;save();render();}});pkFillImgs(b);}return;}
     const t=e.target.closest('[data-pkcode]');if(!t)return;const p=ps.find(x=>x.code===t.dataset.pkcode);if(!p)return;pkApply(it,p);closeSheet();flash('🎯 '+T('נבחר: ','Picked: ')+p.name);};}
-/* 📈 גרף מחיר למוצר ("היה זול יותר בשבוע שעבר?"): מהשרת (/history) — לכל יום ב-14 הימים האחרונים, המחיר הכי זול והחציון בכל הסניפים בארץ */
+/* 📈 גרף מחיר למוצר ("היה זול יותר בשבוע שעבר?"): מהשרת (/history) — לכל יום ב-60 הימים האחרונים (HISTORY_DAYS בשרת), המחיר הכי זול והחציון בכל הסניפים בארץ */
 const PH_CACHE={};
 function phFetch(code){if(PH_CACHE[code])return PH_CACHE[code];
   return PH_CACHE[code]=priceApi('/history',{code,exclude:srvHidden().join(',')}).catch(e=>{delete PH_CACHE[code];throw e;});}
@@ -162,7 +162,7 @@ function phChart(days){const ok=days.filter(d=>d.n);if(!ok.length)return '';cons
   let lo=Math.min(...ok.map(d=>d.min)),hi=Math.max(...ok.map(d=>d.median));if(hi-lo<0.5){hi+=0.25;lo-=0.25;}const pad=(hi-lo)*0.12;lo=Math.max(0,lo-pad);hi+=pad;
   const x=i=>L+(n<2?0:i*(W-L-R)/(n-1)),y=v=>Tp+(hi-v)*(H-Tp-B)/(hi-lo);
   const path=k=>{let s='',up=false;days.forEach((d,i)=>{if(!d.n){up=false;return;}s+=(up?'L':'M')+x(i).toFixed(1)+' '+y(d[k]).toFixed(1);up=true;});return s;};
-  const dots=(k,c)=>days.map((d,i)=>d.n?'<circle class="'+c+'" cx="'+x(i).toFixed(1)+'" cy="'+y(d[k]).toFixed(1)+'" r="4"/>':'').join('');
+  const dots=(k,c)=>days.map((d,i)=>d.n?'<circle class="'+c+'" cx="'+x(i).toFixed(1)+'" cy="'+y(d[k]).toFixed(1)+'" r="'+(n>20?2:4)+'"/>':'').join('');
   const ticks=[lo+(hi-lo)*0.1,(lo+hi)/2,hi-(hi-lo)*0.1].map(v=>'<line class="ph70g" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'"/><text class="ph70ax" x="'+(L-4)+'" y="'+(y(v)+4).toFixed(1)+'" text-anchor="end">'+v.toFixed(v<10?2:1)+'</text>').join('');
   const xl=days.map((d,i)=>(i%Math.ceil(n/5)===(n-1)%Math.ceil(n/5))?'<text class="ph70ax" x="'+x(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+phDay(d.day)+'</text>':'').join('');
   const last=ok[ok.length-1],li=days.indexOf(last);
@@ -216,7 +216,7 @@ srvItemsParam=function(items){const by={};(items||[]).forEach(i=>{const k=norm(i
   by[k]=i.n.replace(/[|*#\n]/g,' ').trim()+(c?'#'+String(c.bc).replace(/\D/g,''):'')+(qp&&!qp.u&&qp.n>1?'*'+qp.n:'');});return Object.values(by).slice(0,60).join('|');};
 /* ברשימה: המוצר שנבחר מופיע מתחת לשם (עם תמונה כשיש). לחיצה — שינוי או ביטול */
 const pkChip=i=>{const c=pkChosen(i);if(!c||i.done)return '';
-  return '<button type="button" class="pk53ch" data-pk53="'+esc(i.id)+'" title="'+T('המוצר שמשווים בין החנויות — לחיצה לשינוי','The product compared between stores — tap to change')+'">'+(c.bimg?'<img src="'+esc(c.bimg)+'" alt="" title="'+T('תמונה: Open Food Facts','Photo: Open Food Facts')+'" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':pkArt(c.bn||c.n,c.n).replace('class="pkart"','class="pkart sm"').replace(/<span class="pksz">.*?<\/span>/,''))+esc(c.bn||c.bc)+'</button>';};
+  return '<button type="button" class="pk53ch" data-pk53="'+esc(i.id)+'" title="'+T('המוצר שמשווים בין החנויות — לחיצה לשינוי','The product compared between stores — tap to change')+'">'+(c.bimg?'<img src="'+esc(c.bimg)+'" alt="" title="'+T('תמונה: Open Food Facts','Photo: Open Food Facts')+'" loading="lazy" referrerpolicy="no-referrer" data-gone="1">':pkArt(c.bn||c.n,c.n).replace('class="pkart"','class="pkart sm"').replace(/<span class="pksz">.*?<\/span>/,''))+esc(c.bn||c.bc)+'</button>';};
 const _pkBubble=bubble;
 /* class="bub pkh" — כדי שה-CSS יוריד את המוצר לשורה משלו גם במכשירים שלא מכירים :has() (WebView ישן באנדרואיד) */
 bubble=function(i){const h=_pkBubble.apply(this,arguments);const c=pkChip(i);return c?h.replace('<div class="bub">','<div class="bub pkh">').replace('<div class="bl2">',()=>c+'<div class="bl2">'):h;};

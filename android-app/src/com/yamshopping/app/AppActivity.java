@@ -68,6 +68,7 @@ public class AppActivity extends Activity {
     // החלון הפתוח כרגע — כדי שהתקנת העדכון (שרצה ברקע) תוכל לדווח לאתר איפה היא עומדת
     static volatile AppActivity current;
     boolean pendingInstall, pendingBattery;
+    String pendingWay = "auto";
     // 🔴 המספר על אייקון האפליקציה — מה שהאתר דיווח אחרון
     final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
     volatile int badgeN;
@@ -1037,6 +1038,10 @@ public class AppActivity extends Activity {
                 o.put("ver", p == null ? "" : p.versionName);
                 o.put("code", p == null ? 0 : Updater.versionCode(p));
                 o.put("selfUpdate", true);
+                // 🛠️ 2.3: דרכי התקנה לבחירה בחלון העדכון (root רק כשיש בטלפון רוט)
+                org.json.JSONArray ways = new org.json.JSONArray().put("auto").put("system");
+                if (Updater.hasRoot()) ways.put("root");
+                o.put("installWays", ways);
                 o.put("speech", true);
                 o.put("inbox", true);
                 o.put("release", true);
@@ -1115,10 +1120,17 @@ public class AppActivity extends Activity {
 
         @JavascriptInterface
         public void installUpdate() {
+            installUpdateWith("auto");
+        }
+
+        /** 🛠️ 2.3: עדכון בדרך שהמשתמש בחר: auto / system / root */
+        @JavascriptInterface
+        public void installUpdateWith(String way) {
+            final String w = Updater.way(way);
             runOnUiThread(() -> {
                 String page = web.getUrl();
                 if (page == null || !isOurPage(Uri.parse(page))) return;
-                startUpdate();
+                startUpdate(w);
             });
         }
 
@@ -1253,10 +1265,12 @@ public class AppActivity extends Activity {
         a.runOnUiThread(() -> { if (a.web != null) a.web.evaluateJavascript(js, null); });
     }
 
-    void startUpdate() {
-        if (!Updater.canInstall(this)) {
+    void startUpdate(String way) {
+        // ברוט ההתקנה לא עוברת דרך האפליקציה, אז לא צריך "לאפשר התקנה ממקור זה"
+        if (!"root".equals(way) && !Updater.canInstall(this)) {
             // אנדרואיד 8 ומעלה: פעם אחת מאשרים "לאפשר התקנה ממקור זה", ואז העדכון ממשיך לבד
             pendingInstall = true;
+            pendingWay = way;
             report("perm", 0, "");
             try {
                 startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
@@ -1266,7 +1280,7 @@ public class AppActivity extends Activity {
             }
             return;
         }
-        Updater.start(this, AppActivity::report);
+        Updater.start(this, AppActivity::report, way);
     }
 
     String notifState() {
@@ -1400,7 +1414,7 @@ public class AppActivity extends Activity {
         // חזרו מ"לאפשר התקנה ממקור זה" — ממשיכים את העדכון לבד
         if (pendingInstall) {
             pendingInstall = false;
-            if (Updater.canInstall(this)) Updater.start(this, AppActivity::report); else report("cancel", 0, "");
+            if (Updater.canInstall(this)) Updater.start(this, AppActivity::report, pendingWay); else report("cancel", 0, "");
         }
         // חזרו לאפליקציה אחרי שהאינטרנט חזר — טוענים מחדש בלי ללחוץ
         if (offline) leaveOffline();

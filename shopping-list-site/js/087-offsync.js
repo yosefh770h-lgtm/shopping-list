@@ -384,6 +384,20 @@ async function fileSave(){const code=await pack(),d=new Date(),p=n=>String(n).pa
     if(a&&typeof a.saveFile==='function'){a.saveFile(name,'text/plain',btoa(unescape(encodeURIComponent(code))));return;}}catch(e){}
   const u=URL.createObjectURL(new Blob([code],{type:'text/plain'})),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
   flash('💾 '+T('נשמר: '+name+' — מעתיקים אותו לתיקיית Download של הטלפון','Saved: '+name));}
+/* 💾 גיבוי שבועי אוטומטי באפליקציה האופליין (נובמבר 2026): פעם בשבוע נשמר קובץ סנכרון בתיקיית ההורדות,
+   כדי שהרשימות לא ילכו לאיבוד אם מוחקים את האפליקציה או מחליפים טלפון. שחזור = "📂 לפתוח קובץ" (אותו קובץ סנכרון).
+   רק מאנדרואיד 10: בגרסאות ישנות השמירה פותחת חלון בחירת תיקייה, וזה לא מתאים לפעולה אוטומטית */
+const LS_BK='yam_off_bk',BK_DAYS=7;
+const bkOn=()=>{const v=jget(LS_BK,{});return v.off!==1;};
+const bkAndroidOk=()=>{const m=(navigator.userAgent||'').match(/Android (\d+)/);return !!m&&+m[1]>=10;};
+async function autoBackup(){try{
+  if(!OFF_APP||!bkOn()||!bkAndroidOk())return;const a=nat();if(!a||typeof a.saveSyncFile!=='function')return;
+  const v=jget(LS_BK,{});if(v.at&&Date.now()-v.at<BK_DAYS*864e5)return;
+  if(!(state.lists||[]).some(l=>(l.items||[]).length))return;
+  const code=await pack(),d=new Date(),p=n=>String(n).padStart(2,'0');
+  a.saveSyncFile('yam-backup-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'.txt',code);
+  v.at=Date.now();ls.set(LS_BK,JSON.stringify(v));}catch(e){}}
+setTimeout(autoBackup,20000);
 function fileOpen(f){if(f.size>3e6){flash(T('הקובץ גדול מדי — זה לא קובץ סנכרון','File too large'));return;}
   const r=new FileReader();r.onload=()=>{const t=String(r.result||'').trim();if(t.indexOf(PFX)!==0){flash(T('זה לא קובץ סנכרון של רשימת קניות','Not a sync file'));return;}got(t,'file');};r.readAsText(f);}
 
@@ -426,6 +440,8 @@ function open(tab,note){
       T('בלי בלוטות\' ובלי מצלמה: מחברים את הטלפון למחשב בכבל USB. "לשמור קובץ" — הקובץ נשמר בתיקיית ההורדות (Download) של הטלפון, ובמחשב פותחים אותו מהטלפון ב"📡 סנכרון ← 📁 קובץ". בכיוון ההפוך: מעתיקים לטלפון את הקובץ מהמחשב, ו"לפתוח קובץ".','No Bluetooth or camera: connect by USB cable. Save a file here and open it on the computer, or copy the computer\'s file here and open it.'):
       T('לנגן או לטלפון בלי בלוטות\' ובלי מצלמה: מחברים אותו למחשב בכבל USB. בטלפון: 📡 סנכרון ← 📁 קובץ ← "לשמור קובץ", וכאן "לפתוח קובץ" ובוחרים אותו מתיקיית Download של הטלפון. בכיוון ההפוך: כאן "לשמור קובץ", מעתיקים אותו לתיקיית Download של הטלפון, ובטלפון "לפתוח קובץ".','For a device without Bluetooth or camera: connect it by USB cable. Save the file on the phone and open it here, or save here, copy to the phone and open it there.'))+'</p>'+
     '<button class="btn" id="offFileSave" style="width:100%;margin-bottom:8px">💾 '+T('לשמור קובץ סנכרון','Save a sync file')+'</button>'+
+    (OFF_APP&&bkAndroidOk()?'<label class="offbk" style="display:flex;flex-direction:row;justify-content:flex-start;gap:10px;align-items:center;width:100%;margin:4px 0 10px;cursor:pointer;color:var(--text)"><input type="checkbox" id="offBkOn" style="width:20px;height:20px;flex:none;margin:0"'+(bkOn()?' checked':'')+'><span style="flex:1;text-align:start">💾 '+T('גיבוי אוטומטי פעם בשבוע לתיקיית ההורדות','Automatic weekly backup to Downloads')+'</span></label>'+
+      (jget(LS_BK,{}).at?'<p class="muted-note" style="margin-top:-6px">'+T('גיבוי אחרון: ','Last backup: ')+new Date(jget(LS_BK,{}).at).toLocaleDateString('he-IL')+' · '+T('לשחזור: "לפתוח קובץ" ובוחרים את ','To restore: Open a file → ')+'<bdi dir="ltr">yam-backup</bdi>'+'</p>':''):'')+
     '<label class="btn sec" id="offFileOpen" style="display:block;text-align:center;width:100%">📂 '+T('לפתוח קובץ שהגיע מהצד השני','Open a file from the other side')+'<input type="file" accept=".txt,text/plain" hidden></label>';
   else body+='<p class="muted-note">'+T('שולחים את הקוד שלי ב-SMS (אפשר גם לטלפון בלי אינטרנט), ובטלפון השני מדביקים אותו למטה. הקוד ארוך — זה תקין.','Send my code by SMS and paste it on the other phone. It is long — that is fine.')+'</p>'+
     '<label class="il" for="offMine">'+T('הקוד שלי','My code')+'</label><textarea id="offMine" class="offcode" readonly dir="ltr"></textarea>'+
@@ -462,6 +478,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!t||!t.closest)return;
   if(t.closest('#offCopy')){const v=($o('#offMine')||{}).value||'';(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(()=>flash('📋 '+T('הועתק','Copied')),()=>{const x=$o('#offMine');x.select();try{document.execCommand('copy');flash('📋 '+T('הועתק','Copied'));}catch(er){}});return;}
   if(t.closest('#offMail')){offMail();return;}
   if(t.closest('#offFileSave')){fileSave();return;}
+  if(t.closest('#offBkOn')){const v=jget(LS_BK,{});if(t.checked)delete v.off;else v.off=1;ls.set(LS_BK,JSON.stringify(v));return;}
   if(t.closest('#offGo')){const v=($o('#offIn')||{}).value||'';got(v,'code');return;}
   const dg=t.closest('[data-offdiag]');if(dg){ls.set(LS_OK,dg.dataset.offdiag);if(dg.dataset.offdiag==='0')ls.del(LS_DIAG);open();return;}
 },true);

@@ -50,6 +50,10 @@
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/npm/xlsx@0.18.5/ https://cdn.jsdelivr.net/npm/jszip@3.10.1/ https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/; script-src-elem 'self' https://cdn.jsdelivr.net/npm/xlsx@0.18.5/ https://cdn.jsdelivr.net/npm/jszip@3.10.1/ https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https://ygyfodxfbebnkwdcbjrp.supabase.co; connect-src 'self' https://cdn.jsdelivr.net https://ygyfodxfbebnkwdcbjrp.supabase.co wss://ygyfodxfbebnkwdcbjrp.supabase.co https://nominatim.openstreetmap.org https://server.yamshopping.com https://world.openfoodfacts.org https://www.sefaria.org; object-src 'none'; manifest-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         },
         {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/xlsx@0.18.5/ https://cdn.jsdelivr.net/npm/jszip@3.10.1/ https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/; script-src-elem 'self' https://cdn.jsdelivr.net/npm/xlsx@0.18.5/ https://cdn.jsdelivr.net/npm/jszip@3.10.1/ https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https://ygyfodxfbebnkwdcbjrp.supabase.co; connect-src 'self' https://cdn.jsdelivr.net https://ygyfodxfbebnkwdcbjrp.supabase.co wss://ygyfodxfbebnkwdcbjrp.supabase.co https://nominatim.openstreetmap.org https://server.yamshopping.com https://world.openfoodfacts.org https://www.sefaria.org; object-src 'none'; manifest-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        },
+        {
           "key": "X-Frame-Options",
           "value": "DENY"
         },

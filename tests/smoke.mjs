@@ -7,11 +7,11 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCRIPT_CSP } from './site-csp.mjs';
+import { SCRIPT_CSP, watchCsp } from './site-csp.mjs';
 import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../shopping-list-site');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain' };
 const server = http.createServer((req, res) => {
   const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html');
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); res.end(); return; }
@@ -29,6 +29,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
 
 const launchArgs = process.env.BARCODE_Y4M ? ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-file-for-fake-video-capture=' + process.env.BARCODE_Y4M] : [];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: launchArgs });
+const cspHits = watchCsp(browser);
 
 // שרת מדומה: sb.from(טבלה) מחזיר את הנתונים שהוגדרו לטבלה
 const STUB = `window.__stub=function(D){const mk=k=>{const c=new Proxy(function(){},{get(t,p){if(p==='then')return(res,rej)=>Promise.resolve({data:D[k]||[],error:null}).then(res,rej);if(p==='maybeSingle'||p==='single')return()=>mk(k+':one');return(...a)=>c;},apply(){return c;}});return c;};
@@ -2711,6 +2712,8 @@ await test('📴 הורדת האפליקציה האופליין מתוך האפ�
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
+
+await test('🛡️ אף בדיקה לא נתקלה בקוד שנחסם (CSP)', async () => { assert(!cspHits.size, [...cspHits].join(' | ')); });
 
 await browser.close(); server.close();
 for (const r of results) console.log(r.join(' '));
