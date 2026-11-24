@@ -57,7 +57,29 @@ final class Updater {
         return Build.VERSION.SDK_INT < 26 || c.getPackageManager().canRequestPackageInstalls();
     }
 
+    /** 🛠️ 2.3: דרכי ההתקנה שהמשתמש יכול לבחור בחלון העדכון.
+     *  auto — בתוך האפליקציה (ואם הטלפון דוחה, מסך ההתקנה של אנדרואיד); system — ישר מסך ההתקנה של אנדרואיד;
+     *  root — דרך הרשאת רוט, רק בטלפון שכבר יש בו רוט (המשתמש מאשר בחלון של אפליקציית הרוט) */
+    static final String[] WAYS = {"auto", "system", "root"};
+
+    static String way(String w) {
+        for (String x : WAYS) if (x.equals(w)) return x;
+        return "auto";
+    }
+
+    /** יש בטלפון רוט? רק בודקים אם קובץ su קיים — לא מריצים אותו, כדי שלא יקפוץ חלון אישור סתם */
+    static boolean hasRoot() {
+        String[] paths = {"/system/bin/su", "/system/xbin/su", "/sbin/su", "/su/bin/su", "/system/sbin/su", "/vendor/bin/su", "/debug_ramdisk/su"};
+        for (String p : paths) if (new File(p).exists()) return true;
+        return false;
+    }
+
     static void start(Context ctx, Progress cb) {
+        start(ctx, cb, "auto");
+    }
+
+    static void start(Context ctx, Progress cb, String wayIn) {
+        final String way = way(wayIn);
         if (running) { cb.on("download", -1, ""); return; }
         running = true;
         final Context c = ctx.getApplicationContext();
@@ -76,6 +98,16 @@ final class Updater {
                     return;
                 }
                 cb.on("install", 100, apk.versionName == null ? "" : apk.versionName);
+                if ("system".equals(way)) {
+                    if (!openInstaller(c)) throw new Exception("system_installer");
+                    cb.on("confirm", 100, "system");
+                    return;
+                }
+                if ("root".equals(way)) {
+                    rootInstall(f);
+                    cb.on("done", 100, "root");
+                    return;
+                }
                 try {
                     install(c, f);
                 } catch (Exception e) {
@@ -146,6 +178,29 @@ final class Updater {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** התקנה דרך רוט: הקובץ נשלח ל-pm install. אנדרואיד סוגר את האפליקציה כשההתקנה מסתיימת, ו-Wake מחזיר את הבדיקה ברקע */
+    static void rootInstall(File f) throws Exception {
+        Process p = new ProcessBuilder("su", "-c", "pm install -r -S " + f.length()).redirectErrorStream(true).start();
+        try (InputStream in = new FileInputStream(f); OutputStream o = p.getOutputStream()) {
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+        } catch (java.io.IOException e) {
+            p.destroy();
+            throw new Exception("root_denied");
+        }
+        StringBuilder out = new StringBuilder();
+        try (InputStream r = p.getInputStream()) {
+            byte[] buf = new byte[1024];
+            int n;
+            while ((n = r.read(buf)) > 0 && out.length() < 2000) out.append(new String(buf, 0, n, "UTF-8"));
+        }
+        int code = p.waitFor();
+        if (out.indexOf("Success") >= 0) return;
+        String msg = out.toString().trim().replaceAll("\\s+", " ");
+        throw new Exception(code != 0 && msg.isEmpty() ? "root_denied" : "root_" + (msg.length() > 100 ? msg.substring(0, 100) : msg));
     }
 
     static void install(Context c, File f) throws Exception {
