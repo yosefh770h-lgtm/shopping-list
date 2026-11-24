@@ -1241,6 +1241,23 @@ def test_receipt_any_link_guards(monkeypatch):
     assert "חלב | 6.50" in R.html_to_text(page)
 
 
+def test_receipt_dns_rebinding_blocked():
+    """גם אם ה-DNS ענה כתובת ציבורית בבדיקה, חיבור שנפתח בפועל לכתובת פנימית נחסם"""
+    import socket as S
+    from yam import receipts as R
+    srv = S.socket(); srv.bind(("127.0.0.1", 0)); srv.listen(1)
+    try:
+        with R.public_only():
+            try:
+                R._uconn.create_connection(srv.getsockname(), timeout=2)
+                assert False, "connected to 127.0.0.1"
+            except OSError as e:
+                assert "not a public" in str(e)
+        R._uconn.create_connection(srv.getsockname(), timeout=2).close()  # מחוץ להבאת קבלה — רגיל
+    finally:
+        srv.close()
+
+
 def test_receipt_endpoint(built, monkeypatch):
     _, api = built
     from fastapi.testclient import TestClient
@@ -1252,6 +1269,7 @@ def test_receipt_endpoint(built, monkeypatch):
     r = c.get("/receipt", params={"u": "https://shop.example.com/r.aspx?id=1"}, headers=site)
     assert r.status_code == 200 and r.json()["kind"] == "text"
     assert "no-store" in r.headers["cache-control"]
+    assert "default-src 'none'" in r.headers["content-security-policy"] and r.headers["x-frame-options"] == "DENY"
     monkeypatch.setattr(R, "fetch", lambda u, timeout=12: (None, (404, "לא נמצאה")))
     r = c.get("/receipt", params={"u": "https://shop.example.com/r2"}, headers=site)
     assert r.status_code == 404 and r.json()["error"] == "לא נמצאה"
