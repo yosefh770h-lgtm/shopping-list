@@ -90,17 +90,18 @@ h2{font:700 clamp(30px,4vw,42px)/1.15 var(--serif);margin:0 0 10px}
 .side li::before{counter-increment:s;content:counter(s,hebrew) "׳";position:absolute;inset-inline-start:0;font:700 16px/1.6 var(--serif);color:var(--accent)}
 
 /* עבודות */
-.feature{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;background:var(--card);border:1px solid var(--rule);padding:36px;margin-bottom:28px}
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:20px 40px;align-items:start;background:var(--card);border:1px solid var(--rule);padding:36px;margin-bottom:28px}
 .tag{display:inline-block;font-size:13px;color:var(--muted);border:1px solid var(--rule);padding:2px 10px;margin:0 0 14px}
 .feature h3{font:900 34px/1.15 var(--serif);margin:0 0 12px}
 .feature p{color:var(--ink-2);margin:0 0 16px}
 .facts{list-style:none;margin:0 0 22px;padding:0;font-size:15.5px}
 .facts li{padding:7px 0;border-bottom:1px dashed var(--rule)}
 .facts li b{font-family:var(--serif);font-size:17px;color:var(--ink)}
-.phones{display:flex;justify-content:center;gap:16px}
-.phone{width:46%;max-width:210px;border:7px solid var(--ink);border-radius:26px;overflow:hidden;background:#fff;box-shadow:0 1px 0 var(--rule)}
-.phone:nth-child(2){transform:translateY(28px)}
-.phone img{display:block;width:100%;height:auto}
+.browser{grid-column:1/-1;margin:8px 0 0;border:1px solid var(--rule);background:#fff;box-shadow:0 18px 40px -28px rgba(31,44,61,.45)}
+.browser .bar{display:flex;align-items:center;gap:6px;padding:9px 12px;background:var(--paper-2);border-bottom:1px solid var(--rule);direction:ltr}
+.browser .bar i{width:10px;height:10px;border-radius:50%;background:var(--rule)}
+.browser .bar span{margin-left:14px;font-size:12.5px;color:var(--muted);background:var(--card);padding:2px 14px;border:1px solid var(--rule)}
+.browser img{display:block;width:100%;height:auto}
 .works{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:2px solid var(--ink)}
 .work{padding:28px 0 28px;border-bottom:1px solid var(--rule)}
 .work:nth-child(odd){padding-inline-end:32px;border-inline-end:1px solid var(--rule)}
@@ -155,7 +156,6 @@ footer a{color:var(--ink-2)}
   .wrap{padding:0 16px}
   .nav a:not(.cta){display:none}
   .mark small{display:none}
-  .phone{border-width:5px;border-radius:20px}
 }
 </style>
 </head>
@@ -234,6 +234,8 @@ footer a{color:var(--ink-2)}
           <span class="tag">אתר ואפליקציה</span>
           <h3>רשימת קניות</h3>
           <p>רשימת קניות משותפת למשפחה, עם השוואת מחירים בין הסופרים, מצב קנייה בחנות, קבלות ותקציב הבית.</p>
+        </div>
+        <div>
           <ul class="facts">
             <li><b>29</b> רשתות שיווק, לפי מאגרי המחירים שהרשתות מפרסמות לפי החוק</li>
             <li>רשימה אחת שכל בני הבית רואים ומעדכנים</li>
@@ -241,10 +243,10 @@ footer a{color:var(--ink-2)}
           </ul>
           <a class="btn" href="/">לאתר רשימת קניות</a>
         </div>
-        <div class="phones">
-          <figure class="phone" style="margin:0"><img src="v2-1-list.webp" width="540" height="960" alt="מסך הרשימה באפליקציה: חלב, לחם, ביצים ועוד" loading="lazy"></figure>
-          <figure class="phone" style="margin:0"><img src="v2-2-prices.webp" width="540" height="960" alt="מסך המחירים: השוואת סל מלא בין החנויות" loading="lazy"></figure>
-        </div>
+        <figure class="browser">
+          <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>yamshopping.com</span></div>
+          <img src="yam-desktop.webp" width="1600" height="1000" alt="רשימת קניות במחשב: הרשימה באמצע, הרשימות שלי בצד, והעוזר יאמי בצד השני" loading="lazy">
+        </figure>
       </article>
 
       <div class="works">
