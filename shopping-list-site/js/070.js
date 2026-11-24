@@ -145,7 +145,7 @@ async function pkOpen(id){const it=pkItem(id);if(!it)return;
     if(e.target.closest('[data-pkhist]')){const c=pkChosen(it);if(c)phOpen(c.bc,c.bn);return;}
     if(e.target.closest('[data-pksnap]')){const c=pkChosen(it);if(c&&await pkSnap(c.bc,c.bn)&&PK_OWN[c.bc]){PK_OWN[c.bc].then(src=>{if(src){delete c.bimg;save();render();}});pkFillImgs(b);}return;}
     const t=e.target.closest('[data-pkcode]');if(!t)return;const p=ps.find(x=>x.code===t.dataset.pkcode);if(!p)return;pkApply(it,p);closeSheet();flash('🎯 '+T('נבחר: ','Picked: ')+p.name);};}
-/* 📈 גרף מחיר למוצר ("היה זול יותר בשבוע שעבר?"): מהשרת (/history) — לכל יום ב-14 הימים האחרונים, המחיר הכי זול והחציון בכל הסניפים בארץ */
+/* 📈 גרף מחיר למוצר ("היה זול יותר בשבוע שעבר?"): מהשרת (/history) — לכל יום ב-60 הימים האחרונים (HISTORY_DAYS בשרת), המחיר הכי זול והחציון בכל הסניפים בארץ */
 const PH_CACHE={};
 function phFetch(code){if(PH_CACHE[code])return PH_CACHE[code];
   return PH_CACHE[code]=priceApi('/history',{code,exclude:srvHidden().join(',')}).catch(e=>{delete PH_CACHE[code];throw e;});}
@@ -162,7 +162,7 @@ function phChart(days){const ok=days.filter(d=>d.n);if(!ok.length)return '';cons
   let lo=Math.min(...ok.map(d=>d.min)),hi=Math.max(...ok.map(d=>d.median));if(hi-lo<0.5){hi+=0.25;lo-=0.25;}const pad=(hi-lo)*0.12;lo=Math.max(0,lo-pad);hi+=pad;
   const x=i=>L+(n<2?0:i*(W-L-R)/(n-1)),y=v=>Tp+(hi-v)*(H-Tp-B)/(hi-lo);
   const path=k=>{let s='',up=false;days.forEach((d,i)=>{if(!d.n){up=false;return;}s+=(up?'L':'M')+x(i).toFixed(1)+' '+y(d[k]).toFixed(1);up=true;});return s;};
-  const dots=(k,c)=>days.map((d,i)=>d.n?'<circle class="'+c+'" cx="'+x(i).toFixed(1)+'" cy="'+y(d[k]).toFixed(1)+'" r="4"/>':'').join('');
+  const dots=(k,c)=>days.map((d,i)=>d.n?'<circle class="'+c+'" cx="'+x(i).toFixed(1)+'" cy="'+y(d[k]).toFixed(1)+'" r="'+(n>20?2:4)+'"/>':'').join('');
   const ticks=[lo+(hi-lo)*0.1,(lo+hi)/2,hi-(hi-lo)*0.1].map(v=>'<line class="ph70g" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'"/><text class="ph70ax" x="'+(L-4)+'" y="'+(y(v)+4).toFixed(1)+'" text-anchor="end">'+v.toFixed(v<10?2:1)+'</text>').join('');
   const xl=days.map((d,i)=>(i%Math.ceil(n/5)===(n-1)%Math.ceil(n/5))?'<text class="ph70ax" x="'+x(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+phDay(d.day)+'</text>':'').join('');
   const last=ok[ok.length-1],li=days.indexOf(last);

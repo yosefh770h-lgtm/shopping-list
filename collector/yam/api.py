@@ -732,7 +732,7 @@ def products(q: str = Query(..., min_length=2, max_length=80), limit: int = Quer
     return out
 
 
-HISTORY_SHOW_DAYS = 14  # כמו HISTORY_DAYS באוסף: היסטוריה ישנה יותר כבר נמחקה
+HISTORY_SHOW_DAYS = int(os.environ.get("HISTORY_DAYS", "60"))  # כמו HISTORY_DAYS באוסף (נובמבר 2026: 60 במקום 14): היסטוריה ישנה יותר כבר נמחקה
 
 
 # ---------- 🔗 קבלה דיגיטלית מקישור (receipts.py) ----------

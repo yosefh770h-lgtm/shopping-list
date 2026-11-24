@@ -4763,6 +4763,42 @@ begin
     end loop;
     sent := sent + 1;
   end loop;
+
+  -- (ח) 🛰️ שרת המחירים הפסיק לדווח (נובמבר 2026). השרת מדווח בכל ריצה (כל שעה 07:15–23:15 ו-05:30, וגם בשבת כשהוא מושהה),
+  -- אז 7 שעות בלי דיווח (יותר מהפער של הלילה) = השרת נפל או נתקע. התראה לכל היותר פעם ב-every
+  if coalesce(c->>'alert_collector_off', '') <> 'true' then
+    select s.last_run into r from public.collector_status s where s.chain = '_server';
+    if found and r.last_run is not null and r.last_run < now() - interval '7 hours'
+       and not exists (select 1 from public.admin_alerts_sent x where x.kind = 'collector_down' and x.sent_at > now() - every) then
+      insert into public.admin_alerts_sent(kind, sent_at, n) values ('collector_down', now(), 1)
+        on conflict (kind) do update set sent_at = excluded.sent_at, n = excluded.n;
+      for a in select distinct id from public.admin_ids() id loop
+        perform public.push_enqueue(a.id, 'staff', '🛰️ שרת המחירים לא דיווח ' || floor(extract(epoch from now() - r.last_run) / 3600)::int || ' שעות',
+          'ייתכן שהשרת נפל או נתקע, והמחירים באתר לא מתעדכנים. כדאי להיכנס לשרת (sl-update / systemctl status) ולבדוק.',
+          '/#admin-prices', 'alert:collector_down');
+      end loop;
+      sent := sent + 1;
+    end if;
+  end if;
+
+  -- (ט) 📊 סיכום שבועי לצוות: יום ראשון ב-09:00 (שעון ישראל) — כמה נרשמו, כמה הורידו את האפליקציה וכמה תקלות היו השבוע
+  if coalesce(c->>'weekly_summary_off', '') <> 'true'
+     and extract(dow from now() at time zone 'Asia/Jerusalem') = 0
+     and extract(hour from now() at time zone 'Asia/Jerusalem') = 9
+     and not exists (select 1 from public.admin_alerts_sent x where x.kind = 'weekly_summary' and x.sent_at > now() - interval '6 days') then
+    select (select count(*)::int from auth.users u where u.created_at > now() - interval '7 days') users,
+           (select count(*)::int from public.apk_downloads d where d.kind = 'download' and d.at > now() - interval '7 days') dl,
+           (select count(*)::int from public.client_errors e where e.created_at > now() - interval '7 days' and e.ver <> 'collector') errs
+      into r;
+    insert into public.admin_alerts_sent(kind, sent_at, n) values ('weekly_summary', now(), r.users)
+      on conflict (kind) do update set sent_at = excluded.sent_at, n = excluded.n;
+    for a in select distinct id from public.admin_ids() id loop
+      perform public.push_enqueue(a.id, 'staff', '📊 סיכום השבוע ברשימת קניות',
+        r.users || ' משתמשים חדשים · ' || r.dl || ' הורדות של האפליקציה · ' || r.errs || ' תקלות. הפירוט בבק אופיס.',
+        '/#admin-dash', 'alert:weekly_summary');
+    end loop;
+    sent := sent + 1;
+  end if;
   return sent;
 end $$;
 revoke all on function public.admin_alerts_check() from public, anon, authenticated;

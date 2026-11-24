@@ -13,7 +13,8 @@ const check = process.argv.includes('--check');
 const html = fs.readFileSync(INDEX, 'utf8');
 const errors = [];
 const used = new Set();
-const out = html.replace(/(<script\b[^>]*\ssrc=")\/js\/([^"?]+)(?:\?v=([^"]*))?"/g, (all, pre, file, v) => {
+// גם קובץ העיצוב js/site.css (<link rel="stylesheet" href="/js/site.css?v=...">) — נובמבר 2026
+const out = html.replace(/(<script\b[^>]*\ssrc="|<link\b[^>]*\shref=")\/js\/([^"?]+)(?:\?v=([^"]*))?"/g, (all, pre, file, v) => {
   const p = path.join(SITE, 'js', file);
   used.add(file);
   if (!fs.existsSync(p)) { errors.push(`חסר הקובץ js/${file}`); return all; }
@@ -21,10 +22,10 @@ const out = html.replace(/(<script\b[^>]*\ssrc=")\/js\/([^"?]+)(?:\?v=([^"]*))?"
   if (v !== h) errors.push(`js/${file}: ?v=${v || '(אין)'} אבל התוכן הוא ${h}`);
   return `${pre}/js/${file}?v=${h}"`;
 });
-for (const f of fs.readdirSync(path.join(SITE, 'js'))) if (f.endsWith('.js') && !used.has(f)) errors.push(`js/${f} לא נטען מ-index.html`);
+for (const f of fs.readdirSync(path.join(SITE, 'js'))) if ((f.endsWith('.js') || f.endsWith('.css')) && !used.has(f)) errors.push(`js/${f} לא נטען מ-index.html`);
 if (check) {
   if (errors.length) { console.error('❌ ' + errors.join('\n❌ ') + '\nלתיקון: node tests/stamp-js.mjs'); process.exit(1); }
-  console.log(`✅ ${used.size} קבצי js — כל מספרי הגרסה מעודכנים`);
+  console.log(`✅ ${used.size} קבצי js ו-css — כל מספרי הגרסה מעודכנים`);
 } else {
   if (out !== html) fs.writeFileSync(INDEX, out);
   const missing = errors.filter((e) => !e.includes('?v='));
