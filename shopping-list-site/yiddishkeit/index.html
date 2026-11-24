@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" data-style="b">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +7,7 @@
 <meta name="description" content="אידישקייט אתרים: בונים אתרים, אפליקציות וכלים לציבור שומר תורה ומצוות. הסיפור, העבודות, ויצירת קשר.">
 <meta name="theme-color" content="#f3ede1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%231f2c3d'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23f3ede1' font-family='serif' font-weight='700'%3E%D7%90%3C/text%3E%3C/svg%3E">
+<script>(() => { const m = /[?&]style=([abcd])/.exec(location.search); if (m) document.documentElement.dataset.style = m[1]; })();</script>
 <link href="/vendor/fonts/fonts-1.css" rel="stylesheet">
 <style>
 @font-face{font-family:'Frank';font-weight:400;font-display:swap;src:url(/vendor/fonts/frank-hebrew-400-a1.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+FB1D-FB4F}
@@ -14,23 +15,16 @@
 @font-face{font-family:'Frank';font-weight:900;font-display:swap;src:url(/vendor/fonts/frank-hebrew-900-a1.woff2) format('woff2');unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+FB1D-FB4F}
 @font-face{font-family:'Frank';font-weight:700 900;font-display:swap;src:url(/vendor/fonts/frank-latin-700-a1.woff2) format('woff2');unicode-range:U+0000-00FF}
 
+@font-face{font-family:'Rashi';font-weight:500;font-display:swap;src:url(/vendor/fonts/rashi-hebrew-500-a1.woff2) format('woff2')}
+@font-face{font-family:'Rashi';font-weight:800;font-display:swap;src:url(/vendor/fonts/rashi-hebrew-800-a1.woff2) format('woff2')}
+@font-face{font-family:'David';font-weight:700;font-display:swap;src:url(/vendor/fonts/david-hebrew-700-a1.woff2) format('woff2')}
+@font-face{font-family:'Suez';font-weight:400;font-display:swap;src:url(/vendor/fonts/suez-hebrew-400-a1.woff2) format('woff2')}
+@font-face{font-family:'Karantina';font-weight:700;font-display:swap;src:url(/vendor/fonts/karantina-hebrew-700-a1.woff2) format('woff2')}
 :root{
   --paper:#f3ede1; --paper-2:#ebe3d3; --card:#fbf8f1;
   --ink:#1f2c3d; --ink-2:#4a5566; --muted:#7b7466;
   --rule:#d8cdb8; --accent:#8c3b1f; --accent-ink:#fbf8f1; --ok:#2f6b3a; --bad:#a3261b;
-  --serif:'Frank','Heebo',Georgia,serif; --sans:'Heebo',Arial,sans-serif;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#191c21; --paper-2:#20242a; --card:#22262d;
-    --ink:#ece5d6; --ink-2:#c4bcad; --muted:#958d7f;
-    --rule:#3a3d42; --accent:#e08b63; --accent-ink:#191c21; --ok:#7cc08a; --bad:#f08a7e;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#191c21; --paper-2:#20242a; --card:#22262d;
-  --ink:#ece5d6; --ink-2:#c4bcad; --muted:#958d7f;
-  --rule:#3a3d42; --accent:#e08b63; --accent-ink:#191c21; --ok:#7cc08a; --bad:#f08a7e;
+  --display:'Frank','Heebo',Georgia,serif; --sans:'Heebo',Arial,sans-serif;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -47,8 +41,8 @@ a:hover{color:var(--accent)}
 .top{border-bottom:1px solid var(--rule)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
 .mark{display:flex;align-items:center;gap:12px;text-decoration:none}
-.seal{width:40px;height:40px;border:1.5px solid var(--ink);display:grid;place-items:center;font:900 24px/1 var(--serif);transform:rotate(-3deg)}
-.mark b{font:700 21px/1.1 var(--serif);letter-spacing:.2px}
+.logo{width:52px;height:52px;flex:none}.lg{display:none}
+.mark b{font:700 21px/1.1 var(--display);letter-spacing:.2px}
 .mark small{display:block;font-size:12.5px;color:var(--muted);letter-spacing:.3px}
 .nav{display:flex;gap:22px;font-size:15.5px}
 .nav a{text-decoration:none;color:var(--ink-2)}
@@ -56,9 +50,9 @@ a:hover{color:var(--accent)}
 .nav .cta{color:var(--ink);border-bottom:1.5px solid var(--accent)}
 
 /* פתיחה */
-.hero{padding:72px 0 56px;display:grid;grid-template-columns:1.25fr .75fr;gap:48px;align-items:end}
+.hero{padding:64px 0 48px;display:grid;grid-template-columns:1fr 1.1fr;gap:48px;align-items:center}
 .kicker{font-size:14px;color:var(--accent);letter-spacing:.5px;margin:0 0 18px}
-h1{font:900 clamp(40px,6.4vw,74px)/1.06 var(--serif);margin:0 0 26px;letter-spacing:-.5px}
+h1{font:var(--h-weight,900) clamp(40px,5.6vw,68px)/1.1 var(--display);margin:0 0 26px;letter-spacing:-.5px}
 h1 em{font-style:normal;color:var(--accent)}
 .lead{font-size:19px;color:var(--ink-2);max-width:34em;margin:0 0 30px}
 .btns{display:flex;flex-wrap:wrap;gap:12px}
@@ -66,53 +60,58 @@ h1 em{font-style:normal;color:var(--accent)}
 .btn.solid{background:var(--ink);color:var(--paper)}
 .btn.solid:hover{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn:hover{color:var(--accent);border-color:var(--accent)}
-.ledger{border-top:2px solid var(--ink);font-size:15px}
-.ledger div{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.ledger{display:grid;grid-template-columns:repeat(4,1fr);margin:0 0 56px;border-block:1px solid var(--rule);font-size:14.5px}
+.ledger div{display:flex;flex-direction:column-reverse;gap:2px;padding:16px 20px;border-inline-start:1px solid var(--rule)}.ledger div:first-child{border:none}
 .ledger dt{color:var(--muted)}
-.ledger dd{margin:0;font:700 17px/1.4 var(--serif);text-align:end}
+.ledger dd{margin:0;font:var(--h-weight,700) 28px/1.2 var(--display);color:var(--accent)}
 
 /* מקטעים */
 section{padding:72px 0;border-top:1px solid var(--rule)}
 .head{display:grid;grid-template-columns:120px 1fr;gap:24px;margin-bottom:40px}
-.num{font:900 54px/1 var(--serif);color:var(--accent)}
-h2{font:700 clamp(30px,4vw,42px)/1.15 var(--serif);margin:0 0 10px}
+.num{font:var(--h-weight,900) 54px/1 var(--display);color:var(--accent)}
+h2{font:var(--h-weight,700) clamp(30px,4vw,44px)/1.15 var(--display);margin:0 0 10px}
 .sub{color:var(--ink-2);margin:0;max-width:36em}
 
 /* הסיפור */
 .story{display:grid;grid-template-columns:120px 1fr 280px;gap:24px}
 .story .text{max-width:38em}
 .story .text p{margin:0 0 1.1em}
-.story .text p:first-child::first-letter{font:900 3.4em/0.8 var(--serif);float:right;margin:.08em 0 0 .12em;color:var(--accent)}
+.story .text p:first-child::first-letter{font:900 3.4em/0.8 var(--display);float:right;margin:.08em 0 0 .12em;color:var(--accent)}
 .side{border-inline-start:1px solid var(--rule);padding-inline-start:24px;font-size:15px;color:var(--ink-2)}
-.side h3{font:700 17px/1.3 var(--serif);color:var(--ink);margin:0 0 12px}
+.side h3{font:700 17px/1.3 var(--display);color:var(--ink);margin:0 0 12px}
 .side ol{margin:0;padding:0;list-style:none;counter-reset:s}
 .side li{padding:0 0 14px;position:relative;padding-inline-start:30px}
-.side li::before{counter-increment:s;content:counter(s,hebrew) "׳";position:absolute;inset-inline-start:0;font:700 16px/1.6 var(--serif);color:var(--accent)}
+.side li::before{counter-increment:s;content:counter(s,hebrew) "׳";position:absolute;inset-inline-start:0;font:700 16px/1.6 var(--display);color:var(--accent)}
 
 /* עבודות */
 .feature{display:grid;grid-template-columns:1fr 1fr;gap:20px 40px;align-items:start;background:var(--card);border:1px solid var(--rule);padding:36px;margin-bottom:28px}
 .tag{display:inline-block;font-size:13px;color:var(--muted);border:1px solid var(--rule);padding:2px 10px;margin:0 0 14px}
-.feature h3{font:900 34px/1.15 var(--serif);margin:0 0 12px}
+.feature h3{font:var(--h-weight,900) 36px/1.15 var(--display);margin:0 0 12px}
 .feature p{color:var(--ink-2);margin:0 0 16px}
 .facts{list-style:none;margin:0 0 22px;padding:0;font-size:15.5px}
 .facts li{padding:7px 0;border-bottom:1px dashed var(--rule)}
-.facts li b{font-family:var(--serif);font-size:17px;color:var(--ink)}
-.browser{grid-column:1/-1;margin:8px 0 0;border:1px solid var(--rule);background:#fff;box-shadow:0 18px 40px -28px rgba(31,44,61,.45)}
+.facts li b{font-family:var(--display);font-size:17px;color:var(--ink)}
+.browser{margin:0;border:1px solid var(--rule);background:#fff;box-shadow:0 18px 40px -28px rgba(31,44,61,.45)}
 .browser .bar{display:flex;align-items:center;gap:6px;padding:9px 12px;background:var(--paper-2);border-bottom:1px solid var(--rule);direction:ltr}
 .browser .bar i{width:10px;height:10px;border-radius:50%;background:var(--rule)}
 .browser .bar span{margin-left:14px;font-size:12.5px;color:var(--muted);background:var(--card);padding:2px 14px;border:1px solid var(--rule)}
 .browser img{display:block;width:100%;height:auto}
+.phones{grid-column:1/-1;display:flex;justify-content:center;gap:28px;padding-top:8px}
+.phone{margin:0;width:230px;border:8px solid #1b2230;border-radius:30px;overflow:hidden;background:#fff;box-shadow:0 24px 40px -26px rgba(0,0,0,.55)}
+.phone:nth-child(2){transform:translateY(30px)}
+.phone img{display:block;width:100%;height:auto}
 .works{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:2px solid var(--ink)}
+.ico{width:40px;height:40px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-bottom:10px}
 .work{padding:28px 0 28px;border-bottom:1px solid var(--rule)}
 .work:nth-child(odd){padding-inline-end:32px;border-inline-end:1px solid var(--rule)}
 .work:nth-child(even){padding-inline-start:32px}
-.work h3{font:700 24px/1.25 var(--serif);margin:0 0 8px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.work h3{font:700 24px/1.25 var(--display);margin:0 0 8px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
 .work h3 span{font:400 13px/1 var(--sans);color:var(--muted);white-space:nowrap}
 .work p{margin:0;color:var(--ink-2);font-size:16px}
 
 /* איך אנחנו עובדים */
 .ways{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-inline-start:144px}
-.way h3{font:700 20px/1.3 var(--serif);margin:0 0 8px;padding-top:14px;border-top:2px solid var(--ink)}
+.way h3{font:700 20px/1.3 var(--display);margin:0 0 8px;padding-top:14px;border-top:2px solid var(--ink)}
 .way p{margin:0;color:var(--ink-2);font-size:16px}
 
 /* פניות */
@@ -133,15 +132,66 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom-color:var(--a
 .msg{font-size:15px;margin:0}
 .msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
 .privacy{font-size:14.5px;color:var(--ink-2);border-inline-start:1px solid var(--rule);padding-inline-start:24px}
-.privacy h3{font:700 17px/1.3 var(--serif);color:var(--ink);margin:0 0 10px}
+.privacy h3{font:700 17px/1.3 var(--display);color:var(--ink);margin:0 0 10px}
 .privacy p{margin:0 0 10px}
 
 footer{border-top:2px solid var(--ink);padding:28px 0 40px;font-size:14.5px;color:var(--muted)}
 footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 footer a{color:var(--ink-2)}
 
+/* ===== ארבעה סגנונות לבחירה (?style=a|b|c|d) ===== */
+/* א: כתב רש"י, דף של ספר */
+[data-style="a"]{--paper:#efe4cc;--paper-2:#e6d8b9;--card:#f6eedc;--ink:#2c1d10;--ink-2:#5a4128;--muted:#86684a;--rule:#cdb68c;--accent:#8a2b1d;--accent-ink:#f6eedc;--display:'Rashi','Frank',serif;--h-weight:800}
+[data-style="a"] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E")}
+[data-style="a"] main{border:2px solid var(--accent);outline:1px solid var(--accent);outline-offset:-8px;margin:20px;}
+[data-style="a"] .lg-a,[data-style="b"] .lg-b,[data-style="c"] .lg-c,[data-style="d"] .lg-d{display:inline}
+[data-style="a"] .nav,[data-style="a"] .btn{font-family:'Rashi';font-weight:800}
+[data-style="a"] .browser{box-shadow:12px 12px 0 var(--paper-2);border-color:var(--rule)}
+[data-style="a"] .btn.solid{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+/* ב: ספרי קלאסי, כחול וזהב (הכותרות ברש"י) */
+[data-style="b"]{--paper:#f5f0e4;--paper-2:#ebe3d0;--card:#fbf8f0;--ink:#13203a;--ink-2:#3e4a60;--muted:#7c7563;--rule:#dcd1b8;--accent:#a9802a;--accent-ink:#13203a;--display:'Rashi','Frank',serif;--h-weight:800}
+[data-style="b"] .top,[data-style="b"] .herozone{background:#13203a;color:#f2ead8;--ink:#f2ead8;--ink-2:#c9c0ad;--muted:#a59d8a;--rule:rgba(212,175,90,.3);--accent:#d4af5a;--paper:#13203a;--paper-2:#1c2b4a;--card:#fbf8f0}
+[data-style="b"] .herozone{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cg fill='none' stroke='%23d4af5a' stroke-opacity='.14' stroke-width='1.2'%3E%3Crect x='22' y='22' width='36' height='36'/%3E%3Crect x='22' y='22' width='36' height='36' transform='rotate(45 40 40)'/%3E%3Ccircle cx='40' cy='40' r='6'/%3E%3Cpath d='M0 40h10M70 40h10M40 0v10M40 70v10'/%3E%3C/g%3E%3C/svg%3E")}
+[data-style="b"] .top{border-bottom-color:rgba(212,175,90,.3)}
+[data-style="b"] .hero-shot{border:none;outline:1.5px solid #d4af5a;outline-offset:12px;border-radius:2px}
+[data-style="b"] .btn.solid{background:#d4af5a;border-color:#d4af5a;color:#13203a}
+[data-style="b"] .btn{border-color:#d4af5a}
+[data-style="b"] #ways{background:#13203a;color:#f2ead8;--ink:#f2ead8;--ink-2:#c9c0ad;--accent:#d4af5a;--rule:rgba(212,175,90,.3)}
+[data-style="b"] footer{background:#13203a;color:#a59d8a;--ink-2:#d9cfb8;border:none}
+
+/* ג: מודרני וחזק, ירוק וצהוב */
+[data-style="c"]{--paper:#f6f0e4;--paper-2:#ece4d3;--card:#fffdf8;--ink:#16332a;--ink-2:#3c574d;--muted:#6f7f77;--rule:#dcd3c1;--accent:#e0a12e;--accent-ink:#16332a;--display:'Suez','Heebo',sans-serif;--h-weight:400}
+[data-style="c"] .herozone{background:linear-gradient(to left,transparent 52%,#1f4d3c 52%)}
+[data-style="c"] .herozone .hero-shot{transform:rotate(-2deg);border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -22px rgba(0,0,0,.55);border:none}
+[data-style="c"] h1 em{color:var(--ink);background:#f2b33d;padding:0 10px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+[data-style="c"] .btn{border-radius:40px}
+[data-style="c"] .nav .cta{background:#f2b33d;border:none;padding:6px 18px;border-radius:30px}
+[data-style="c"] .feature,[data-style="c"] form{border-radius:18px;border:none;box-shadow:0 10px 30px -18px rgba(22,51,42,.4)}
+[data-style="c"] .ico{background:#f2b33d;stroke:#16332a;border-radius:12px;padding:6px;width:46px;height:46px}
+[data-style="c"] #ways{background:#1f4d3c;color:#f6f0e4;--ink:#f6f0e4;--ink-2:#d6e2db;--accent:#f2b33d;--rule:rgba(246,240,228,.25)}
+[data-style="c"] .ledger dd{color:var(--ink)}
+[data-style="c"] .ledger{background:var(--card);border:none;border-radius:16px;box-shadow:0 10px 30px -18px rgba(22,51,42,.4)}
+
+/* ד: כתב יד, מחברת */
+[data-style="d"]{--paper:#fbfaf6;--paper-2:#f2f0ea;--card:#ffffff;--ink:#22324a;--ink-2:#4a5870;--muted:#7d8799;--rule:#d9dee8;--accent:#d0453a;--accent-ink:#fff;--display:'Karantina','Heebo',sans-serif;--h-weight:700}
+[data-style="d"] body{background-image:linear-gradient(#e3e8f0 1px,transparent 1px);background-size:100% 34px}
+[data-style="d"] main{border-right:2px solid #f0a8a0;margin-right:min(6vw,80px)}
+[data-style="d"] h1{font-size:clamp(56px,8vw,104px);line-height:.95}
+[data-style="d"] h2{font-size:clamp(44px,6vw,64px)}
+[data-style="d"] .num{font-size:72px}
+[data-style="d"] .work h3{font-size:32px}
+[data-style="d"] .nav{font:700 24px Karantina}
+[data-style="d"] .browser,[data-style="d"] .phone{border:2px solid var(--ink);box-shadow:6px 6px 0 var(--ink);transform:rotate(1deg)}
+[data-style="d"] .phone{border-width:6px}
+[data-style="d"] .btn{border-radius:6px 14px 8px 12px;border-width:2px}
+[data-style="d"] .btn.solid{transform:rotate(-1deg)}
+[data-style="d"] .feature,[data-style="d"] form{border:2px dashed var(--rule)}
+
 @media (max-width:880px){
   .hero{grid-template-columns:1fr;padding:44px 0 40px;gap:36px}
+  .ledger{grid-template-columns:1fr 1fr}.ledger div:nth-child(3){border:none}
+  .phone{width:44%}
   .head,.story,.contact{grid-template-columns:1fr;gap:12px}
   .num{font-size:40px}
   .side,.privacy{border-inline-start:none;padding-inline-start:0;border-top:1px solid var(--rule);padding-top:20px}
@@ -165,7 +215,12 @@ footer a{color:var(--ink-2)}
 <header class="top">
   <div class="wrap">
     <a class="mark" href="#" aria-label="אידישקייט אתרים, לראש העמוד">
-      <span class="seal" aria-hidden="true">א</span>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+        <g class="lg lg-a"><circle cx="32" cy="32" r="29" fill="none" stroke="var(--accent)" stroke-width="2.2"/><circle cx="32" cy="32" r="23.5" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 3"/><text x="32" y="44" text-anchor="middle" font-family="Rashi" font-weight="800" font-size="31" fill="var(--ink)">א</text></g>
+        <g class="lg lg-b"><path d="M8 62V30a24 24 0 0 1 48 0v32z" fill="none" stroke="var(--accent)" stroke-width="2.2"/><path d="M15 62V31a17 17 0 0 1 34 0v31" fill="none" stroke="var(--accent)" stroke-width="1"/><text x="32" y="54" text-anchor="middle" font-family="Rashi" font-weight="800" font-size="27" fill="var(--ink)">א</text></g>
+        <g class="lg lg-c"><rect x="2" y="2" width="60" height="60" rx="15" fill="var(--ink)"/><path d="M15 33 32 17l17 16" fill="none" stroke="var(--accent)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><text x="32" y="52" text-anchor="middle" font-family="Suez" font-size="23" fill="var(--paper)">אי</text></g>
+        <g class="lg lg-d"><path d="M5 31 32 8l27 23" fill="none" stroke="var(--accent)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 27v29h38V27" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" stroke-dasharray="70 5"/><text x="32" y="52" text-anchor="middle" font-family="Karantina" font-weight="700" font-size="28" fill="var(--ink)">א</text></g>
+      </svg>
       <span><b>אידישקייט אתרים</b><small>אתרים · אפליקציות · כלים</small></span>
     </a>
     <nav class="nav" aria-label="ניווט ראשי">
@@ -178,7 +233,7 @@ footer a{color:var(--ink-2)}
 </header>
 
 <main id="main">
-  <div class="wrap">
+  <div class="herozone"><div class="wrap">
     <div class="hero">
       <div>
         <p class="kicker">סטודיו קטן לבניית אתרים ואפליקציות</p>
@@ -189,14 +244,18 @@ footer a{color:var(--ink-2)}
           <a class="btn" href="#work">לראות מה בנינו</a>
         </div>
       </div>
+      <figure class="browser hero-shot">
+        <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>yamshopping.com</span></div>
+        <img src="yam-desktop.webp" width="1600" height="1000" alt="רשימת קניות במחשב: הרשימה באמצע, הרשימות שלי בצד, והעוזר יאמי בצד השני">
+      </figure>
+    </div>
       <dl class="ledger" aria-label="במספרים">
         <div><dt>המוצר הראשון</dt><dd>רשימת קניות</dd></div>
         <div><dt>רשתות שיווק בהשוואת המחירים</dt><dd>29</dd></div>
         <div><dt>גרסת האפליקציה לאנדרואיד</dt><dd>2.2</dd></div>
         <div><dt>עובד גם בלי אינטרנט</dt><dd>כן</dd></div>
       </dl>
-    </div>
-  </div>
+  </div></div>
 
   <section id="story" aria-labelledby="story-h">
     <div class="wrap story">
@@ -243,34 +302,40 @@ footer a{color:var(--ink-2)}
           </ul>
           <a class="btn" href="/">לאתר רשימת קניות</a>
         </div>
-        <figure class="browser">
-          <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>yamshopping.com</span></div>
-          <img src="yam-desktop.webp" width="1600" height="1000" alt="רשימת קניות במחשב: הרשימה באמצע, הרשימות שלי בצד, והעוזר יאמי בצד השני" loading="lazy">
-        </figure>
+        <div class="phones">
+          <figure class="phone"><img src="v2-1-list.webp" width="540" height="960" alt="האפליקציה בטלפון: מסך הרשימה" loading="lazy"></figure>
+          <figure class="phone"><img src="v2-2-prices.webp" width="540" height="960" alt="האפליקציה בטלפון: מסך המחירים" loading="lazy"></figure>
+        </div>
       </article>
 
       <div class="works">
         <article class="work">
+          <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="4" width="24" height="40" rx="4"/><path d="M21 38h6"/><path d="M18 14h12M18 20h12M18 26h8"/></svg>
           <h3>אפליקציה לאנדרואיד <span>גרסה 2.2</span></h3>
           <p>האתר כאפליקציה מלאה: התראות, סריקת ברקוד, צילום קבלות, וכפתורי קיצור מהאייקון. מתעדכנת מתוך עצמה.</p>
         </article>
         <article class="work">
+          <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="4" width="24" height="40" rx="4"/><path d="M17 22a10 10 0 0 1 14 0M20 26a5 5 0 0 1 8 0"/><path d="M14 12l20 22"/></svg>
           <h3>אפליקציה בלי אינטרנט <span>אופליין</span></h3>
           <p>לטלפונים בלי חיבור לאינטרנט. הרשימה נשמרת בטלפון ומסתנכרנת עם המחשב בבלוטות׳, בברקוד או בקוד קצר.</p>
         </article>
         <article class="work">
+          <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 16h8a4 4 0 1 1 8 0h8v8a4 4 0 1 1 0 8v8H10z"/></svg>
           <h3>תוסף לצוות <span>לדפדפן כרום</span></h3>
           <p>כלי עבודה לצוות: מראה פניות חדשות, הודעות ודיווחים, ומוביל בלחיצה אחת לפריט שמחכה לטיפול.</p>
         </article>
         <article class="work">
+          <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="8" width="32" height="10" rx="2"/><rect x="8" y="22" width="32" height="10" rx="2"/><path d="M13 13h2M13 27h2M24 38v6M16 44h16"/></svg>
           <h3>מערכת איסוף מחירים <span>שרת</span></h3>
           <p>מערכת שרצה בשרת שלנו, מורידה כל שעה את קובצי המחירים של הרשתות, ומעדכנת את השוואת המחירים.</p>
         </article>
         <article class="work">
+          <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="8" width="36" height="28" rx="3"/><path d="M14 28v-6M22 28V16M30 28v-9M18 42h12"/></svg>
           <h3>ניהול ובק אופיס <span>מערכת פנימית</span></h3>
           <p>מסך ניהול אחד: משתמשים, מחירים, פניות, דיווחי תקלות לפי גרסה, ומעקב אחרי עדכוני האפליקציה.</p>
         </article>
         <article class="work">
+          <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4 40 10v12c0 10-7 18-16 22C15 40 8 32 8 22V10z"/><path d="m17 24 5 5 9-10"/></svg>
           <h3>אבטחה והגנה <span>תשתית</span></h3>
           <p>חומת הגנה מעומסים ומבוטים, הגבלת קצב במסד הנתונים, ובדיקה אוטומטית של כל גרסה לפני שהיא עולה לאוויר.</p>
         </article>
