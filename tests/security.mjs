@@ -7,13 +7,14 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SCRIPT_CSP } from './site-csp.mjs';
 
 const ROOT = process.env.SITE_DIR ? path.resolve(process.env.SITE_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../shopping-list-site');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain' };
 const server = http.createServer((req, res) => {
   const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html');
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' }); fs.createReadStream(p).pipe(res);
+  res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream', ...(p.endsWith('.html') ? { 'Content-Security-Policy': SCRIPT_CSP } : {}) }); fs.createReadStream(p).pipe(res);
 });
 await new Promise((r) => server.listen(0, r));
 const BASE = 'http://localhost:' + server.address().port + '/index.html';
