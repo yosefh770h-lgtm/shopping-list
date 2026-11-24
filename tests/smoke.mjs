@@ -44,7 +44,7 @@ async function newPage(opts = {}) {
   if (process.env.CDN_DIR) {
     await ctx.route(/cdn\.jsdelivr\.net.*zxing.*index\.min\.js/, (r) => r.fulfill({ path: path.join(process.env.CDN_DIR, 'zxing.min.js'), contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' } }));
   }
-  await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
+  await ctx.addInitScript((st) => { if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify(st)); localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1'); }, { user: { name: 'בודק', email: '', offline: true } });
   await ctx.addInitScript(STUB);
   if (opts.init) await ctx.addInitScript(opts.init);
   if (opts.adblock) await ctx.addInitScript(() => { new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.id && /^yb(Side|Pop|Top)$/.test(n.id)) n.remove(); }))).observe(document, { childList: true, subtree: true }); });
@@ -60,6 +60,22 @@ await test('האתר נטען בלי שגיאות', async () => {
   assert(await page.evaluate(() => !!document.querySelector('#paneList')), 'אין רשימה');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
+});
+
+await test('🍪 הודעת עוגיות: מופיעה פעם אחת, "הבנתי" שומר את האישור, ולא באפליקציה האופליין', async () => {
+  const { ctx, page, errors } = await newPage({ init: () => { if (!sessionStorage.getItem('ck')) { sessionStorage.setItem('ck', '1'); localStorage.removeItem('yam_cookie_ok'); } } });
+  await page.waitForSelector('#ck88', { timeout: 5000 });
+  assert(await page.evaluate(() => /פרסום או מעקב/.test(document.querySelector('#ck88').textContent) && !!document.querySelector('#ck88 a[href="privacy.html#cookies"]')), 'חסר טקסט או קישור בהודעה');
+  await page.click('#ck88ok');
+  assert(await page.evaluate(() => !document.querySelector('#ck88') && /^\d{4}-\d\d-\d\d$/.test(localStorage.getItem('yam_cookie_ok'))), 'האישור לא נשמר');
+  await page.reload(); await page.waitForTimeout(2500);
+  assert(!(await page.$('#ck88')), 'ההודעה חזרה אחרי האישור');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+  const OFF = await newPage({ userAgent: 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36 YamShoppingApp/2.2 YamShoppingOffline/1.6', init: () => localStorage.removeItem('yam_cookie_ok') });
+  await OFF.page.waitForTimeout(2000);
+  assert(!(await OFF.page.$('#ck88')), 'הודעת העוגיות מופיעה באפליקציה האופליין');
+  await OFF.ctx.close();
 });
 
 await test('חוסם פרסומות שמוחק את הפרסומות מהדף לא שובר את האתר', async () => {
@@ -635,7 +651,7 @@ await test('🆕 v26: כמה חסכתי, הסל השבועי, התראת מחי�
 await test('👀 ניסיון בלי הרשמה + 📲 קיצור דרך למצב קנייה + 💌 קישור הזמנה נשמר', async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL' });
   await ctx.route(/supabase\.(co|js)|fonts\.(googleapis|gstatic)/, (r) => r.abort());
-  await ctx.addInitScript(() => { localStorage.setItem('yam_tour165', '1'); window.__fakeSb = true; });
+  await ctx.addInitScript(() => { localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1'); window.__fakeSb = true; });
   await ctx.addInitScript(STUB);
   // בלי חיבור לענן האתר נכנס למצב "בלי חשבון" — כאן מדמים שיש שרת, כדי לראות את מסך הכניסה עם "לנסות בלי הרשמה"
   await ctx.addInitScript(() => { Object.defineProperty(window, 'supabase', { configurable: true, get() { return { createClient: () => window.__stub({}) }; } }); });
@@ -1891,7 +1907,7 @@ await test('📴 נכנסים בלי קליטה ותוקף הכניסה צריך
   await ctx.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   await ctx.addInitScript(STUB);
   await ctx.addInitScript(() => {
-    localStorage.setItem('yam_tour165', '1');
+    localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1');
     if (!localStorage.getItem('yamh_app_v1')) localStorage.setItem('yamh_app_v1', JSON.stringify({ user: { id: 'me', name: 'בודק', email: 'x@y.z' }, lists: [{ id: 'L1', name: 'סופר', created: 1, items: [{ id: 'a', n: 'חלב', q: '', c: 'מוצרי חלב', done: false, ts: 1 }] }], active: 'L1' }));
     window.supabase = { createClient: () => { const c = window.__stub({}); c.auth.getSession = () => Promise.resolve({ data: { session: null }, error: { message: 'Failed to fetch' } }); return c; } };
   });

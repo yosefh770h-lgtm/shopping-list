@@ -67,7 +67,7 @@ async function run(online) {
     window.Date = class extends RD { constructor(...a) { if (a.length) super(...a); else super(T0 + tick); } static now() { return T0 + tick; } };
     window.open = () => ({});
     localStorage.setItem('yamh_app_v1', JSON.stringify({ user: { name: 'בודק', email: '', offline: true }, city: 'ירושלים' }));
-    localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_ver_seen', '99');
+    localStorage.setItem('yam_tour165', '1'); localStorage.setItem('yam_cookie_ok', '1'); localStorage.setItem('yam_ver_seen', '99');
   });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
