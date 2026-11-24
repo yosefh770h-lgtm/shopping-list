@@ -299,9 +299,7 @@ async function askAI(){
     if(data.disabled){aiOff=true;renderBot();if(isAdmin()&&!window._aiHint){window._aiHint=1;botSay('🛠️ (רק למנהל) הבינה המלאכותית כבויה: '+({off:'לא סומן "פעילה" בבק אופיס',no_key:'חסר מפתח בשרת (GEMINI_API_KEY ב-Supabase ← Secrets)',admin_only:'פתוחה רק למנהל'}[data.reason]||(data.reason||'בשרת רצה גרסה ישנה של הפונקציה — צריך להעלות את הקוד החדש'))+'.\nבדיקה מלאה: בק אופיס ← 🤖 ← "🔍 בדיקת חיבור".');return true;}return false;}
     (Array.isArray(data.actions)?data.actions:[]).slice(0,20).forEach(aiAction);
     const txt=String(data.text||'');
-    /* ⚖️ גילוי נאות: פעם ביום, בתשובה הראשונה של הבינה המלאכותית, שורה שהתשובה מבינה מלאכותית ויכולה לטעות (ראו terms.html סעיף 5) */
-    let note='';try{const d=new Date().toDateString();if(txt&&localStorage.getItem('yam_ai_note')!==d){localStorage.setItem('yam_ai_note',d);note='\n\n🤖 '+T('התשובה מבינה מלאכותית ויכולה לטעות — כדאי לבדוק מידע חשוב.','This answer is from AI and may be wrong — check important information.');}}catch(e){}
-    botSay(hasProfanity(txt)?'🙏 בואו נדבר יפה — אפשר לשאול משהו אחר?':txt+note);
+    botSay(hasProfanity(txt)?'🙏 בואו נדבר יפה — אפשר לשאול משהו אחר?':txt);
     return true;
   }catch(e){window.botTyping=false;renderBot();botSay(AI_NET_ERR());return true;}
 }
@@ -1866,6 +1864,8 @@ function applyLang(){
   document.documentElement.lang=en?'en':'he';document.documentElement.dir=en?'ltr':'rtl';
   I18N.forEach(([sel,kind,he,enT])=>{document.querySelectorAll(sel).forEach(el=>{if(kind==='p')el.placeholder=en?enT:appTxt(he);else el.textContent=en?enT:appTxt(he);});});
   const stt=document.querySelector('.tab[data-t=stores]');if(stt&&stt.firstChild)stt.firstChild.textContent=T('🏪 חנויות','🏪 Stores');
+  /* ⚖️ גילוי נאות מתחת לתיבת הכתיבה ליאמי (נובמבר 2026, terms.html סעיף 5) — באנגלית כשהממשק באנגלית */
+  {const an=document.querySelector('#botAiNote');if(an)an.innerHTML=T('🤖 חלק מהתשובות של יאמי הן מבינה מלאכותית ויכולות לטעות — כדאי לבדוק מידע חשוב','🤖 Some of Yami\'s answers come from AI and may be wrong — check important information')+' · <a href="terms.html" target="_blank" rel="noopener" style="color:inherit">'+T('תנאי שימוש','Terms')+'</a>';}
   {const lt=document.querySelector('#lTerms');if(lt)lt.innerHTML=T('<a href="terms.html" target="_blank" rel="noopener">תנאי שימוש</a> · <a href="privacy.html" target="_blank" rel="noopener">פרטיות</a> · <a href="accessibility.html" target="_blank" rel="noopener">נגישות</a>','<a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="accessibility.html" target="_blank" rel="noopener">Accessibility</a>');}
   const g=document.querySelector('#btnGoogle');if(g){const tn=Array.from(g.childNodes).find(n=>n.nodeType===3&&n.textContent.trim());if(tn)tn.textContent=' '+T('כניסה עם גוגל','Sign in with Google');}
   if(typeof setLoginMode==='function')setLoginMode(loginMode);
