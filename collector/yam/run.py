@@ -360,7 +360,7 @@ class Runner:
         self.send_daily_summary(len(todo))
         if self.mode in ("full",):
             self.drop_stale()
-            db.prune(self.con, int(env("HISTORY_DAYS", "14")))
+            db.prune(self.con, int(env("HISTORY_DAYS", "60")))
             db.rebuild_popularity(self.con)
         if self.mode in ("full", "test"):
             try:

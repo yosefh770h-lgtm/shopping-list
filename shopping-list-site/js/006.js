@@ -1864,7 +1864,9 @@ function applyLang(){
   document.documentElement.lang=en?'en':'he';document.documentElement.dir=en?'ltr':'rtl';
   I18N.forEach(([sel,kind,he,enT])=>{document.querySelectorAll(sel).forEach(el=>{if(kind==='p')el.placeholder=en?enT:appTxt(he);else el.textContent=en?enT:appTxt(he);});});
   const stt=document.querySelector('.tab[data-t=stores]');if(stt&&stt.firstChild)stt.firstChild.textContent=T('🏪 חנויות','🏪 Stores');
-  {const lt=document.querySelector('#lTerms');if(lt)lt.innerHTML=T('<a href="privacy.html" target="_blank" rel="noopener">פרטיות</a> · <a href="accessibility.html" target="_blank" rel="noopener">נגישות</a>','<a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="accessibility.html" target="_blank" rel="noopener">Accessibility</a>');}
+  /* ⚖️ גילוי נאות מתחת לתיבת הכתיבה ליאמי (נובמבר 2026, terms.html סעיף 5) — באנגלית כשהממשק באנגלית */
+  {const an=document.querySelector('#botAiNote');if(an)an.innerHTML=T('🤖 חלק מהתשובות של יאמי הן מבינה מלאכותית ויכולות לטעות — כדאי לבדוק מידע חשוב','🤖 Some of Yami\'s answers come from AI and may be wrong — check important information')+' · <a href="terms.html" target="_blank" rel="noopener" style="color:inherit">'+T('תנאי שימוש','Terms')+'</a>';}
+  {const lt=document.querySelector('#lTerms');if(lt)lt.innerHTML=T('<a href="terms.html" target="_blank" rel="noopener">תנאי שימוש</a> · <a href="privacy.html" target="_blank" rel="noopener">פרטיות</a> · <a href="accessibility.html" target="_blank" rel="noopener">נגישות</a>','<a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="accessibility.html" target="_blank" rel="noopener">Accessibility</a>');}
   const g=document.querySelector('#btnGoogle');if(g){const tn=Array.from(g.childNodes).find(n=>n.nodeType===3&&n.textContent.trim());if(tn)tn.textContent=' '+T('כניסה עם גוגל','Sign in with Google');}
   if(typeof setLoginMode==='function')setLoginMode(loginMode);
   updateGenderLabel&&updateGenderLabel();
@@ -1913,7 +1915,7 @@ function openAbout(){
     '<h3>💌 '+T('כל הערה והארה תבוא בברכה — נשמח לשמור איתכם על קשר','We welcome every comment — let\'s keep in touch')+'</h3>'+
     '<p>'+T('אפשר לכתוב לנו למייל:','Email us:')+' <a href="mailto:'+CONTACT_EMAIL+'?subject='+encodeURIComponent(T('רשימת קניות — הערה','Shopping List — feedback'))+'" dir="ltr">'+CONTACT_EMAIL+'</a> <button type="button" class="pr-act" id="copyMail">📋</button></p>'+
     '<div class="form"><textarea id="fbText" placeholder="'+T('או לכתוב כאן — מה אפשר לשפר? מה חסר?','Or write here — what can we improve?')+'" maxlength="3000"></textarea><button id="fbSend">'+T('שליחה למנהל האתר','Send to the site team')+'</button></div>'+
-    '<p class="about-copy" style="text-align:center;margin-top:16px">© '+T('כל הזכויות שמורות ל-YAMSHOPPING2026','All rights reserved to YAMSHOPPING2026')+' · <a href="privacy.html" target="_blank" rel="noopener" style="color:inherit">'+T('מדיניות פרטיות','Privacy policy')+'</a> · <a href="accessibility.html" target="_blank" rel="noopener" style="color:inherit">'+T('הצהרת נגישות','Accessibility statement')+'</a></p>';
+    '<p class="about-copy" style="text-align:center;margin-top:16px">© '+T('כל הזכויות שמורות ל-YAMSHOPPING2026','All rights reserved to YAMSHOPPING2026')+' · <a href="terms.html" target="_blank" rel="noopener" style="color:inherit">'+T('תנאי שימוש','Terms of use')+'</a> · <a href="privacy.html" target="_blank" rel="noopener" style="color:inherit">'+T('מדיניות פרטיות','Privacy policy')+'</a> · <a href="accessibility.html" target="_blank" rel="noopener" style="color:inherit">'+T('הצהרת נגישות','Accessibility statement')+'</a></p>';
   document.querySelector('#aboutOverlay').classList.add('open');
 }
 document.querySelector('#miAbout').onclick=openAbout;

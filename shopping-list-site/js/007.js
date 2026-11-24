@@ -294,7 +294,7 @@ function fair18Html(f,label,nameOf,cur,missName){
   return '<div class="rank fair18"><h3>✅ '+T('הכי זול לכל הרשימה: ','Cheapest for the whole list: ')+esc(nameOf(best.s))+' — '+fmtPrice(best.sum,cur)+'</h3>'+
     '<div class="sub">'+T('הושוו '+f.common.length+' מתוך '+f.n+' מוצרים: רק מוצרים זהים שיש בכל '+f.rows.length+' '+label+' שבהשוואה, כדי שההשוואה תהיה הוגנת.','Compared '+f.common.length+' of '+f.n+' items: only identical items found in all '+f.rows.length+' compared.')+'</div>'+
     f.rows.slice(0,5).map((r,i)=>{const d=rnd2(r.sum-best.sum);return '<div class="rkrow"><span class="rkn">'+(MED[i]||(i+1))+'</span><b>'+esc(nameOf(r.s))+'</b><span class="amt">'+fmtPrice(r.sum,cur)+'</span><small>'+(i===0?T('הכי זול 🎉','cheapest 🎉'):T('יקר ב-','more by ')+fmtPrice(d,cur)+(best.sum>0?' ('+Math.round(100*d/best.sum)+'%)':''))+'</small></div>';}).join('')+
-    (out.length?'<p class="muted-note">'+T('לא נכללו בהשוואה (אין בכל החנויות, או מוצר שונה): ','Left out (not in every store, or a different product): ')+out.map(esc).join(', ')+'</p>':'')+'</div>';
+    '<p class="muted-note">ℹ️ '+T('ייתכנו טעויות ושינויים במחירים — המחיר הקובע הוא המחיר בחנות.','Prices may be wrong or change — the store price is what counts.')+'</p>'+(out.length?'<p class="muted-note">'+T('לא נכללו בהשוואה (אין בכל החנויות, או מוצר שונה): ','Left out (not in every store, or a different product): ')+out.map(esc).join(', ')+'</p>':'')+'</div>';
 }
 
 /* ---------- סל הקניות: איפה הכי זול לקנות את הרשימה ---------- */
@@ -372,7 +372,7 @@ function srvBasketMount(box,itemsArg){
   const wrap=document.createElement('div');wrap.className='rank';wrap.id='srvCmp';
   wrap.innerHTML='<h3>🏪 '+T('השוואת חנויות — כל החנויות בארץ','Compare stores — every store in Israel')+'</h3>'+
     (srvPublic()?'':'<p class="muted-note" style="background:#fff3c4;color:#5a4300;border-radius:8px;padding:6px 8px">👁️ '+T('מצב בדיקה: רק מנהלים רואים את זה. מדליקים לכולם בבק אופיס ← 💰 מחירים.','Test mode: only admins see this. Turn it on for everyone in the back office.')+'</p>')+
-    '<div class="sub">'+T('לפי קבצי שקיפות המחירים של הרשתות, מתעדכן כל שעה. בוחרים עיר או קרוב אליי. 🌐 = הזמנה מהאתר של הרשת, עם משלוח.','From the chains\' official price files, updated hourly. 🌐 = order online with delivery.')+'</div>'+
+    '<div class="sub">'+T('לפי קבצי שקיפות המחירים של הרשתות, מתעדכן כל שעה. ייתכנו שינויים — המחיר הקובע הוא המחיר בחנות. בוחרים עיר או קרוב אליי. 🌐 = הזמנה מהאתר של הרשת, עם משלוח.','From the chains\' official price files, updated hourly. Prices may change — the store price is what counts. 🌐 = order online with delivery.')+'</div>'+
     '<div class="row18"><input id="srvCity" list="srvCities" autocomplete="off" value="'+esc(city0)+'" placeholder="'+T('עיר','City')+'" aria-label="'+T('עיר','City')+'"><datalist id="srvCities"></datalist>'+
     '<button id="srvGo">🔎 '+T('השוואה','Compare')+'</button><button class="sec" id="srvNear">📍 '+T('קרוב אליי','Near me')+'</button></div><div id="srvRes" aria-live="polite"></div>';
   box.prepend(wrap);
