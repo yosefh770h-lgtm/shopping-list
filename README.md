@@ -240,6 +240,10 @@
   - ⚠️ לא להפעיל את `nftables.service` של המערכת (הוא מוחק כללים אחרים באתחול). השומר יוצר את הטבלה בעצמו כשהוא עולה.
   - **ב-Supabase:** `yam_pre_request` רץ לפני כל בקשה (`pgrst.db_pre_request`): מעל 600 כתיבות בדקה (מחובר — לפי חשבון, אורח — לפי IP) חסימה ל-10 דקות (HTTP 429). כל תקלה בבדיקה — הבקשה עוברת. כיבוי: בק אופיס ← 🛡️ ← "לכבות את ההגבלה במסד", או `alter role authenticator reset pgrst.db_pre_request; notify pgrst, 'reload config';`.
   - **מה שרת אחד לא יכול לעצור:** התקפה שממלאת את קו האינטרנט של השרת. לזה צריך שכבה לפני השרת — הענן הכתום של Cloudflare (חינם, הדומיין כבר שם). להדליק רק בשעת צורך, אחרי בדיקה שנטפרי פותחים את האתר דרכו, ולהגדיר ב-Caddy את Cloudflare כ-trusted_proxies כדי שהשרת יראה את הכתובת האמיתית.
+- 🌐 **אתר יסוד שביסוד** (`shopping-list-site/yesod/`): נפתח גם ב-`www.yamshopping.com/yesod/` וגם ב-**`yesod.yamshopping.com`**.
+  ב-Cloudflare: רשומת A ‏`yesod` ← 84.13.86.86 (DNS only). ב-Caddy: קובץ נפרד `/etc/caddy/yesod.caddy` (שורת `import` אחת בסוף ה-Caddyfile, ו-sl-gen-caddy לא נוגע בו):
+  `yesod.yamshopping.com { import yamsite; @home path /; rewrite @home /yesod/index.html }`. התמונות והסקריפט של הדף בכתובות מלאות (`/yesod/...`, `/js/pages/yesod.js`), כדי שיעבדו מהשורש.
+  סטטיסטיקה אנונימית (כניסות ולחיצות על הורדה, בלי IP) נשמרת ב-`yesod_events` ומוצגת בבק אופיס ← 👀 מבקרים.
 - פרויקט ה-Vercel לא נמחק — גיבוי: להחזיר ב-Cloudflare את ה-CNAME הישנים ל-`491f44e6e5120b96.vercel-dns-017.com`.
 
 ## 🚀 הגדרה חד־פעמית (בערך 10 דקות)
