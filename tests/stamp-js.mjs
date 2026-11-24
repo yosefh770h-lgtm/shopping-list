@@ -35,9 +35,15 @@ for (const page of pages) {
 for (const dir of ['', 'pages/']) {
   for (const f of fs.readdirSync(path.join(SITE, 'js', dir))) if (f.endsWith('.js') && !used.has(dir + f)) errors.push(`js/${dir}${f} לא נטען מאף דף`);
 }
+// 🛡️ גם אסור onclick= / onerror= וכו' בתוך HTML (בדפים או בטקסט שהקוד מכניס לדף) — הדפדפן חוסם אותם (CSP).
+// במקום זה: data-ui="<פעולה>" (ראו בסוף js/boot.js), או addEventListener / el.onclick=... בתוך הקוד.
+const INLINE = /\son[a-z]{3,}=\\?["']/g;
+const scan = (rel, txt) => { for (const m of txt.matchAll(INLINE)) errors.push(`${rel}: ${m[0].trim()} בתוך HTML (שורה ${txt.slice(0, m.index).split('\n').length}) — להחליף ב-data-ui (ראו js/boot.js)`); };
+for (const page of pages) scan(page, fs.readFileSync(path.join(SITE, page), 'utf8'));
+for (const rel of used) scan('js/' + rel, fs.readFileSync(path.join(SITE, 'js', rel), 'utf8'));
 if (check) {
   if (errors.length) { console.error('❌ ' + errors.join('\n❌ ') + '\nלתיקון מספרי גרסה: node tests/stamp-js.mjs'); process.exit(1); }
-  console.log(`✅ ${used.size} קבצי js — כל מספרי הגרסה מעודכנים, ואין קוד בתוך הדפים (${pages.length} דפים)`);
+  console.log(`✅ ${used.size} קבצי js — כל מספרי הגרסה מעודכנים, ואין קוד בתוך הדפים (${pages.length} דפים) ולא onclick= בתוך HTML`);
 } else {
   for (const [file, out] of changed) fs.writeFileSync(file, out);
   const bad = errors.filter((e) => !e.includes('?v='));
