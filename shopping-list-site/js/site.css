@@ -938,9 +938,6 @@ body.bizmode #botFab,body.bizmode .siderail,body.bizmode .botnudge{display:none!
 .pre16{white-space:pre-wrap;font-family:inherit;font-size:15px;line-height:1.7;margin:0;max-height:50vh;overflow-y:auto}
 .story16{margin-top:12px}.story16 h3{margin:0 0 6px}
 /* ===== v16.1: צ׳אט המנהל ===== */
-.th161{display:grid;gap:2px;width:100%;text-align:start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin:6px 0;cursor:pointer;font-family:inherit;color:var(--text)}
-.th161.un{border-color:var(--hdr2);box-shadow:0 0 0 1px var(--hdr2) inset}
-.th161 small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nfbadge162{display:block;margin:10px auto 0;background:var(--chipbg);border:1px solid var(--hdr2);color:var(--text);border-radius:14px;padding:7px 12px;font-family:inherit;font-size:13px;line-height:1.5;cursor:pointer;text-align:center}
 .nf162{padding-inline-start:20px;display:grid;gap:8px;line-height:1.65}
 .nfbody162{max-height:65vh;overflow-y:auto;line-height:1.6}
@@ -1500,8 +1497,6 @@ body.ixbusy,body.ixbusy *{cursor:grabbing!important;user-select:none!important}
 .mysttab tr.tot td{font-weight:700;border-bottom:0}
 #hMenu #miNotif[hidden]{display:none!important}
 /* רשימת השיחות של המנהל: כרטיס בהיר וקריא (כפתור ירוק כללי דרס את העיצוב) */
-#v8Sheet #adm161 button.th161{background:var(--panel);color:var(--text);border:1px solid var(--line)}
-#v8Sheet #adm161 button.th161.un{border-color:var(--hdr2);box-shadow:0 0 0 1px var(--hdr2) inset}
 #hMenu .mbadge{margin-inline-start:auto;background:#d64545;color:#fff;border-radius:10px;font-size:11px;padding:1px 7px}
 #btnMenu.hasdot{position:relative}
 #btnMenu.hasdot::after{content:'';position:absolute;top:6px;inset-inline-end:6px;width:9px;height:9px;border-radius:50%;background:#d64545;border:2px solid var(--hdr,#0f5d50)}
@@ -2763,3 +2758,14 @@ details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:
 :is(#bo,body) .kv96{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed var(--c-line)}
 :is(#bo,body) .kv96 span{color:var(--c-muted)}:is(#bo,body) .kv96 b{font-weight:500;text-align:end}
 :is(#bo,body) .hb96.wide{width:100%;justify-content:center;margin-top:4px}
+/* המנהל מתוך האתר: רשימת השיחות, בחירת משתמש והודעה לכולם — באותו עיצוב כמו תיבת הפניות */
+:is(#bo,body) .al96{background:var(--c-panel);border:1px solid var(--c-line);border-radius:16px;overflow:hidden;padding-bottom:6px}
+:is(#bo,body) .al96>.hd96{margin:0;border-radius:0;border-width:0 0 1px}
+:is(#bo,body) .al96 .q96{margin:10px 14px 4px}
+:is(#bo,body) .acts96{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 10px}:is(#bo,body) .acts96 .hb96{flex:1 1 auto;justify-content:center}
+:is(#bo,body) .al96 .items96{max-height:none;overflow:visible}:is(#bo,body) .al96 .it96:last-child{border-bottom:0}
+:is(#bo,body) .fm96{display:flex;flex-direction:column;gap:8px;padding:12px 14px 8px}
+:is(#bo,body) .fm96 label{font-size:13px;font-weight:600;color:var(--c-muted);margin-top:4px}
+:is(#bo,body) .fm96 select, :is(#bo,body) .fm96 textarea{width:100%;font:inherit;font-size:15px;color:var(--c-text);background:var(--c-soft);border:1px solid var(--c-line);border-radius:12px;padding:10px 12px}
+:is(#bo,body) .fm96 textarea{min-height:140px;resize:vertical}
+:is(#bo,body) .fm96 .hb96.wide{height:44px;margin-top:6px}

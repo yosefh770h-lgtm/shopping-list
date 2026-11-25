@@ -1251,6 +1251,15 @@ await test('💬 תיבת פניות: רקע מכסה שיחה ארוכה, מת�
   assert(r.long, 'השיחה לא ארוכה מספיק לבדיקה');
   assert(r.img && !/local/.test(r.att), 'הרקע לא קבוע מאחורי השיחה: ' + r.att);
   assert(r.sw && r.checked === false, 'מתג "לא להראות שקראתי" חסר או מסומן בלי סיבה');
+  // המנהל מתוך האתר: רשימת השיחות, בחירת משתמש והודעה לכולם — בעיצוב החדש
+  await page.click('#boClose'); await page.evaluate(() => openAdminChat161());
+  await page.waitForTimeout(700);
+  assert(await page.evaluate(() => !!document.querySelector('#adm161.al96 .it96[data-th="u1"] .av96') && !document.querySelector('.th161')), 'רשימת השיחות באתר לא בעיצוב החדש');
+  await page.click('#adm161 .it96[data-th="u1"]'); await page.waitForTimeout(600);
+  assert(await page.evaluate(() => !!document.querySelector('#adm161.c96 #adm161m .b43')), 'השיחה לא נפתחה מהרשימה');
+  await page.click('#adm161 [data-back161]'); await page.waitForTimeout(600);
+  await page.click('#adm161all'); await page.waitForTimeout(300);
+  assert(await page.evaluate(() => !!document.querySelector('#adm161 .fm96 #bc161b') && !!document.querySelector('#adm161 .hd96 [data-back161]')), 'טופס "הודעה לכולם" לא בעיצוב החדש');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
