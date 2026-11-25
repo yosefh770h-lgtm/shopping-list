@@ -153,9 +153,53 @@ openChat=async function(){
     if(e.target.id==='chatText')enterSends96(e,$43('#chatSend'));};
 };
 
-/* ---------- 2. המנהל: הודעות למשתמשים מתוך האתר (רשימת השיחות ב-js/020.js) ---------- */
+/* ---------- 2. המנהל: הודעות למשתמשים מתוך האתר (הפתיחה: openAdminChat161 ב-js/020.js) ---------- */
+const when96=d=>{d=new Date(d);const now=new Date();if(dayKey(d)===dayKey(now))return fmtTime(d);const y=new Date(now);y.setDate(y.getDate()-1);if(dayKey(d)===dayKey(y))return T('אתמול','Yesterday');return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});};
+/* שורה אחת ברשימת השיחות — גם באתר וגם בבק אופיס */
+const item96=(t,on)=>{const closed=(t.status||'open')==='closed';
+  return '<button type="button" class="it96'+(on?' on':'')+(t.unread?' un':'')+'" data-th="'+esc(t.user_id)+'">'+avatar96(t.name||t.email,t.user_id)+
+    '<span class="tx96"><span class="r1"><b>'+esc(t.name||t.email||'—')+'</b><small>'+esc(t.last_at?when96(t.last_at):'')+'</small></span>'+
+    '<span class="r2"><span>'+(t.last_from_staff?'↩️ '+T('אתה: ','You: '):'')+esc(String(t.last_body||t.email||'').slice(0,90))+'</span>'+(t.unread?'<i class="cnt96">'+t.unread+'</i>':'')+'</span>'+
+    (t.topic||closed?'<span class="tg96">'+(closed?'✓ '+T('טופלה','Done'):'')+(t.topic&&closed?' · ':'')+esc(t.topic||'')+'</span>':'')+'</span></button>';};
+const top96=(title,back)=>'<div class="hd96">'+(back?'<button type="button" class="bk96" data-back161 aria-label="'+T('חזרה','Back')+'" title="'+T('חזרה','Back')+'" data-noicon>'+SVG43.back+'</button>':'')+'<div class="who96"><b>'+title+'</b></div></div>';
+async function drawThreads161(b,quiet){
+  const {data,error}=await sb.rpc('support_threads');if(error){b.innerHTML='<p class="muted-note">⚠️ '+esc(error.message)+'</p>';return;}
+  adm161.threads=data||[];const qi=$43('#adm161q');if(quiet&&qi&&document.activeElement===qi)return;
+  const q0=qi?qi.value:'',all=adm161.threads,unread=all.reduce((a,t)=>a+(t.unread||0),0);
+  b.innerHTML='<div id="adm161" class="c96 al96"><div class="lh96"><b>💬 '+T('שיחות','Conversations')+' · '+all.length+'</b>'+(unread?'<span class="n96">'+unread+' '+T('לא נקראו','unread')+'</span>':'')+'</div>'+
+    '<div class="acts96"><button type="button" class="hb96 pri" id="adm161new">✉️ '+T('הודעה למשתמש','Message a user')+'</button><button type="button" class="hb96" id="adm161all">📣 '+T('הודעה לכולם','Message everyone')+'</button></div>'+
+    '<label class="q96">'+SVG43.search+'<input id="adm161q" type="search" placeholder="'+T('חיפוש לפי שם, מייל או תוכן...','Search...')+'" aria-label="'+T('חיפוש שיחה','Search')+'" value="'+esc(q0)+'"></label>'+
+    '<div class="items96" id="adm161list"></div></div>';
+  const draw=q=>{q=norm(q||'').toLowerCase();const th=all.filter(t=>!q||(norm(t.name)+' '+t.email+' '+norm(t.last_body)).toLowerCase().includes(q));
+    $43('#adm161list').innerHTML=th.length?th.map(t=>item96(t,false)).join(''):'<p class="muted em96">'+T('אין שיחות','No conversations')+'</p>';};
+  draw(q0);$43('#adm161q').oninput=e=>draw(e.target.value);
+  b.onclick=async e=>{const th=e.target.closest('[data-th]');if(th){adm161.open=th.dataset.th;await drawThread161(b,th.dataset.th);return;}
+    if(e.target.closest('#adm161new')){await pickUser161(b);return;}
+    if(e.target.closest('#adm161all')){broadcastForm161(b);return;}};
+}
+async function pickUser161(b){
+  if(!adm161.users){const {data}=await sb.rpc('admin_user_list');adm161.users=data||[];}
+  b.innerHTML='<div id="adm161" class="c96 al96">'+top96('✉️ '+T('למי לשלוח?','Send to whom?'),true)+
+    '<label class="q96">'+SVG43.search+'<input id="adm161u" type="search" placeholder="'+T('שם או מייל','Name or email')+'" aria-label="'+T('חיפוש משתמש','Search user')+'"></label><div class="items96" id="adm161ul"></div></div>';
+  const draw=q=>{q=(q||'').toLowerCase();const us=adm161.users.filter(u=>u.id!==authUser.id&&(!q||((u.name||'')+' '+u.email).toLowerCase().includes(q))).slice(0,60);
+    $43('#adm161ul').innerHTML=us.length?us.map(u=>item96({user_id:u.id,name:u.name,email:u.email},false)).join(''):'<p class="muted em96">'+T('לא נמצא','Not found')+'</p>';};
+  draw('');$43('#adm161u').oninput=e=>draw(e.target.value);setTimeout(()=>$43('#adm161u').focus(),60);
+  b.onclick=async e=>{if(e.target.closest('[data-back161]')){adm161.open=null;await drawThreads161(b);return;}const th=e.target.closest('[data-th]');if(th){adm161.open=th.dataset.th;await drawThread161(b,th.dataset.th);}};
+}
+function broadcastForm161(b){
+  b.innerHTML='<div id="adm161" class="c96 al96">'+top96('📣 '+T('הודעה לכל המשתמשים','Message everyone'),true)+'<div class="fm96">'+
+    '<p class="muted-note">'+T('ההודעה תגיע לכל אחד לצ׳אט עם צוות האתר, וגם כהתראה לטלפון למי שהפעיל התראות. אפשר לענות עליה, והתשובות יגיעו אליך כאן.','Arrives in everyone\'s chat with the site team + a phone notification.')+'</p>'+
+    '<label for="bc161t">'+T('למי?','To whom?')+'</label><select id="bc161t"><option value="all">'+T('כל המשתמשים','Everyone')+'</option><option value="customers">'+T('רק לקוחות','Customers only')+'</option><option value="business">'+T('רק בעלי עסקים','Businesses only')+'</option></select>'+
+    '<label for="bc161b">'+T('ההודעה','Message')+'</label><textarea id="bc161b" maxlength="4000"></textarea><button type="button" class="hb96 pri wide" id="bc161go">📣 '+T('שליחה','Send')+'</button></div></div>';
+  b.onclick=async e=>{if(e.target.closest('[data-back161]')){await drawThreads161(b);return;}
+    if(e.target.closest('#bc161go')){const body=$43('#bc161b').value.trim(),tg=$43('#bc161t').value;if(!body){flash(T('כתבו הודעה','Write a message'));return;}
+      if(!(await uiConfirm(T('לשלוח את ההודעה ל','Send to ')+$43('#bc161t').selectedOptions[0].textContent+'?')))return;
+      const btn=e.target.closest('#bc161go');btn.disabled=true;const {data,error}=await sb.rpc('admin_broadcast',{p_body:body,p_target:tg});btn.disabled=false;
+      if(error){flash('⚠️ '+(error.message.includes('admin_broadcast')?T('צריך להריץ שוב את קוד ה-SQL','Run the SQL again'):error.message));return;}
+      logAct('broadcast',tg+' · '+body.slice(0,80));flash('📣 '+T('נשלח ל-','Sent to ')+(data||0)+T(' משתמשים',' users'));await drawThreads161(b);}};
+}
 let ch43=null;
-drawThread161=async function(b,uid,quiet){
+async function drawThread161(b,uid,quiet){
   if(quiet&&ch43&&ch43.uid===uid&&ch43.busy())return;
   const {data,error}=await sb.from('support_messages').select('*').eq('user_id',uid).order('created_at').limit(300);
   if(error){b.innerHTML='<p class="muted-note">⚠️ '+esc(error.message)+'</p>';return;}
@@ -175,7 +219,10 @@ drawThread161=async function(b,uid,quiet){
         $43('#adm161txt').value='';if(res==='sent')logAct('message_user',who);await drawThread161(b,uid,'after');}};
     $43('#adm161txt').onkeydown=e=>{if(e.key==='Escape'&&ch43.escape()){e.stopPropagation();return;}enterSends96(e,$43('#adm161send'));};}
   const unread=(data||[]).filter(m=>!m.from_staff&&!m.read_by_staff).map(m=>m.id);if(unread.length)sb.from('support_messages').update({read_by_staff:true}).in('id',unread).then(()=>{},()=>{});
-};
+}
+
+/* הקובץ עטוף ב-try, ולכן מה ש-openAdminChat161 (js/020.js) קורא לו — דרך window */
+window.drawThreads161=drawThreads161;window.drawThread161=drawThread161;
 
 /* ---------- 3. בק אופיס ← 💬 צ'אט עם משתמשים: תיבת פניות — רשימה בצד ושיחה פתוחה ---------- */
 const CANNED96=['שלום! תודה שפנית אלינו 🙂 איך אפשר לעזור?','תודה על הדיווח! אנחנו בודקים ונעדכן בהקדם.','תוקן — אפשר לרענן את האתר ולנסות שוב 🙏','כדי לדווח מחיר: לשונית "מחירים" ← "דיווח מחיר" ← שם המוצר, החנות והמחיר.','לכניסה מחדש: במסך הכניסה לוחצים "שכחתי קוד" ומקבלים מייל לבחירת קוד חדש.','תודה רבה על ההצעה! העברנו אותה לצוות 💡','שמחנו לעזור! הפנייה נסגרה — אפשר תמיד לכתוב שוב 💚'];
@@ -190,7 +237,6 @@ async function side96(sd,t){
   sd.innerHTML='<div class="pf96">'+avatar96(t.name||t.email,t.user_id,'lg')+'<b>'+esc(t.name||u.name||'—')+'</b><small dir="ltr">'+esc(t.email||u.email||'')+'</small>'+(on?'<span class="on96">מחובר עכשיו</span>':'')+'</div>'+
     '<h5>פרטים</h5>'+kv('נרשם',esc(date96(u.created_at)))+kv('נראה לאחרונה',on?'עכשיו':esc(u.last_seen?when96(u.last_seen):'—'))+kv('הודעות בשיחה',esc(t.total||0))+kv('נושא',esc(t.topic||'—'))+kv('מצב',(t.status||'open')==='open'?'פתוחה':'טופלה')+
     (typeof window.boOpenUser23==='function'&&(t.email||u.email)?'<h5>פעולות</h5><button type="button" class="hb96 wide" data-user96="'+esc(t.email||u.email)+'">👤 פתיחת המשתמש</button>':'');}
-const when96=d=>{d=new Date(d);const now=new Date();if(dayKey(d)===dayKey(now))return fmtTime(d);const y=new Date(now);y.setDate(y.getDate()-1);if(dayKey(d)===dayKey(y))return 'אתמול';return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});};
 window.boView&&window.boView('support',async function(){const main=$43('#boMain');const seq=++sup96.seq;
   const {data,error}=await sb.rpc('support_threads');if(seq!==sup96.seq)return;
   if(error){main.innerHTML='<div class="card"><p class="muted">⚠️ צריך להריץ שוב את קוד ה-SQL מ"⚙️ הגדרה ראשונית".</p></div>';return;}
@@ -206,10 +252,7 @@ window.boView&&window.boView('support',async function(){const main=$43('#boMain'
     '<section class="cv96" id="supConv96" aria-label="שיחה"></section><aside class="sd96" id="supSide96" aria-label="פרטי המשתמש"></aside></div>';
   const drawList=()=>{const q=norm(sup96.q).toLowerCase();
     const th=all.filter(t=>(sup96.filter==='all'||(t.status||'open')===sup96.filter)&&(!q||(norm(t.name)+' '+t.email+' '+norm(t.last_body)).toLowerCase().includes(q)));
-    $43('#supList96').innerHTML=th.length?th.map(t=>'<button type="button" class="it96'+(t.user_id===sup96.uid?' on':'')+(t.unread?' un':'')+'" data-th="'+esc(t.user_id)+'">'+avatar96(t.name||t.email,t.user_id)+
-      '<span class="tx96"><span class="r1"><b>'+esc(t.name||t.email||'—')+'</b><small>'+esc(when96(t.last_at))+'</small></span>'+
-      '<span class="r2"><span>'+(t.last_from_staff?'↩️ אתה: ':'')+esc(String(t.last_body||'').slice(0,90))+'</span>'+(t.unread?'<i class="cnt96">'+t.unread+'</i>':'')+'</span>'+
-      (t.topic||(t.status||'open')==='closed'?'<span class="tg96">'+((t.status||'open')==='closed'?'✓ טופלה':'')+(t.topic&&(t.status||'open')==='closed'?' · ':'')+esc(t.topic||'')+'</span>':'')+'</span></button>').join(''):'<p class="muted em96">אין פניות כאן.</p>';};
+    $43('#supList96').innerHTML=th.length?th.map(t=>item96(t,t.user_id===sup96.uid)).join(''):'<p class="muted em96">אין פניות כאן.</p>';};
   const drawConv=async()=>{const cv=$43('#supConv96');const uid=sup96.uid;
     main.querySelector('.in96').classList.toggle('has',!!uid);
     const sd=$43('#supSide96');sd.innerHTML='';
