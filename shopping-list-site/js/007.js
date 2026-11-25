@@ -320,8 +320,9 @@ async function basketCompare(itemsArg){
 }
 function basketTitle(t){const b=document.querySelector('#basketOverlay .phead b');if(b)b.textContent=t;}
 /* מוצר אחד בכל הסניפים — רק מהשרת שלנו */
-function srvItemOpen(q){const box=document.querySelector('#basketBody');box.innerHTML='';basketTitle('🔎 '+q.slice(0,40));
-  document.querySelector('#basketOverlay').classList.add('open');srvBasketMount(box,[{n:q,q:'',done:false}]);}
+/* code: ברקוד של מוצר מדויק — משווים רק אותו, בכל סניף בעיר */
+function srvItemOpen(q,code){const box=document.querySelector('#basketBody');box.innerHTML='';basketTitle('🔎 '+q.slice(0,40));
+  document.querySelector('#basketOverlay').classList.add('open');srvBasketMount(box,[Object.assign({n:q,q:'',done:false},/^\d{7,20}$/.test(code||'')?{bc:code,bq:q}:{})]);}
 async function openBasket(itemsArg,label){
   basketTitle('💰 '+T('השוואת סל מלא בין החנויות','Full basket comparison'));
   const box=document.querySelector('#basketBody');box.innerHTML='<div class="empty">'+T('מחשבת... 🧮','Calculating... 🧮')+'</div>';
