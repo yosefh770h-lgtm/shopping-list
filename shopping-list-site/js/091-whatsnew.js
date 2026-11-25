@@ -57,7 +57,7 @@ const older91=(a,b)=>{const x=String(a).split('.').map(Number),y=String(b).split
 const mark91=(h)=>'<svg class="yk91logo" viewBox="0 0 303 53" height="'+h+'" width="'+Math.round(h*303/53)+'" role="img" aria-label="יסוד שביסוד"><use href="#yesod91"/></svg>';
 /* 🔗 כתובת האתר של יסוד שביסוד — כשיש כתובת, כותבים אותה כאן (https://...) והקרדיט נהיה קישור. ריק = בלי קישור.
    באפליקציה האופליין אין אינטרנט, אז שם הקרדיט אף פעם לא קישור */
-const CREDIT_URL='https://www.yamshopping.com/yesod/'; /* כשנטפרי יפתחו את yesod.yamshopping.com — אפשר לעבור לשם */
+const CREDIT_URL='https://yesod.yamshopping.com/';
 const credit91=(big)=>{const tag=CREDIT_URL&&!OFF_APP?'a':'div';
   return '<'+tag+' class="yk91'+(big?' big':'')+'"'+(tag==='a'?' href="'+esc(CREDIT_URL)+'" target="_blank" rel="noopener"':' role="note"')+' aria-label="'+L('נוצר על ידי יסוד שביסוד','Created by Yesod Shebiyesod')+'">'+'<small class="yk91t">'+(OFF_APP||myApp?L('האפליקציה נוצרה על ידי','App created by'):L('האתר נוצר על ידי','Site created by'))+'</small>'+mark91(big?30:22)+'</'+tag+'>';};
 
