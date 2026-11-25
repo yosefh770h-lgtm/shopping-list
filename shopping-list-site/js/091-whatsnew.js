@@ -104,10 +104,10 @@ window.openWhatsNew=openWhatsNew;
 /* ---------- ☰ תחתית התפריט: שתי הגרסאות + הקרדיט ---------- */
 (function(){const m=$91('#hMenu');if(!m||$91('#verFoot91'))return;
   const app=OFF_APP?'📴 '+L('אופליין','Offline')+' '+(myOff||OFF_HIST[0].v):'📱 '+L('אפליקציה','App')+' '+(myApp||APP_HIST[0].v);
-  m.insertAdjacentHTML('beforeend','<div id="verFoot91"><button type="button" id="verBtn91" aria-label="'+L('מה חדש — גרסת האתר ','What\'s new — site version ')+esc(APP_VERSION)+'">🌐 '+L('אתר','Site')+' '+esc(APP_VERSION)+' · '+esc(app)+' · <u>'+L('מה חדש','What\'s new')+'</u></button>'+credit91(false)+'</div>');
+  m.insertAdjacentHTML('beforeend','<div id="verFoot91"><button type="button" id="verBtn91" aria-label="'+L('מה חדש — גרסת האתר ','What\'s new — site version ')+esc(APP_VERSION)+'">🌐 '+L('אתר','Site')+' '+esc(APP_VERSION)+' · '+esc(app)+'</button>'+credit91(false)+'</div>');
   $91('#verBtn91').onclick=()=>openWhatsNew();
   /* באפליקציה — הגרסה האחרונה שמחכה להורדה, אם יש */
-  if(!OFF_APP&&!myApp&&window.apkVer57)apkVer57().then(v=>{if(v&&v.version){const x=$91('#verBtn91');if(x)x.innerHTML=x.innerHTML.replace(' '+APP_HIST[0].v+' ·',' '+esc(v.version)+' ·');}},()=>{});})();
+  if(!OFF_APP&&!myApp&&window.apkVer57)apkVer57().then(v=>{if(v&&v.version){const x=$91('#verBtn91');if(x)x.innerHTML=x.innerHTML.replace(' '+APP_HIST[0].v,' '+esc(v.version));}},()=>{});})();
 
 /* ---------- ℹ️ אודות: הגרסאות, כפתור "מה חדש" והקרדיט ---------- */
 const _o91=openAbout;
@@ -134,7 +134,7 @@ const st=document.createElement('style');st.textContent=
   'a.yk91{text-decoration:none;cursor:pointer}.yk91{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;margin:6px auto 2px;color:var(--muted)}.yk91t{font-size:10.5px;line-height:1.2}'+
   '.yk91logo{display:block;color:#13294b;max-width:100%;height:auto}html.dark .yk91logo,body.dark .yk91logo{color:#fff}'+
   '.yk91.big{margin:18px auto 6px;padding:12px 20px 10px;border:1px solid var(--chipbr);border-radius:16px;width:max-content;max-width:100%;box-sizing:border-box;background:linear-gradient(135deg,var(--inputbg),var(--chipbg))}.yk91.big .yk91t{font-size:12px}'+
-  '#verFoot91{border-top:1px solid var(--line);margin-top:4px;padding:6px 0 2px;text-align:center}#hMenu #verBtn91{display:block;width:100%;text-align:center;font-size:11.5px;color:var(--muted);padding:6px 4px}#verBtn91 u{color:var(--hdr2);text-decoration:none;font-weight:700}'+
+  '#verFoot91{border-top:1px solid var(--line);margin-top:4px;padding:6px 0 2px;text-align:center}#hMenu #verBtn91{display:block;width:100%;text-align:center;font-size:11.5px;color:var(--muted);padding:6px 4px}'+
   '.ver16{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:center;font-size:13px;color:var(--muted);margin:14px 0 0}.ver16 b{color:var(--text)}.ver16 .btn{flex-basis:100%;max-width:320px}';
 document.head.appendChild(st);
 })();
