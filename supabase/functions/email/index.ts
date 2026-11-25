@@ -447,6 +447,67 @@ function ilOffset(d: Date) { // דקות: שעון ישראל פחות UTC
   return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] || 0)) : 120;
 }
 
+// ---------- 💌 תשובה לפנייה מהבק אופיס ----------
+// מנהל כותב תשובה מתחת להערה או לפנייה מאתר יסוד שביסוד, והיא נשלחת במייל לפונה, עם ההודעה שלו מצוטטת למטה,
+// כדי שיהיה ברור על מה עונים. זו תשובה חד-פעמית למי שפנה בעצמו, ולכן אין בה "פרסומת" או קישור הסרה.
+// אסור להכניס לתשובה תוכן שיווקי (חוק התקשורת, סעיף 30א). התשובה נשמרת ב-feedback_replies.
+const YESOD_PREFIX = "🌐 פנייה מאתר יסוד שביסוד";
+export function replyParts(message: string) {
+  const lines = String(message || "").split(/\r?\n/);
+  const yesod = lines[0]?.startsWith(YESOD_PREFIX) || false;
+  let body = yesod ? lines.slice(1) : lines;
+  // "(אישר/ה את הודעת הפרטיות ...)" בסוף פנייה מהאתר — זה לא חלק מהשאלה
+  if (yesod && /^\(אישר\/ה את הודעת הפרטיות/.test(body[body.length - 1] || "")) body = body.slice(0, -1);
+  return { yesod, original: body.join("\n").trim() };
+}
+export function replyMail(cfg: Cfg, f: { name: string; email: string; message: string; created_at: string }, text: string) {
+  const { yesod, original } = replyParts(f.message);
+  const brand = yesod ? "יסוד שביסוד" : cfg.from_name;
+  const subject = yesod ? "תשובה לפנייה שלך באתר יסוד שביסוד" : "תשובה להערה שלך ברשימת קניות";
+  const d = new Date(f.created_at);
+  const when = d.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric", year: "numeric" }) + " בשעה " +
+    d.toLocaleTimeString("he-IL", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit" });
+  const hi = f.name ? `שלום ${f.name},` : "שלום,";
+  const foot = `קיבלת את המייל הזה כי פנית אלינו ב-${when}. זו תשובה לפנייה שלך בלבד, ולא יישלחו אליך מיילים נוספים בלי בקשה ממך. אפשר להשיב למייל הזה ישירות.`;
+  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif">
+<div style="max-width:600px;margin:0 auto;padding:20px 14px;direction:rtl;text-align:right">
+<div style="background:#fff;border-radius:12px;padding:20px 22px;color:#1f2733;font-size:16px;line-height:1.7">
+<p style="margin:0 0 12px">${esc(hi)}</p>
+<div>${para(text)}</div>
+<p style="margin:18px 0 0">בברכה,<br>${esc(brand)}</p>
+</div>
+<div style="margin-top:14px;padding:12px 16px;border-right:4px solid #c9a227;background:#fff;border-radius:8px;color:#5b6370;font-size:14px;line-height:1.6">
+<div style="margin-bottom:6px"><b>ב-${esc(when)} כתבת:</b></div>${esc(original).replace(/\r?\n/g, "<br>")}</div>
+<p style="color:#8a93a0;font-size:12px;line-height:1.6;margin:14px 4px 0">${esc(foot)}</p>
+</div></body></html>`;
+  const quoted = original.split(/\r?\n/).map((l) => "> " + l).join("\n");
+  const txt = `${hi}\n\n${plain(text)}\n\nבברכה,\n${brand}\n\nב-${when} כתבת:\n${quoted}\n\n${foot}`;
+  return { from: `${brand} <${cfg.from_email}>`, to: [f.email], reply_to: cfg.reply_to, subject, html, text: txt };
+}
+async function sendReply(admin: Admin, cfg: Cfg, key: string, me: { id: string }, r: { id?: unknown; text?: unknown }): Promise<[unknown, number]> {
+  if (!key) return [{ error: "no_key" }, 400];
+  const id = String(r?.id || ""), text = String(r?.text || "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return [{ error: "not_found" }, 404];
+  if (text.length < 2 || text.length > 5000) return [{ error: "bad_text" }, 400];
+  const { data: f } = await admin.from("feedback").select("id,name,email,message,created_at").eq("id", id).maybeSingle();
+  if (!f) return [{ error: "not_found" }, 404];
+  const to = String(f.email || "").trim().toLowerCase();
+  if (!/^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/.test(to)) return [{ error: "no_email" }, 400];
+  const { count } = await admin.from("feedback_replies").select("id", { count: "exact", head: true }).gt("sent_at", new Date(Date.now() - 3600e3).toISOString());
+  if ((count || 0) >= 30) return [{ error: "rate" }, 429];
+  const { data: row, error } = await admin.from("feedback_replies").insert({ feedback_id: f.id, body: text, sent_by: me.id }).select("id").single();
+  if (error) return [{ error: error.message }, 500];
+  try {
+    const [res] = await resendBatch(key, [replyMail(cfg, { ...f, email: to }, text)], "reply-" + row.id);
+    await admin.from("feedback_replies").update({ provider_id: res?.id || "" }).eq("id", row.id);
+    await admin.from("feedback").update({ is_read: true }).eq("id", f.id);
+    return [{ ok: true, to }, 200];
+  } catch (e) {
+    await admin.from("feedback_replies").delete().eq("id", row.id);
+    return [{ error: String((e as Error).message) }, 502];
+  }
+}
+
 // ---------- אימות ----------
 function sameSecret(a: string, b: string) {
   if (!a || !b || a.length !== b.length) return false;
@@ -631,6 +692,8 @@ Deno.serve(async (req) => {
         return json({ error: String((e as Error).message) }, 502);
       }
     }
+
+    if (me && b.reply) { const [body, st] = await sendReply(admin, cfg, KEY, me, b.reply); return json(body, st); }
 
     // --- הריצה: טיוטה אוטומטית, הפעלה בזמן, שליחה במנות ---
     const now = new Date();

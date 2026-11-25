@@ -244,6 +244,7 @@
   ב-Cloudflare: רשומת A ‏`yesod` ← 84.13.86.86 (DNS only). ב-Caddy: קובץ נפרד `/etc/caddy/yesod.caddy` (שורת `import` אחת בסוף ה-Caddyfile, ו-sl-gen-caddy לא נוגע בו):
   `yesod.yamshopping.com { import yamsite; @home path /; rewrite @home /yesod/index.html }`. התמונות והסקריפט של הדף בכתובות מלאות (`/yesod/...`, `/js/pages/yesod.js`), כדי שיעבדו מהשורש.
   סטטיסטיקה אנונימית (כניסות ולחיצות על הורדה, בלי IP) נשמרת ב-`yesod_events` ומוצגת בבק אופיס ← 👀 מבקרים.
+  פניות מטופס יצירת הקשר מגיעות לבק אופיס ← 💌 הערות. "✉️ לענות מכאן במייל" שולח לפונה מייל (פונקציית `email`, דרך Resend) עם ההודעה שלו מצוטטת, והתשובה נשמרת ב-`feedback_replies` ומוצגת מתחת להודעה. לפונה שהשאיר טלפון יש כפתורי חיוג ו-וואטסאפ.
 - פרויקט ה-Vercel לא נמחק — גיבוי: להחזיר ב-Cloudflare את ה-CNAME הישנים ל-`491f44e6e5120b96.vercel-dns-017.com`.
 
 ## 🚀 הגדרה חד־פעמית (בערך 10 דקות)

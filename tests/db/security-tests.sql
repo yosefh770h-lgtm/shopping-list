@@ -2062,6 +2062,17 @@ select tst.ok((select count(*) from public.yesod_events) = 2 and (select src fro
 set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a');
 select tst.err($$select * from public.staff_yesod_events(30)$$, 'yesod: a regular user cannot read the stats');
 reset role;
+-- תשובה לפנייה מהבק אופיס: רק המנהל רואה את התשובות, ואף משתמש לא כותב אותן (רק פונקציית email)
+insert into public.feedback_replies (feedback_id, body) select id, 'תודה, טיפלנו' from public.feedback where email = '050-1234567' limit 1;
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a');
+select tst.ok((select count(*) from public.feedback_replies) = 0, 'replies: a regular user sees no replies');
+select tst.err($$insert into public.feedback_replies (feedback_id, body) select gen_random_uuid(), 'x'$$, 'replies: a regular user cannot add a reply');
+select tst.as_user('00000000-0000-0000-0000-000000000001');
+select tst.ok((select count(*) from public.feedback_replies) = 1, 'replies: the owner sees the reply');
+select tst.err($$insert into public.feedback_replies (feedback_id, body) select id, 'x' from public.feedback limit 1$$, 'replies: even the owner cannot write directly (only the email function)');
+reset role;
+delete from public.feedback where email = '050-1234567';
+select tst.ok((select count(*) from public.feedback_replies) = 0, 'replies: deleted together with the inquiry');
 select set_config('request.headers', '', false);
 select tst.ok(true, 'ALL DONE');
 -- auth_user_state: only the server may call it
