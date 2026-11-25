@@ -1239,6 +1239,22 @@ await test('📲 התקנת האפליקציה: הכפתור תמיד בראש �
   await app.ctx.close();
 });
 
+await test('💬 תיבת פניות: רקע מכסה שיחה ארוכה, מתג "לא להראות שקראתי"', async () => {
+  const { ctx, page, errors } = await newPage({ viewport: { width: 1366, height: 820 } });
+  const M = Array.from({ length: 60 }, (_, i) => ({ id: 'L' + i, user_id: 'u1', from_staff: i % 2 === 0, body: 'הודעה מספר ' + i, created_at: new Date(Date.now() - (60 - i) * 60000).toISOString(), read_by_user: true, read_by_staff: true, delivered_user: true, delivered_staff: true }));
+  await page.evaluate((M) => { sb = __stub({ 'rpc:support_threads': [{ user_id: 'u1', name: 'משה', email: 'm@x.z', status: 'open', unread: 0, last_at: new Date().toISOString() }], support_messages: M });
+    authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('support'); }, M);
+  await page.waitForTimeout(900);
+  await page.click('[data-th="u1"]'); await page.waitForTimeout(700);
+  const r = await page.evaluate(() => { const b = document.querySelector('#supBox'); b.scrollTop = b.scrollHeight; const cs = getComputedStyle(b);
+    return { long: b.scrollHeight > b.clientHeight * 2, att: cs.backgroundAttachment, img: cs.backgroundImage.includes('svg'), sw: !!document.querySelector('.rd96 #chRead[role="switch"]'), checked: document.querySelector('#chRead').checked }; });
+  assert(r.long, 'השיחה לא ארוכה מספיק לבדיקה');
+  assert(r.img && !/local/.test(r.att), 'הרקע לא קבוע מאחורי השיחה: ' + r.att);
+  assert(r.sw && r.checked === false, 'מתג "לא להראות שקראתי" חסר או מסומן בלי סיבה');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('💬 צ׳אט עם האתר: תגובה להודעה מסוימת, עריכה, אימוג׳י; כפתור תמונה רק אצל המנהל', async () => {
   const { ctx, page, errors } = await newPage();
   const at = (m) => new Date(Date.now() - m * 60000).toISOString();
@@ -1250,7 +1266,7 @@ await test('💬 צ׳אט עם האתר: תגובה להודעה מסוימת, �
   await page.evaluate((M) => { sb = __stub({ support_messages: M }); authUser = { id: 'me', email: 'x@y.z' }; openChat(); }, M);
   await page.waitForTimeout(500);
   const u = await page.evaluate(() => ({ rows: document.querySelectorAll('#chatBox [data-mid]').length, quote: document.querySelector('#m43-c2 .q43') && document.querySelector('#m43-c2 .q43').textContent,
-    img: document.querySelectorAll('#chatBox .img43').length, html: !!document.querySelector('#chatBox b:not(.supwho):not(.q43 b)'), edited: !!document.querySelector('#m43-c2 .ed43'), re: document.querySelector('#m43-c1 .re43 svg[data-n="thumbs-up"]') ? '👍' : (document.querySelector('#m43-c1 .re43') || {}).textContent,
+    img: document.querySelectorAll('#chatBox .img43').length, html: !!document.querySelector('#chatBox b:not(.nm43):not(.q43 b)'), edited: !!(document.querySelector('#m43-c2 .t43 i') || {}).textContent, re: document.querySelector('#m43-c1 .re43 svg[data-n="thumbs-up"]') ? '👍' : (document.querySelector('#m43-c1 .re43') || {}).textContent,
     editMine: !!document.querySelector('#m43-c1 [data-c43="edit"]'), editStaff: !!document.querySelector('#m43-c2 [data-c43="edit"]'), pic: !!document.querySelector('[data-c43="pic"]') }));
   assert(u.rows === 3, 'הודעות: ' + u.rows);
   assert(u.quote && u.quote.includes('שלום, שאלה'), 'אין ציטוט של ההודעה שעליה ענו');
@@ -1259,10 +1275,12 @@ await test('💬 צ׳אט עם האתר: תגובה להודעה מסוימת, �
   assert(u.edited && u.re === '👍', 'חסר "נערכה" או האימוג׳י');
   assert(u.editMine && !u.editStaff, 'לקוח עורך רק את ההודעות שלו');
   assert(!u.pic, 'ללקוח אין כפתור תמונה');
+  // נגיעה בהודעה פותחת את הסרגל שלה (אימוג׳י · תגובה · עריכה)
+  await page.click('#m43-c2 .t43');
+  assert(await page.evaluate(() => document.querySelector('#m43-c2').classList.contains('open') && document.querySelectorAll('#m43-c2 .tool43 [data-c43="pick"]').length === 6), 'אין סרגל אימוג׳י בהודעה');
   await page.click('#m43-c2 [data-c43="reply"]');
   assert((await page.textContent('#chatBar43')).includes('תגובה ל'), 'אין פס "תגובה ל"');
-  await page.click('#m43-c2 [data-c43="react"]');
-  assert(await page.evaluate(() => document.querySelectorAll('#m43-c2 .pick43 button').length === 8), 'אין בחירת אימוג׳י');
+  await page.click('#m43-c1 .t43');
   await page.click('#m43-c1 [data-c43="edit"]');
   assert((await page.inputValue('#chatText')) === 'שלום, שאלה', 'העריכה לא ממלאת את ההודעה');
   await page.evaluate((M) => { authUser = { id: 'adm', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openAdminChat161('me'); }, M);
