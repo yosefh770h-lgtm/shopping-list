@@ -9389,3 +9389,22 @@ begin
 end $$;
 revoke all on function public.staff_yesod_events(int) from public, anon;
 grant execute on function public.staff_yesod_events(int) to authenticated;
+
+-- ================= 💌 תשובה לפנייה ישר מהבק אופיס (נובמבר 2026) =================
+-- מנהל כותב תשובה מתחת להערה / לפנייה מאתר יסוד שביסוד, ופונקציית email שולחת אותה במייל לפונה (דרך Resend),
+-- עם ההודעה המקורית מצוטטת. כאן נשמרות התשובות, כדי שבבק אופיס יראו מה כבר נענה. רק הפונקציה (service role) כותבת.
+-- זו תשובה חד-פעמית למי שפנה בעצמו, לא דבר פרסומת. התשובות נמחקות יחד עם ההערה (on delete cascade, כולל הניקוי של 12 חודשים).
+create table if not exists public.feedback_replies (
+  id bigserial primary key,
+  feedback_id uuid not null references public.feedback(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 5000),
+  sent_by uuid,
+  sent_at timestamptz not null default now(),
+  provider_id text not null default ''
+);
+create index if not exists feedback_replies_fb on public.feedback_replies (feedback_id, sent_at);
+create index if not exists feedback_replies_at on public.feedback_replies (sent_at desc);
+alter table public.feedback_replies enable row level security;
+drop policy if exists "feedback replies admin read" on public.feedback_replies;
+create policy "feedback replies admin read" on public.feedback_replies for select using (public.is_admin());
+revoke insert, update, delete on public.feedback_replies from anon, authenticated;

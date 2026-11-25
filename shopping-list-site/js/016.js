@@ -239,12 +239,29 @@ async content(){
 },
 /* ---------- הערות ---------- */
 async feedback(){
-  const {data}=await sb.from('feedback').select('*').order('created_at',{ascending:false}).limit(500);
-  const rows=data||[];
-  $('#boMain').innerHTML='<div class="card"><h2>💌 הערות והארות ('+rows.length+')</h2>'+(rows.map(f=>'<div class="item" data-id="'+esc(f.id)+'" style="'+(f.is_read?'opacity:.6':'')+'"><b>'+esc(f.name)+'</b> <span class="muted" dir="ltr">'+esc(f.email)+'</span> <span class="muted">· '+fmt(f.created_at)+'</span><p style="white-space:pre-wrap;margin:6px 0">'+esc(f.message)+'</p><div class="row">'+(f.is_read?'':'<button class="btn sm" data-read>✔️ סימון כנקרא</button>')+'<a class="btn sm sec" style="text-decoration:none" href="mailto:'+esc(f.email)+'?subject='+encodeURIComponent('תודה על ההערה — רשימת קניות')+'">↩️ מענה במייל</a><button class="btn sm bad" data-del>🗑️</button></div></div>').join('')||'<p class="muted">אין עדיין הערות</p>')+'</div>';
-  $('#boMain').onclick=async e=>{const it=e.target.closest('[data-id]');if(!it)return;const id=it.dataset.id;
+  /* 💌 הערות ופניות (גם מאתר יסוד שביסוד). "לענות מכאן" שולח לפונה מייל עם ההודעה שלו מצוטטת (פונקציית email), והתשובה נשמרת מתחת להודעה */
+  const [{data},{data:rp}]=await Promise.all([sb.from('feedback').select('*').order('created_at',{ascending:false}).limit(500),sb.from('feedback_replies').select('feedback_id,body,sent_at').order('sent_at')]);
+  const rows=data||[],RP={};(rp||[]).forEach(r=>{(RP[r.feedback_id]=RP[r.feedback_id]||[]).push(r);});
+  const YP='🌐 פנייה מאתר יסוד שביסוד';
+  const isMail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e||''),phone=e=>{const d=String(e||'').replace(/[^0-9]/g,'');return /^(0[2-9]\d{7,8}|972[2-9]\d{7,8})$/.test(d)?d:'';};
+  const contact=f=>{if(isMail(f.email))return '<button class="btn sm" data-rep>✉️ לענות מכאן במייל</button>';const p=phone(f.email);
+    return p?'<a class="btn sm sec" style="text-decoration:none" href="tel:'+p+'">📞 להתקשר</a><a class="btn sm sec" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/'+(p[0]==='0'?'972'+p.slice(1):p)+'">💬 וואטסאפ</a>':'';};
+  const reps=f=>(RP[f.id]||[]).map(r=>'<div style="margin:6px 18px 6px 0;padding:8px 10px;border-right:3px solid var(--hdr2,#0f5d50);background:var(--bg2,#f4f6f8);border-radius:6px"><small class="muted">↩️ ענית ב-'+fmt(r.sent_at)+'</small><div style="white-space:pre-wrap">'+esc(r.body)+'</div></div>').join('');
+  $('#boMain').innerHTML='<div class="card"><h2>💌 הערות והארות ('+rows.length+')</h2>'+(rows.map(f=>'<div class="item" data-id="'+esc(f.id)+'" style="'+(f.is_read&&!RP[f.id]?'opacity:.6':'')+'"><b>'+esc(f.name)+'</b> <span class="muted" dir="ltr">'+esc(f.email)+'</span> <span class="muted">· '+fmt(f.created_at)+'</span>'+(String(f.message).startsWith(YP)?' <span style="font-size:12px;padding:1px 8px;border-radius:10px;background:#13203a;color:#f1d27a">🌐 יסוד שביסוד</span>':'')+'<p style="white-space:pre-wrap;margin:6px 0">'+esc(f.message)+'</p>'+reps(f)+
+    '<div class="row">'+(f.is_read?'':'<button class="btn sm" data-read>✔️ סימון כנקרא</button>')+contact(f)+'<button class="btn sm bad" data-del>🗑️</button></div>'+
+    '<div data-box hidden style="margin-top:8px"><textarea rows="5" maxlength="5000" style="width:100%" placeholder="התשובה שלך. הפונה יקבל אותה במייל, ומתחתיה את ההודעה שכתב."></textarea><div class="row" style="margin-top:6px"><button class="btn sm" data-send>📤 לשלוח</button><button class="btn sm sec" data-cancel>ביטול</button></div></div></div>').join('')||'<p class="muted">אין עדיין הערות</p>')+'</div>';
+  $('#boMain').onclick=async e=>{const it=e.target.closest('[data-id]');if(!it)return;const id=it.dataset.id,box=it.querySelector('[data-box]');
     if(e.target.closest('[data-read]')&&await ok(sb.from('feedback').update({is_read:true}).eq('id',id)))show('feedback');
-    if(e.target.closest('[data-del]')&&(await uiConfirm('למחוק?'))&&await ok(sb.from('feedback').delete().eq('id',id),'🗑️ נמחק'))it.remove();};
+    if(e.target.closest('[data-del]')&&(await uiConfirm('למחוק?'))&&await ok(sb.from('feedback').delete().eq('id',id),'🗑️ נמחק'))it.remove();
+    if(e.target.closest('[data-rep]')){box.hidden=false;box.querySelector('textarea').focus();}
+    if(e.target.closest('[data-cancel]'))box.hidden=true;
+    const sb2=e.target.closest('[data-send]');if(sb2){const text=box.querySelector('textarea').value.trim();if(text.length<2){flash('⚠️ צריך לכתוב תשובה');return;}
+      sb2.disabled=true;sb2.textContent='שולח...';
+      let {data:d,error}=await sb.functions.invoke('email',{body:{reply:{id,text}}});
+      if(error&&error.context&&typeof error.context.json==='function'){try{d=await error.context.json();}catch(x){}}
+      if(d&&d.ok){flash('✅ התשובה נשלחה ל-'+d.to);show('feedback');return;}
+      const why={no_key:'חסר מפתח Resend (📧 מייל שבועי)',no_email:'לפונה אין כתובת מייל תקינה',rate:'נשלחו הרבה תשובות בשעה האחרונה. נסו שוב מאוחר יותר',unauthorized:'רק מנהל עם אימות דו-שלבי יכול לשלוח'}[d&&d.error];
+      flash('⚠️ התשובה לא נשלחה: '+(why||(d&&d.error)||(error&&error.message)||''));sb2.disabled=false;sb2.textContent='📤 לשלוח';}};
 }
 };
 
