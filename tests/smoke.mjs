@@ -1239,6 +1239,20 @@ await test('📲 התקנת האפליקציה: הכפתור תמיד בראש �
   await app.ctx.close();
 });
 
+await test('🆕 חלון "עודכנו לגרסה": מראה את הגרסה הנוכחית, ורק באתר — לא באפליקציה', async () => {
+  const init = () => { localStorage.setItem('yam_ver_seen', '1'); };
+  const { ctx, page, errors } = await newPage({ init });
+  await page.waitForTimeout(7500);
+  const r = await page.evaluate(() => ({ shown: !document.querySelector('#updPop').hidden, txt: document.querySelector('#updPop').textContent, v: APP_VERSION }));
+  assert(r.shown && r.txt.includes('לגרסה ' + r.v), 'החלון לא מראה את הגרסה ' + r.v + ': ' + r.txt.slice(0, 80));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+  const app = await newPage({ init, userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile YamShoppingApp/2.2' });
+  await app.page.waitForTimeout(7500);
+  assert(await app.page.evaluate(() => document.querySelector('#updPop').hidden), 'חלון עדכון האתר קופץ גם באפליקציה');
+  await app.ctx.close();
+});
+
 await test('💬 תיבת פניות: רקע מכסה שיחה ארוכה, מתג "לא להראות שקראתי"', async () => {
   const { ctx, page, errors } = await newPage({ viewport: { width: 1366, height: 820 } });
   const M = Array.from({ length: 60 }, (_, i) => ({ id: 'L' + i, user_id: 'u1', from_staff: i % 2 === 0, body: 'הודעה מספר ' + i, created_at: new Date(Date.now() - (60 - i) * 60000).toISOString(), read_by_user: true, read_by_staff: true, delivered_user: true, delivered_staff: true }));
@@ -1251,6 +1265,7 @@ await test('💬 תיבת פניות: רקע מכסה שיחה ארוכה, מת�
   assert(r.long, 'השיחה לא ארוכה מספיק לבדיקה');
   assert(r.img && !/local/.test(r.att), 'הרקע לא קבוע מאחורי השיחה: ' + r.att);
   assert(r.sw && r.checked === false, 'מתג "לא להראות שקראתי" חסר או מסומן בלי סיבה');
+  assert(await page.evaluate(() => !!document.querySelector('#supIg96 select[data-ig96="u1"]')), 'אין בורר "אישור תמונות" בכותרת השיחה');
   // המנהל מתוך האתר: רשימת השיחות, בחירת משתמש והודעה לכולם — בעיצוב החדש
   await page.click('#boClose'); await page.evaluate(() => openAdminChat161());
   await page.waitForTimeout(700);
@@ -1260,6 +1275,10 @@ await test('💬 תיבת פניות: רקע מכסה שיחה ארוכה, מת�
   await page.click('#adm161 [data-back161]'); await page.waitForTimeout(600);
   await page.click('#adm161all'); await page.waitForTimeout(300);
   assert(await page.evaluate(() => !!document.querySelector('#adm161 .fm96 #bc161b') && !!document.querySelector('#adm161 .hd96 [data-back161]')), 'טופס "הודעה לכולם" לא בעיצוב החדש');
+  // 📷 משתמש שהמנהל אישר לו תמונות רואה כפתור תמונה ושורה "עוד 2 תמונות"
+  await page.evaluate(() => { closeSheet(); sb = __stub({ support_messages: [], 'support_img_grants:one': { until: null, remaining: 2 } }); authUser = { id: 'u9', email: 'u9@x.z' }; openChat(); });
+  await page.waitForTimeout(700);
+  assert(await page.evaluate(() => !!document.querySelector('.cu96 [data-c43="pic"]') && /עוד 2 תמונות/.test(document.querySelector('.ig96n').textContent)), 'משתמש מאושר לא רואה כפתור תמונה');
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
