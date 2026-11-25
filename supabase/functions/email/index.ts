@@ -21,6 +21,7 @@ const SB_URL = Deno.env.get("SUPABASE_URL") || "https://ygyfodxfbebnkwdcbjrp.sup
 const FN_URL = SB_URL + "/functions/v1/email";
 const SITE = "https://www.yamshopping.com";
 const LOGO = SITE + "/logo.png";
+const YESOD_LOGO = SITE + "/yesod/mail-logo.png"; // הלוגו של יסוד שביסוד (PNG, כי ג׳ימייל לא מציג SVG)
 const IMG_RE = /^https:\/\/ygyfodxfbebnkwdcbjrp\.supabase\.co\/storage\/v1\/object\/public\/mail\/[A-Za-z0-9._-]{1,120}$/;
 const LINK_RE = /^https:\/\/(www\.)?yamshopping\.com(\/[^\s"'<>]*)?$/;
 // חוק התקשורת (סעיף 30א): בדבר פרסומת — המילה "פרסומת" בתחילת הנושא, ושם, מען ודרכי יצירת קשר של השולח
@@ -469,19 +470,29 @@ export function replyMail(cfg: Cfg, f: { name: string; email: string; message: s
     d.toLocaleTimeString("he-IL", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit" });
   const hi = f.name ? `שלום ${f.name},` : "שלום,";
   const foot = `קיבלת את המייל הזה כי פנית אלינו ב-${when}. זו תשובה לפנייה שלך בלבד, ולא יישלחו אליך מיילים נוספים בלי בקשה ממך. אפשר להשיב למייל הזה ישירות.`;
-  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif">
-<div style="max-width:600px;margin:0 auto;padding:20px 14px;direction:rtl;text-align:right">
-<div style="background:#fff;border-radius:12px;padding:20px 22px;color:#1f2733;font-size:16px;line-height:1.7">
-<p style="margin:0 0 12px">${esc(hi)}</p>
-<div>${para(text)}</div>
-<p style="margin:18px 0 0">בברכה,<br>${esc(brand)}</p>
-</div>
-<div style="margin-top:14px;padding:12px 16px;border-right:4px solid #c9a227;background:#fff;border-radius:8px;color:#5b6370;font-size:14px;line-height:1.6">
-<div style="margin-bottom:6px"><b>ב-${esc(when)} כתבת:</b></div>${esc(original).replace(/\r?\n/g, "<br>")}</div>
-<p style="color:#8a93a0;font-size:12px;line-height:1.6;margin:14px 4px 0">${esc(foot)}</p>
-</div></body></html>`;
+  // עיצוב לפי המותג: יסוד שביסוד = כחול כהה וזהב עם הלוגו; רשימת קניות = ירוק עם הלוגו של האתר. טבלאות, כי כך זה נראה טוב בכל תוכנות המייל
+  const B = yesod
+    ? { bar: "#13203a", accent: "#c9a227", head: `<img src="${YESOD_LOGO}" width="280" height="40" alt="יסוד שביסוד" style="display:block;border:0;width:280px;max-width:100%;height:auto">`, url: "https://yesod.yamshopping.com/", host: "yesod.yamshopping.com" }
+    : { bar: "#0f5d50", accent: "#0f5d50", head: `<img src="${LOGO}" width="44" height="44" alt="" style="display:inline-block;border:0;border-radius:10px;vertical-align:middle"> <span style="color:#fff;font-size:20px;font-weight:bold;vertical-align:middle">${esc(brand)}</span>`, url: SITE + "/", host: "www.yamshopping.com" };
+  const html = `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#eef0f3">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef0f3"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:14px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;direction:rtl;text-align:right">
+<tr><td style="background:${B.bar};padding:22px 28px;text-align:right" dir="rtl"><a href="${B.url}" style="text-decoration:none">${B.head}</a></td></tr>
+<tr><td style="height:4px;line-height:4px;font-size:0;background:${B.accent}">&nbsp;</td></tr>
+<tr><td style="padding:28px 28px 8px;color:#1f2733;font-size:16px;line-height:1.75" dir="rtl">
+<p style="margin:0 0 14px;font-size:17px;font-weight:bold;color:${B.bar}">${esc(hi)}</p>
+<div style="margin:0">${para(text)}</div>
+<p style="margin:22px 0 0">בברכה,<br><b style="color:${B.bar}">${esc(brand)}</b></p>
+</td></tr>
+<tr><td style="padding:18px 28px 26px" dir="rtl">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#f6f7f9;border-right:4px solid ${B.accent};border-radius:8px;padding:14px 16px;color:#5b6370;font-size:14px;line-height:1.65;text-align:right" dir="rtl">
+<div style="margin:0 0 6px;font-size:12px;color:#8a93a0;font-weight:bold">ההודעה שלך מ-${esc(when)}:</div>${esc(original).replace(/\r?\n/g, "<br>")}</td></tr></table>
+</td></tr>
+<tr><td style="background:#f6f7f9;border-top:1px solid #e3e6ea;padding:16px 28px;color:#8a93a0;font-size:12px;line-height:1.6;text-align:right" dir="rtl">${esc(foot)}<br><a href="${B.url}" style="color:${B.accent};text-decoration:none;font-weight:bold" dir="ltr">${B.host}</a></td></tr>
+</table></td></tr></table></body></html>`;
   const quoted = original.split(/\r?\n/).map((l) => "> " + l).join("\n");
-  const txt = `${hi}\n\n${plain(text)}\n\nבברכה,\n${brand}\n\nב-${when} כתבת:\n${quoted}\n\n${foot}`;
+  const txt = `${hi}\n\n${plain(text)}\n\nבברכה,\n${brand}\n\nההודעה שלך מ-${when}:\n${quoted}\n\n${foot}\n${B.url}`;
   return { from: `${brand} <${cfg.from_email}>`, to: [f.email], reply_to: cfg.reply_to, subject, html, text: txt };
 }
 async function sendReply(admin: Admin, cfg: Cfg, key: string, me: { id: string }, r: { id?: unknown; text?: unknown }): Promise<[unknown, number]> {
