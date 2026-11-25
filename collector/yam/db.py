@@ -133,14 +133,39 @@ def city_name(con, city):
     return row[0] if row else CITY_CODES.get(c, c)
 
 
-def fix_city_codes(con):
-    """סניפים שנשמרו עם קוד יישוב מקבלים את שם העיר (ואת המיקום שלה בחיפוש הבא של geo)."""
-    rows = con.execute("select id, city from stores where city glob '[0-9]*'").fetchall()
+# מילים שהן גם שם של יישוב אבל בכתובת או בשם סניף הן בדרך כלל משהו אחר
+NOT_CITY = {"מרכז", "קניון", "שוק", "צומת", "עומר", "כוכב", "שדה", "גן", "נוף", "אור", "רמה", "טל", "הר"}
+
+
+def _city_list(con):
+    names = {r[0] for r in con.execute("select name from city_codes where name <> ''")} | set(CITY_CODES.values())
+    names = {re.sub(r"\s+", " ", n.replace("-", " ")).strip() for n in names}
+    return sorted((n for n in names if len(n) >= 3 and n not in NOT_CITY), key=len, reverse=True)
+
+
+def guess_city(con, *texts, cities=None):
+    """העיר מתוך הכתובת או שם הסניף, לרשתות שלא ממלאות עיר בקובץ ("אשדוד", "רח' הרצל 5 בני-ברק"). לא נמצא ← ""."""
+    for text in texts:
+        t = " " + re.sub(r"[\s,.\-–()\"'׳״]+", " ", text or "") + " "
+        if t.strip():
+            for c in cities if cities is not None else _city_list(con):
+                if f" {c} " in t:
+                    return c
+    return ""
+
+
+def fix_cities(con):
+    """סניפים שנשמרו עם קוד יישוב מקבלים את שם העיר, ולסניפים בלי עיר — העיר מהכתובת או מהשם
+    (ואת המיקום שלה בחיפוש הבא של geo). מחזיר כמה סניפים תוקנו."""
+    rows = con.execute("select id, city, name, address from stores where city = '' or city glob '[0-9]*'").fetchall()
+    cities = _city_list(con) if rows else []
     n = 0
-    for sid, city in rows:
-        name = city_name(con, city)
-        if name != city:
-            con.execute("update stores set city = ?, lat = null, lng = null where id = ?", (name, sid))
+    for sid, city, name, address in rows:
+        new = city_name(con, city) if city else ""
+        if not new or new.isdigit():
+            new = guess_city(con, address, name, cities=cities) or new
+        if new != city:
+            con.execute("update stores set city = ?, lat = null, lng = null where id = ?", (new, sid))
             n += 1
     con.commit()
     return n
@@ -157,10 +182,15 @@ def is_online(s):
 def upsert_stores(con, chain, stores):
     t = now()
     n = 0
+    cities = None
     for s in stores:
         if not s.get("chain_id") or not s.get("store_id"):
             continue
         key = f"{s['chain_id']}:{s['store_id']}"
+        city = city_name(con, s.get("city", ""))
+        if not city or city.isdigit():
+            cities = cities if cities is not None else _city_list(con)
+            city = guess_city(con, s.get("address", ""), s.get("name", ""), cities=cities) or city
         con.execute(
             """insert into stores(key, chain, chain_id, store_id, sub_chain, name, address, city, zip, online, updated_at)
                values (?,?,?,?,?,?,?,?,?,?,?)
@@ -168,7 +198,7 @@ def upsert_stores(con, chain, stores):
                  name=excluded.name, address=excluded.address, city=excluded.city, zip=excluded.zip, online=excluded.online,
                  updated_at=excluded.updated_at""",
             (key, chain, s["chain_id"], s["store_id"], s.get("sub_chain_name", ""), s.get("name", ""),
-             s.get("address", ""), city_name(con, s.get("city", "")), s.get("zip", ""), 1 if is_online(s) else 0, t),
+             s.get("address", ""), city, s.get("zip", ""), 1 if is_online(s) else 0, t),
         )
         n += 1
     return n

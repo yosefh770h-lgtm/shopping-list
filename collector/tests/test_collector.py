@@ -777,11 +777,24 @@ def test_city_codes_become_names(built, monkeypatch):
     con.commit()
     city = lambda k: con.execute("select city from stores where key=?", (k,)).fetchone()[0]
     assert city("729:1") == "בני ברק" and city("729:2") == ""
-    assert db.fix_city_codes(con) == 2 and city("729:3") == "בני ברק" and city("729:4") == "מודיעין עילית"
+    assert db.fix_cities(con) == 2 and city("729:3") == "בני ברק" and city("729:4") == "מודיעין עילית"
     api._local.con = None
     from fastapi.testclient import TestClient
     keys = {r["store"] for r in TestClient(api.app).get("/stores", params={"city": "בב"}).json()}
     assert {"729:1", "729:3"} <= keys
+
+
+def test_city_from_address_or_name(built):
+    """רשת שלא ממלאת עיר בקובץ ("אושר עד אשדוד") — העיר נלקחת מהכתובת או משם הסניף, כדי שכל מחיר יראה מאיזו עיר הוא."""
+    con, _ = built
+    db.upsert_stores(con, "OSHER_AD", [{"chain_id": "729", "store_id": "11", "name": "אשדוד", "city": ""},
+                                       {"chain_id": "729", "store_id": "12", "name": "סניף 12", "address": "רח' רבי עקיבא 5, בני-ברק"},
+                                       {"chain_id": "729", "store_id": "13", "name": "מרכז", "address": "הרצל 1"}])
+    con.execute("insert into stores(key, chain, store_id, name, address, city) values ('729:14','OSHER_AD','14','ביתר עילית','','')")
+    con.commit()
+    city = lambda k: con.execute("select city from stores where key=?", (k,)).fetchone()[0]
+    assert city("729:11") == "אשדוד" and city("729:12") == "בני ברק" and city("729:13") == ""
+    assert db.fix_cities(con) == 1 and city("729:14") == "ביתר עילית"
 
 
 def test_load_city_codes_parses_data_gov(tmp_path, monkeypatch):
