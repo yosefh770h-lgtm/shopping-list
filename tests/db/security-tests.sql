@@ -1140,6 +1140,23 @@ set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000001
 update public.support_messages set delivered_staff = true where body = 'תודה';
 reset role;
 select tst.ok((select delivered_staff and not read_by_staff from public.support_messages where body = 'תודה'), '✓✓ the admin marks a message as delivered (two gray ticks) without reading it');
+-- 📷 המנהל מאשר למשתמש לשלוח תמונות
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000e');
+select tst.err($$insert into public.support_img_grants(user_id) values (auth.uid())$$, '📷 a user cannot approve images for themselves');
+select tst.as_user('00000000-0000-0000-0000-000000000001');
+insert into public.support_img_grants(user_id, remaining) values ('00000000-0000-0000-0000-00000000000e', 1);
+select tst.as_user('00000000-0000-0000-0000-00000000000e');
+insert into public.support_messages(user_id, body, image) values (auth.uid(), 'תמונה שלי', 'data:image/png;base64,iVBORw0KGgo=');
+select tst.err($$insert into public.support_messages(user_id, body, image) values (auth.uid(), 'עוד תמונה', 'data:image/png;base64,iVBORw0KGgo=')$$, '📷 a grant for one image allows exactly one');
+select tst.as_user('00000000-0000-0000-0000-00000000000f');
+select tst.ok((select count(*) = 0 from public.support_img_grants), '📷 a user cannot see another user''s grant');
+select tst.err($$insert into public.support_messages(user_id, body, image) values (auth.uid(), 'x', 'data:image/png;base64,iVBORw0KGgo=')$$, '📷 a user without a grant still cannot send an image');
+select tst.as_user('00000000-0000-0000-0000-000000000001');
+update public.support_img_grants set remaining = null, until = now() - interval '1 minute' where user_id = '00000000-0000-0000-0000-00000000000e';
+select tst.as_user('00000000-0000-0000-0000-00000000000e');
+select tst.err($$insert into public.support_messages(user_id, body, image) values (auth.uid(), 'מאוחר', 'data:image/png;base64,iVBORw0KGgo=')$$, '📷 an expired grant no longer allows images');
+reset role;
+select tst.ok((select count(*) = 1 from public.support_messages where image <> '' and not from_staff), '📷 the approved image from the user was saved');
 set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000001');
 select tst.err($$update public.support_messages set body = 'המנהל שינה' where body = 'תודה'$$, '💬 even the admin cannot rewrite what a user wrote');
 reset role;

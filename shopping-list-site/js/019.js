@@ -2,7 +2,7 @@
 /* ================= גרסה 16: הרשמה/כניסה/איפוס מוגנים בשרת (בלי שום שלב נוסף), מונה מחוברים,
    מכונות אוטומטיות לעסקים, יומן פעילות, תיקון עדכונים בפעמון, גרסה וסיפור באודות ================= */
 const $16=s=>document.querySelector(s);
-const APP_VERSION='22'; /* גרסת האתר. מה חדש בכל גרסה: CHANGELOG (הגרסה האחרונה ב-js/091-whatsnew.js) */
+const APP_VERSION='23'; /* גרסת האתר. מה חדש בכל גרסה: CHANGELOG (הגרסה האחרונה ב-js/091-whatsnew.js) */
 let CHANGELOG=[
  ['16.5','אוקטובר 2026',
   'מה היה: משתמש חדש היה צריך לגלות לבד מה יש באתר; רשימה לשבת או לחג בנו מאפס; ומוצר שנגמר בבית היה צריך להוסיף לרשימה בעצמכם.',
@@ -256,7 +256,9 @@ openAbout=function(){_v16OpenAbout.apply(this,arguments);const b=$16('#aboutBody
   const copy=b.querySelector('.about-copy');const html=story+'<div class="ver16"></div>'; /* הגרסאות והקרדיט: js/091-whatsnew.js */
   if(copy)copy.insertAdjacentHTML('beforebegin',html);else b.insertAdjacentHTML('beforeend',html);};
 /* כל עדכון גרסה מספר פעם אחת מה היה ומה חדש */
+/* רק באתר: באפליקציה (אנדרואיד / אופליין) יש חלון משלה לגרסת האפליקציה, ו"מה חדש באתר" נשאר בתפריט */
 setTimeout(()=>{try{const seenV=localStorage.getItem('yam_ver_seen');if(seenV===APP_VERSION)return;if(!state.user){return;}
+  if(/YamShopping(App|Offline)\//.test(navigator.userAgent||'')){localStorage.setItem('yam_ver_seen',APP_VERSION);return;}
   if(!seenV){localStorage.setItem('yam_ver_seen',APP_VERSION);return;} /* משתמש חדש — לא מציפים */
   if(!$16('#updPop').hidden)return;const c=CHANGELOG[0];
   showUpdates([{title:'🆕 '+T('עודכנו לגרסה ','Updated to version ')+c[0],body:c[2]+'\n\n'+c[3],created_at:new Date().toISOString()}]);

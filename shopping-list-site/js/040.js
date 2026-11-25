@@ -34,7 +34,7 @@ const hue96=id=>{let h=0;String(id||'').split('').forEach(c=>h=(h*31+c.charCodeA
 const avatar96=(name,id,cls)=>'<span class="av96 c'+hue96(id)+(cls?' '+cls:'')+'" aria-hidden="true">'+esc(ini96(name))+'</span>';
 /* שורת הכתיבה: תיבה עגולה עם אימוג'י (ו-📷 למנהל) וכפתור שליחה עגול */
 function composer96(id,sendId,opt){opt=opt||{};
-  return '<div class="cmp96"><div class="box96">'+(opt.pic?'<button type="button" class="ib96" data-c43="pic" title="'+T('שליחת תמונה (רק למנהל)','Send an image (admin only)')+'" aria-label="'+T('שליחת תמונה','Send an image')+'" data-noicon>'+SVG43.img+'</button>':'')+
+  return '<div class="cmp96"><div class="box96">'+(opt.pic?'<button type="button" class="ib96" data-c43="pic" title="'+T('שליחת תמונה','Send an image')+'" aria-label="'+T('שליחת תמונה','Send an image')+'" data-noicon>'+SVG43.img+'</button>':'')+
     '<textarea id="'+id+'" rows="1" maxlength="4000" placeholder="'+(opt.ph||T('כתבו הודעה...','Write a message...'))+'" aria-label="'+T('ההודעה','Message')+'"></textarea></div>'+
     '<button type="button" class="send96" id="'+sendId+'" aria-label="'+T('שליחה','Send')+'" title="'+T('שליחה','Send')+'" data-noicon>'+SVG43.send+'</button></div>';}
 /* התיבה גדלה עם הטקסט (עד 5 שורות בערך) */
@@ -59,7 +59,7 @@ function chat43(o){
           (canEdit43(m,c.staff)?'<button type="button" data-c43="edit" title="'+T('עריכת ההודעה','Edit message')+'" aria-label="'+T('עריכת ההודעה','Edit message')+'" data-noicon>'+SVG43.edit+'</button>':'')+'</div>'+
         (!me&&!cont?'<b class="nm43">'+esc(who43(m,c.staff))+'</b>':'')+(o.tag?o.tag(m):'')+
         (m.reply_to?'<button type="button" class="q43" data-c43="jump" data-ref="'+esc(m.reply_to)+'" aria-label="'+T('מעבר להודעה המקורית','Go to the original message')+'"><b>'+esc(r?who43(r,c.staff):'')+'</b><span>'+esc(snip43(r))+'</span></button>':'')+
-        (m.image&&IMG43.test(m.image)?'<img class="img43" src="'+esc(m.image)+'" alt="'+T('תמונה מצוות האתר','Image from the site team')+'" data-c43="zoom" loading="lazy">':'')+
+        (m.image&&IMG43.test(m.image)?'<img class="img43" src="'+esc(m.image)+'" alt="'+(m.from_staff?T('תמונה מצוות האתר','Image from the site team'):T('תמונה מהמשתמש','Image from the user'))+'" data-c43="zoom" loading="lazy">':'')+
         (m.body?'<span class="tx43">'+esc(m.body).replace(/\n/g,'<br>')+'</span>':'')+
         '<span class="t43">'+(m.edited_at?'<i>'+T('נערכה','edited')+'</i>':'')+fmtTime(d)+(o.tail?o.tail(m):'')+'</span>'+
         (re.length?'<span class="re43" aria-label="'+T('תגובות: ','Reactions: ')+esc(re.join(' '))+'">'+esc(re.join(''))+'</span>':'')+
@@ -82,7 +82,7 @@ function chat43(o){
       const {error}=await sb.from('support_messages').update({[col]:val}).eq('id',m.id);if(error){flash('⚠️ '+err43(error));return true;}m[col]=val;c.render(true);}
     else if(k==='jump'){const t=document.getElementById('m43-'+b.dataset.ref);if(t){t.scrollIntoView({block:'center',behavior:'smooth'});t.classList.add('hl43');setTimeout(()=>t.classList.remove('hl43'),1500);}else flash(T('ההודעה המקורית כבר לא מופיעה כאן','The original message is no longer shown'));}
     else if(k==='zoom'){const lb=document.createElement('div');lb.className='lb43';lb.setAttribute('role','dialog');lb.setAttribute('aria-label',T('תמונה','Image'));lb.innerHTML='<img src="'+esc(b.getAttribute('src'))+'" alt="">';lb.onclick=()=>lb.remove();document.body.appendChild(lb);}
-    else if(k==='pic'){if(!c.staff)return true;const inp=document.createElement('input');inp.type='file';inp.accept='image/jpeg,image/png,image/webp';
+    else if(k==='pic'){if(!c.staff&&!o.pic)return true;const inp=document.createElement('input');inp.type='file';inp.accept='image/jpeg,image/png,image/webp';
       inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;try{const d=await fileToImage(f,1280,300000);if(!IMG43.test(d)||d.length>380000)throw 0;c.image=d;if(c.mode==='edit'){c.mode=null;c.ref=null;if(o.text)o.text.value='';}c.render(true);}catch(er){flash('⚠️ '+T('לא הצלחתי לקרוא את התמונה','Could not read the image'));}};inp.click();}
     return true;};
   /* Escape: קודם סוגר סרגל / תגובה / עריכה */
@@ -92,7 +92,7 @@ function chat43(o){
     if(c.mode==='edit'&&c.ref){if(!text)return false;if(text===c.ref.body){c.reset();c.render(true);return 'same';}
       const {error}=await sb.from('support_messages').update({body:text.slice(0,4000)}).eq('id',c.ref.id);if(error){flash('⚠️ '+err43(error));return false;}c.reset();return 'edited';}
     if(!text&&!c.image)return false;
-    const row=Object.assign({user_id:c.uid,body:text.slice(0,4000)},extra||{});if(c.mode==='reply'&&c.ref)row.reply_to=c.ref.id;if(c.image&&c.staff)row.image=c.image;
+    const row=Object.assign({user_id:c.uid,body:text.slice(0,4000)},extra||{});if(c.mode==='reply'&&c.ref)row.reply_to=c.ref.id;if(c.image&&(c.staff||o.pic))row.image=c.image;
     const {error}=await sb.from('support_messages').insert(row);if(error){flash('⚠️ '+err43(error));return false;}c.reset();return 'sent';};
   return c;}
 window.chat43=chat43;
@@ -109,6 +109,24 @@ const _lc96=loadChat;loadChat=async function(){const r=await _lc96.apply(this,ar
     if(ids.length)sb.from('support_messages').update({delivered_user:true}).in('id',ids).then(({error})=>{if(!error)chatMsgs.forEach(m=>{if(ids.includes(m.id))m.delivered_user=true;});},()=>{});}}catch(e){}
   return r;};
 
+/* ---------- 📷 אישור תמונות: המנהל מאשר למשתמש לשלוח תמונות (support_img_grants) — תמיד, עד שעה מסוימת או מספר תמונות ---------- */
+const grantOn96=g=>!!g&&!(g.until&&new Date(g.until)<new Date())&&!(g.remaining!=null&&g.remaining<=0);
+const grantTx96=g=>{if(!grantOn96(g))return T('לא מאושר','Not allowed');if(g.remaining!=null)return g.remaining===1?T('עוד תמונה אחת','1 more image'):T('עוד ','')+g.remaining+T(' תמונות',' more images');
+  if(g.until){const d=new Date(g.until);return T('עד ','Until ')+(dayKey(d)===dayKey(new Date())?fmtTime(d):d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+fmtTime(d));}return T('תמיד','Always');};
+async function grant96(uid){try{const {data,error}=await sb.from('support_img_grants').select('until,remaining').eq('user_id',uid).maybeSingle();return error||!data||!('until' in data)?null:data;}catch(e){return null;}}
+/* בורר בכותרת השיחה אצל המנהל */
+async function fillImg96(el,uid){if(!el)return;const g=await grant96(uid);if(!el.isConnected)return;
+  el.innerHTML='<select class="ig96" data-ig96="'+esc(uid)+'" aria-label="'+T('אישור תמונות למשתמש','Allow images')+'" title="'+T('לאפשר למשתמש לשלוח לך תמונות','Allow the user to send you images')+'">'+
+    '<option value="" selected disabled>📷 '+esc(grantTx96(g))+'</option><option value="h1">'+T('לשעה','For 1 hour')+'</option><option value="h24">'+T('ל-24 שעות','For 24 hours')+'</option>'+
+    '<option value="n1">'+T('תמונה אחת','1 image')+'</option><option value="n3">'+T('עד 3 תמונות','Up to 3 images')+'</option><option value="always">'+T('תמיד','Always')+'</option>'+(grantOn96(g)?'<option value="off">'+T('ביטול האישור','Revoke')+'</option>':'')+'</select>';}
+async function igChange96(e){const s=e.target.closest&&e.target.closest('[data-ig96]');if(!s)return false;const uid=s.dataset.ig96,v=s.value;s.disabled=true;
+  const now=Date.now(),row={user_id:uid,until:null,remaining:null,granted_by:authUser.id,granted_at:new Date().toISOString()};
+  if(v==='h1')row.until=new Date(now+36e5).toISOString();else if(v==='h24')row.until=new Date(now+864e5).toISOString();else if(v==='n1')row.remaining=1;else if(v==='n3')row.remaining=3;
+  const {error}=v==='off'?await sb.from('support_img_grants').delete().eq('user_id',uid):await sb.from('support_img_grants').upsert(row);
+  if(error)flash('⚠️ '+(/support_img_grants/.test(error.message)?T('צריך להריץ את קוד ה-SQL של אישור התמונות','Run the SQL first'):error.message));
+  else flash(v==='off'?'🚫 '+T('בוטל — המשתמש לא יכול לשלוח תמונות','Revoked'):'📷 '+T('המשתמש יכול לשלוח לך תמונות','The user can send you images'));
+  await fillImg96(s.parentNode,uid);return true;}
+
 /* ---------- 1. הלקוח: שירות לקוחות ---------- */
 openChat=async function(){
   $43('#hMenu').classList.remove('open');
@@ -116,8 +134,8 @@ openChat=async function(){
   if(!sb||!authUser){b.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים כדי להתכתב 🙂','Sign in to chat 🙂')+'</p>';return;}
   const r=await loadChat();if(r===null){b.innerHTML='<p class="muted-note">'+T('הצ\'אט עוד לא זמין 🙏','Chat is not available yet 🙏')+'</p>';return;}
   try{const {data}=await sb.from('support_status').select('*').eq('user_id',authUser.id).maybeSingle();supStatus=data;}catch(e){}
-  let ch=null;
-  const draw=()=>{const open=!supStatus||supStatus.status==='open';const newTicket=!chatMsgs.length||(supStatus&&supStatus.status==='closed');const draft=$43('#chatText')?$43('#chatText').value:'';
+  let ch=null,gr=await grant96(authUser.id);
+  const draw=()=>{const pic=grantOn96(gr);const open=!supStatus||supStatus.status==='open';const newTicket=!chatMsgs.length||(supStatus&&supStatus.status==='closed');const draft=$43('#chatText')?$43('#chatText').value:'';
     b.innerHTML='<div class="c96 cu96"><div class="hd96"><span class="av96 brand" aria-hidden="true" data-noicon>'+SVG43.cart+'</span><div class="who96"><b>'+T('צוות רשימת קניות','Shopping List team')+'</b><small>'+T('עונים בדרך כלל תוך כמה שעות · א׳–ה׳ 9:00–21:00','Usually replies within a few hours')+'</small></div>'+
         (chatMsgs.length?'<span class="st96 '+(open?'open':'closed')+'">'+(open?T('פנייה פתוחה','Open'):T('טופל ✓','Resolved ✓'))+'</span>':'')+
         '<button type="button" class="x96" data-close96 aria-label="'+T('סגירה','Close')+'" title="'+T('סגירה','Close')+'" data-noicon>'+SVG43.close+'</button></div>'+
@@ -125,10 +143,10 @@ openChat=async function(){
       '<div class="box43" id="chatBox" aria-live="polite" data-noicon></div>'+
       (newTicket?'<div class="qr96" data-noicon role="group" aria-label="'+T('נושא הפנייה','Topic')+'">'+SUP_TOPICS.map(([t,ic])=>'<button type="button" class="'+(supTopic===t?'on':'')+'" data-stopic="'+esc(t)+'" aria-pressed="'+(supTopic===t)+'">'+ic+' '+esc(t)+'</button>').join('')+'</div>':
         '<div class="qr96" data-noicon role="group" aria-label="'+T('תשובות מהירות','Quick replies')+'"><button type="button" data-qk96="'+esc(T('תודה רבה! 👍','Thanks! 👍'))+'">👍 '+T('תודה','Thanks')+'</button><button type="button" data-qk96="'+esc(T('יש לי עוד שאלה:','One more question:'))+' ">❓ '+T('עוד שאלה','Another question')+'</button><button type="button" id="chatBiz">🏪 '+T('יש לי עסק','I own a business')+'</button></div>')+
-      '<div class="bar43" id="chatBar43"></div>'+composer96('chatText','chatSend')+
+      '<div class="bar43" id="chatBar43"></div>'+composer96('chatText','chatSend',{pic})+(pic?'<p class="ig96n">📷 '+T('אפשר לשלוח לנו תמונה','You can send us an image')+' · '+esc(grantTx96(gr))+'</p>':'')+
       (chatMsgs.length&&open?'<div class="ft96"><button type="button" class="ok" id="chatDone">✓ '+T('הבעיה נפתרה','Resolved')+'</button></div>':'')+
       (isAdmin()?'<p class="muted-note">🛠️ '+T('את הפניות של כל המשתמשים רואים ועונים בבק אופיס ← 💬 צ\'אט עם משתמשים.','Admin: all chats are in the back office.')+'</p>':'')+'</div>';
-    const old=ch;ch=chat43({staff:false,uid:authUser.id,box:$43('#chatBox'),bar:$43('#chatBar43'),text:$43('#chatText'),
+    const old=ch;ch=chat43({staff:false,pic,uid:authUser.id,box:$43('#chatBox'),bar:$43('#chatBar43'),text:$43('#chatText'),
       empty:'<div class="hi96">👋 '+T('שלום! איך אפשר לעזור? בחרו נושא וכתבו לנו — נחזור אליכם בהקדם.','Hi! How can we help? Pick a topic and write to us.')+'</div>',
       tag:m=>m.topic&&!m.from_staff&&m.topic!=='broadcast'?'<span class="tg43">📌 '+esc(m.topic)+'</span>':'',
       tail:m=>m.from_staff?'':ticks96(m.read_by_staff,m.delivered_staff,chatShowRead())});
@@ -147,7 +165,7 @@ openChat=async function(){
       const btn=e.target.closest('#chatSend');btn.disabled=true;const res=await ch.submit(t,{topic:newTicket?supTopic:''});btn.disabled=false;if(!res)return;
       $43('#chatText').value='';
       if(res==='sent'){supStatus={status:'open',topic:newTicket?supTopic:(supStatus&&supStatus.topic)||''};supTopic='';}
-      await loadChat();draw();if(res!=='same')flash(res==='edited'?'✏️ '+T('ההודעה עודכנה','Message updated'):'💬 '+T('נשלח — נענה בהקדם','Sent'));}
+      if(pic)gr=await grant96(authUser.id);await loadChat();draw();if(res!=='same')flash(res==='edited'?'✏️ '+T('ההודעה עודכנה','Message updated'):'💬 '+T('נשלח — נענה בהקדם','Sent'));}
   };
   b.onkeydown=e=>{if(e.key==='Escape'&&ch&&ch.escape()){e.stopPropagation();return;}
     if(e.target.id==='chatText')enterSends96(e,$43('#chatSend'));};
@@ -208,11 +226,11 @@ async function drawThread161(b,uid,quiet){
     const t=adm161.threads.find(x=>x.user_id===uid)||{};let who=t.name||t.email;
     if(!who){if(!adm161.users){const {data:us}=await sb.rpc('admin_user_list');adm161.users=us||[];}const u=adm161.users.find(x=>x.id===uid)||{};who=u.name||u.email||'?';}
     b.innerHTML='<div id="adm161" class="c96"><div class="hd96"><button type="button" class="bk96" data-back161 aria-label="'+T('לכל השיחות','All conversations')+'" title="'+T('לכל השיחות','All conversations')+'" data-noicon>'+SVG43.back+'</button>'+avatar96(who,uid)+
-        '<div class="who96"><b>'+esc(who)+'</b>'+(t.email?'<small dir="ltr">'+esc(t.email)+'</small>':'')+'</div></div>'+
+        '<div class="who96"><b>'+esc(who)+'</b>'+(t.email?'<small dir="ltr">'+esc(t.email)+'</small>':'')+'</div><span class="igw96" id="adm161ig"></span></div>'+
       '<div class="box43" id="adm161m" aria-live="polite" data-noicon></div><div class="bar43" id="adm161bar"></div>'+composer96('adm161txt','adm161send',{pic:true})+'</div>';
     ch43=chat43({staff:true,uid,box:$43('#adm161m'),bar:$43('#adm161bar'),text:$43('#adm161txt'),empty:'<div class="hi96">'+T('עוד אין הודעות — כתבו ראשונים 👇','No messages yet 👇')+'</div>',
       tail:m=>(m.topic==='broadcast'?' · 📣':'')+(m.from_staff?ticks96(m.read_by_user,m.delivered_user,true):'')});
-    ch43.msgs=data||[];ch43.render();
+    ch43.msgs=data||[];ch43.render();fillImg96($43('#adm161ig'),uid);b.onchange=e=>{igChange96(e);};
     b.onclick=async e=>{if(await ch43.click(e))return;
       if(e.target.closest('[data-back161]')){adm161.open=null;ch43=null;await drawThreads161(b);return;}
       if(e.target.closest('#adm161send')){const btn=e.target.closest('#adm161send');btn.disabled=true;const res=await ch43.submit($43('#adm161txt').value);btn.disabled=false;if(!res)return;
@@ -263,7 +281,7 @@ window.boView&&window.boView('support',async function(){const main=$43('#boMain'
     cv.innerHTML='<div class="hd96"><button type="button" class="bk96" data-back96 aria-label="לכל הפניות" title="לכל הפניות" data-noicon>'+SVG43.back+'</button>'+avatar96(t.name||t.email,uid)+
         '<div class="who96"><b>'+esc(t.name||'—')+'</b><small dir="ltr">'+esc(t.email||'')+'</small></div>'+
         (t.topic?'<span class="st96 tp">'+esc(t.topic)+'</span>':'')+'<span class="st96 '+(open?'open':'closed')+'">'+(open?'פתוחה':'✓ טופלה')+'</span>'+
-        (open?'<button type="button" class="hb96 pri" id="supClose">'+SVG43.ok+' סימון כטופל</button>':'<button type="button" class="hb96" id="supReopen">'+SVG43.undo+' פתיחה מחדש</button>')+
+        '<span class="igw96" id="supIg96"></span>'+(open?'<button type="button" class="hb96 pri" id="supClose">'+SVG43.ok+' סימון כטופל</button>':'<button type="button" class="hb96" id="supReopen">'+SVG43.undo+' פתיחה מחדש</button>')+
         '<button type="button" class="hb96 ic" id="supDel" title="מחיקת השיחה" aria-label="מחיקת השיחה" data-noicon>'+SVG43.del+'</button></div>'+
       '<div class="box43" id="supBox" aria-live="polite" data-noicon><div class="hi96">טוען...</div></div>'+
       '<div class="qr96 can96" data-noicon role="group" aria-label="תשובות מוכנות">'+CANNED96.map((c,i)=>'<button type="button" data-can="'+i+'" title="'+esc(c)+'">⚡ '+esc(c.length>34?c.slice(0,32)+'…':c)+'</button>').join('')+'</div>'+
@@ -275,14 +293,14 @@ window.boView&&window.boView('support',async function(){const main=$43('#boMain'
     bo43=chat43({staff:true,uid,box:$43('#supBox'),bar:$43('#supBar43'),text:$43('#supReply'),empty:'<div class="hi96">עוד אין הודעות</div>',
       tag:m=>m.topic&&!m.from_staff&&m.topic!=='broadcast'?'<span class="tg43">📌 '+esc(m.topic)+'</span>':'',
       tail:m=>(m.topic==='broadcast'?' · 📣':'')+(m.from_staff?ticks96(m.read_by_user,m.delivered_user,true):'')});
-    bo43.msgs=ms||[];bo43.render();
+    bo43.msgs=ms||[];bo43.render();fillImg96($43('#supIg96'),uid);
     $43('#supReply').onkeydown=e=>{if(e.key==='Escape'&&bo43&&bo43.escape()){e.stopPropagation();return;}enterSends96(e,$43('#supSend'));};
     if((ms||[]).some(m=>!m.from_staff&&!m.read_by_staff))sb.from('support_messages').update({read_by_staff:true}).eq('user_id',uid).eq('from_staff',false).eq('read_by_staff',false).then(()=>{t.unread=0;drawList();},()=>{});};
   drawList();await drawConv();
   const setSt=s=>sb.from('support_status').upsert({user_id:sup96.uid,status:s,updated_at:new Date().toISOString()});
   const okq=async(q,msg)=>{const {error:e}=await q;if(e){flash('⚠️ '+e.message);return false;}if(msg)flash(msg);return true;};
   main.oninput=e=>{if(e.target.id==='supQ96'){sup96.q=e.target.value;drawList();}};
-  main.onchange=async e=>{if(e.target.id==='chRead'){const v=!e.target.checked;if(await okq(sb.from('site_config').upsert({key:'chat',value:Object.assign({},chatCfg,{showRead:v}),updated_at:new Date().toISOString()}),'✔️ נשמר'))chatCfg.showRead=v;}};
+  main.onchange=async e=>{if(await igChange96(e))return;if(e.target.id==='chRead'){const v=!e.target.checked;if(await okq(sb.from('site_config').upsert({key:'chat',value:Object.assign({},chatCfg,{showRead:v}),updated_at:new Date().toISOString()}),'✔️ נשמר'))chatCfg.showRead=v;}};
   main.onkeydown=e=>{if(e.key==="Escape"&&bo43&&main.contains(bo43.box)&&bo43.escape())e.stopPropagation();};
   main.onclick=async e=>{
     if(bo43&&main.contains(bo43.box)&&await bo43.click(e))return;

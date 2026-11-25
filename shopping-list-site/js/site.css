@@ -2769,3 +2769,7 @@ details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:
 :is(#bo,body) .fm96 select, :is(#bo,body) .fm96 textarea{width:100%;font:inherit;font-size:15px;color:var(--c-text);background:var(--c-soft);border:1px solid var(--c-line);border-radius:12px;padding:10px 12px}
 :is(#bo,body) .fm96 textarea{min-height:140px;resize:vertical}
 :is(#bo,body) .fm96 .hb96.wide{height:44px;margin-top:6px}
+/* 📷 אישור תמונות למשתמש — בורר בכותרת השיחה אצל המנהל, ושורה קטנה אצל המשתמש */
+:is(#bo,body) .igw96{flex:none;display:inline-flex}:is(#bo,body) .igw96:empty{display:none}
+:is(#bo,body) .ig96{height:36px;width:auto;max-width:170px;padding:0 10px;border-radius:10px;border:1px solid var(--c-line);background:var(--c-soft);color:var(--c-text);font:inherit;font-size:13px;cursor:pointer}
+:is(#bo,body) .ig96n{margin:0;padding:4px 16px 8px;font-size:12px;color:var(--c-muted);text-align:center}

@@ -5934,6 +5934,31 @@ alter table public.support_messages drop constraint if exists support_messages_r
 alter table public.support_messages add constraint support_messages_react_chk
   check (react_user in ('','👍','❤️','😂','😮','🙏','👏','✅','😢') and react_staff in ('','👍','❤️','😂','😮','🙏','👏','✅','😢')) not valid;
 create index if not exists support_messages_reply on public.support_messages (reply_to) where reply_to is not null;
+-- 📷 נובמבר 2026: המנהל מאשר למשתמש לשלוח תמונות בצ'אט — תמיד, עד זמן מסוים, או מספר תמונות מוגבל.
+-- until ריק = בלי הגבלת זמן · remaining ריק = בלי הגבלה במספר. בלי שורה — אין אישור.
+create table if not exists public.support_img_grants (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  until timestamptz,
+  remaining int check (remaining is null or remaining between 0 and 50),
+  granted_by uuid default auth.uid(),
+  granted_at timestamptz not null default now()
+);
+alter table public.support_img_grants enable row level security;
+drop policy if exists "img grant read" on public.support_img_grants;
+create policy "img grant read" on public.support_img_grants for select using (user_id = auth.uid() or public.is_admin());
+drop policy if exists "img grant admin" on public.support_img_grants;
+create policy "img grant admin" on public.support_img_grants for all using (public.is_admin()) with check (public.is_admin());
+-- בודק אם מותר למשתמש לשלוח תמונה עכשיו, ואם האישור מוגבל במספר — מוריד אחת
+create or replace function public.support_img_take(p uuid) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare g public.support_img_grants;
+begin
+  select * into g from public.support_img_grants where user_id = p for update;
+  if not found or (g.until is not null and g.until < now()) or (g.remaining is not null and g.remaining <= 0) then return false; end if;
+  if g.remaining is not null then update public.support_img_grants set remaining = remaining - 1 where user_id = p; end if;
+  return true;
+end $$;
+revoke all on function public.support_img_take(uuid) from public, anon, authenticated;
 -- ✓✓ נובמבר 2026: "הגיע" — ההודעה נטענה אצל הצד השני (בטלפון או במחשב), עוד לפני שקרא.
 -- ✓ נשלח · ✓✓ אפור הגיע · ✓✓ כחול נקרא. הודעות ישנות שכבר נקראו נחשבות כאלה שהגיעו.
 alter table public.support_messages add column if not exists delivered_user boolean not null default false;
@@ -5952,8 +5977,8 @@ begin
     else
       new.user_id := auth.uid(); new.from_staff := false; new.read_by_user := true; new.read_by_staff := false; new.delivered_user := true; new.delivered_staff := false;
     end if;
-    -- 📷 תמונות — רק המנהל שולח
-    if coalesce(new.image, '') <> '' and not (adm and new.from_staff) then raise exception 'images_admin_only' using errcode = '42501'; end if;
+    -- 📷 תמונות — המנהל תמיד, משתמש רק באישור המנהל (support_img_grants)
+    if coalesce(new.image, '') <> '' and not (adm and new.from_staff) and not public.support_img_take(new.user_id) then raise exception 'images_admin_only' using errcode = '42501'; end if;
     -- תגובה רק להודעה מאותה שיחה
     if new.reply_to is not null and not exists (select 1 from public.support_messages r where r.id = new.reply_to and r.user_id = new.user_id) then new.reply_to := null; end if;
   else
