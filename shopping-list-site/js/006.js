@@ -502,7 +502,7 @@ async function yamiCore(raw){
     if(!rows.length&&priceM[1].split(' ').length>2&&await askAI())return;
     if(!rows.length)return botSay('עוד אין דיווחי מחיר על "'+priceM[1]+'" 🤷 אפשר לדווח בלשונית 💰 מחירים — וכולם ירוויחו!');
     rows.sort((a,b)=>a.price-b.price);
-    return botSay('💰 '+priceM[1]+' — הכי זול:\n'+rows.slice(0,4).map(r=>'• ₪'+Number(r.price).toFixed(2)+' ב'+r.chain+(r.branch?' ('+r.branch+')':'')).join('\n'));
+    return botSay('💰 '+priceM[1]+' — הכי זול:\n'+rows.slice(0,4).map(r=>'• ₪'+Number(r.price).toFixed(2)+' ב'+r.chain+(prWhere(r)?' ('+prWhere(r)+')':'')).join('\n'));
   }
   /* מה יש בבית */
   if(/(מה יש לי בבית|מה יש במקרר|מה יש לי$)/.test(t)){
@@ -1104,6 +1104,10 @@ async function fetchPrices(q){
   try{let {data,error}=await run(PRICE_COLS+',wrong,is_deal,deal_text,valid_until,regular_price');if(error)({data,error}=await run(PRICE_COLS+',wrong,is_deal,deal_text,valid_until'));if(error)({data}=await run(PRICE_COLS));const rows=data||[];loadMyVotes(rows);return rows;}catch(e){return [];}
 }
 const PRICE_COLS='id,product,chain,branch,price,currency,barcode,confirms,created_at,updated_at,by_id,verified,status';
+/* מחיר אוטומטי מקבצי הרשת (רשמי, בלי מדווח ובלי סניף) הוא החציון של כל הסניפים — לא מחיר של עיר אחת */
+function prChainWide(r){return !!(r&&r.verified&&!r.by_id&&!r.branch);}
+function prWhere(r){return r.branch||(prChainWide(r)?T('כל הסניפים (מחיר נפוץ)','all branches (typical price)'):'');}
+function prCityBtn(r){return prChainWide(r)&&typeof srvShown==='function'&&srvShown()?'<button class="pr-act" data-prcity="'+esc(r.product)+'" data-code="'+esc(r.barcode||'')+'" title="'+T('המחיר בכל סניף לפי עיר','Price per branch by city')+'">📍 '+T('לפי עיר','by city')+'</button>':'';}
 /* ההצבעות שלי ("נכון" / "לא נכון") על דיווחים שמוצגים */
 let myVotes={};
 async function loadMyVotes(rows){if(!sb||!authUser||!rows||!rows.length)return;const ids=rows.map(r=>r.id).filter(id=>!(id in myVotes));if(!ids.length)return;
@@ -1193,11 +1197,11 @@ function renderPriceResults(){
     return '<div class="grp"><h3>🏷️ '+esc(name)+' — '+T('הכי זול','cheapest')+': '+fmtPrice(best.price,best.currency)+' '+T('ב','at ')+esc(best.chain)+'</h3>'+rows.map(r=>{
       const online=chainKind(r.chain)==='online';const mine=r.by_id===me;const sc=repScores[r.by_id];
       if(editingPrice===r.id)return '<div class="price-row editing" data-pid="'+esc(r.id)+'"><div class="price-report"><input id="epProduct" value="'+esc(r.product)+'" maxlength="60" aria-label="'+T('מוצר','Product')+'"><input id="epPrice" type="number" step="0.01" min="0" value="'+esc(String(r.price))+'" aria-label="'+T('מחיר','Price')+'"><input id="epBranch" value="'+esc(r.branch||'')+'" maxlength="120" aria-label="'+T('סניף','Branch')+'"><input id="epBarcode" value="'+esc(r.barcode||'')+'" inputmode="numeric" maxlength="20" aria-label="'+T('ברקוד','Barcode')+'"><button data-epsave="'+esc(r.id)+'">💾 '+T('שמירה','Save')+'</button><button class="pr-act" data-epcancel="1">'+T('ביטול','Cancel')+'</button></div></div>';
-      return '<div class="price-row'+(r.is_deal?' deal':'')+((r.wrong||0)>(r.confirms||0)?' doubt':'')+'" data-pid="'+esc(r.id)+'"><div class="price-row-main"><span class="pr-chain">'+(online?'🌐 ':'')+esc(r.chain)+'</span><span class="pr-branch">'+esc(r.branch||'')+'</span>'+(r.verified?'<span class="verified" title="'+T('מחיר רשמי מהסופר','Official store price')+'">✔ '+T('רשמי','official')+'</span>':'')+dealBadge(r)+'<span class="pr-amt">'+fmtPrice(r.price,r.currency)+unitTag18(r.product,r.price,r.currency)+'</span></div>'+((r.wrong||0)>(r.confirms||0)?'<div class="doubtnote">⚠️ '+T('משתמשים דיווחו שהמחיר לא נכון','Users reported this price as wrong')+'</div>':'')+
+      return '<div class="price-row'+(r.is_deal?' deal':'')+((r.wrong||0)>(r.confirms||0)?' doubt':'')+'" data-pid="'+esc(r.id)+'"><div class="price-row-main"><span class="pr-chain">'+(online?'🌐 ':'')+esc(r.chain)+'</span><span class="pr-branch">'+esc(prWhere(r))+'</span>'+(r.verified?'<span class="verified" title="'+T('מחיר רשמי מהסופר','Official store price')+'">✔ '+T('רשמי','official')+'</span>':'')+dealBadge(r)+'<span class="pr-amt">'+fmtPrice(r.price,r.currency)+unitTag18(r.product,r.price,r.currency)+'</span></div>'+((r.wrong||0)>(r.confirms||0)?'<div class="doubtnote">⚠️ '+T('משתמשים דיווחו שהמחיר לא נכון','Users reported this price as wrong')+'</div>':'')+
         '<div class="price-row-sub"><span class="pr-ago" title="'+esc(T('דווח: ','Reported: ')+dt(r.created_at)+(r.updated_at?T(' · נערך: ',' · edited: ')+dt(r.updated_at):''))+'">'+(r.status==='pending'?'⏳ '+T('ממתין לאישור','pending')+' · ':'')+crSlot('prices',r.id,{p:T('דווח ע״י ','by ')})+' '+repBadge(sc&&sc.score)+' · '+agoText(r.created_at)+(r.updated_at?' · ✏️ '+T('נערך','edited')+' '+agoText(r.updated_at):'')+(r.barcode?' · '+esc(r.barcode):'')+'</span>'+
         (mine?'<button class="pr-act" data-epedit="'+esc(r.id)+'" title="'+T('עריכה','Edit')+'">✏️</button><button class="pr-act" data-epdel="'+esc(r.id)+'" title="'+T('מחיקה','Delete')+'">🗑️</button>':voteBtns(r))+
         '<button class="pr-act" data-share="'+esc(JSON.stringify([name,r.chain,r.branch||'',fmtPrice(r.price,r.currency)]))+'" title="'+T('שיתוף','Share')+'">📤</button>'+
-        (online?'':'<a class="pr-act" href="'+esc(wazeUrl(r.chain+' '+(r.branch||'')))+'" target="_blank" rel="noopener" title="Waze">🧭</a>')+
+        prCityBtn(r)+(online||prChainWide(r)?'':'<a class="pr-act" href="'+esc(wazeUrl(r.chain+' '+(r.branch||'')))+'" target="_blank" rel="noopener" title="Waze">🧭</a>')+
         '</div><div class="pr-times">'+T('דווח','Reported')+' '+dt(r.created_at)+(r.updated_at?' · '+T('נערך','Edited')+' '+dt(r.updated_at):'')+'</div></div>';}).join('')+(typeof histBox23==='function'?histBox23(name):'')+'</div>';
   };
   el.innerHTML=catOrder.map(c=>'<details class="catsec" open><summary class="cathead">'+CATE[c]+' '+esc(c)+' <small>('+byCat[c].length+')</small></summary><button class="pr-act shcat18" data-shcat="'+esc(c)+'" title="'+T('לשתף את הקטגוריה','Share category')+'" aria-label="'+T('לשתף את הקטגוריה','Share category')+' '+esc(c)+'">📤</button>'+byCat[c].sort((x,y)=>priceSort==='new'?Math.max(...y[1].map(tNew))-Math.max(...x[1].map(tNew)):x[0].localeCompare(y[0],'he')).map(renderGroup).join('')+'</details>').join('');
@@ -1428,6 +1432,7 @@ pricesPane.addEventListener('click',async e=>{
     flash(+v>0?T('✅ תודה! הדירוג של המדווח עלה','✅ Thanks!'):T('❌ תודה — נבדוק את המחיר','❌ Thanks — we will check it'));return;}
   const c=e.target.closest('[data-confirm]');
   if(c){if(!sb||!authUser)return;const {data,error}=await sb.rpc('confirm_price',{p_id:c.dataset.confirm});if(!error){flash(T('✅ תודה! הדירוג של המדווח עלה','✅ Thanks! Reporter rating went up'));c.textContent='✅ '+(data||'');c.disabled=true;}return;}
+  const pc=e.target.closest('[data-prcity]');if(pc){srvItemOpen(pc.dataset.prcity,pc.dataset.code);return;}
   const sh=e.target.closest('[data-share]');if(sh){try{const [n,ch,br,pr]=JSON.parse(sh.dataset.share);sharePriceReport(n,ch,br,pr);}catch(err){}return;}
 });
 /* חשוב: בזמן הקלדה מעדכנים רק את התוצאות — לא את שדה החיפוש עצמו (כך הרווח והאותיות לא "זורקים" החוצה) */

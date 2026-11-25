@@ -1986,6 +1986,30 @@ await test('🪟 "רשימה חדשה" ושאר השאלות נפתחים בחל
   await ctx.close();
 });
 
+await test('📍 מחיר אוטומטי מקבצי הרשת: כתוב "כל הסניפים", וכפתור "לפי עיר" מראה את המחיר בכל סניף עם העיר', async () => {
+  let asked = '';
+  const api = (r) => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/compare')) asked = u.searchParams.get('items') + '|' + u.searchParams.get('city');
+    const st = (store, chain_name, name, address, city, price) => ({ store, chain: 'X', chain_name, name, address, city, total: price, regular: price, found: 1, lines: [{ q: 'במבה', qty: 1, found: true, code: '7290000066318', name: 'במבה 80 גרם', price, cost: price, regular: price }] });
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(u.pathname.endsWith('/compare') ? { items: [{ q: 'במבה', qty: 1 }], missing: [], stores: [st('1:1', 'אושר עד', 'אשדוד', 'הבנים 4', 'אשדוד', 4.9), st('2:7', 'רמי לוי', 'סניף 7', 'שבטי ישראל 2', 'אשדוד', 5.2)] } : []) }); };
+  const { ctx, page, errors } = await newPage({ priceApi: api });
+  const now = new Date().toISOString();
+  const D = { prices: [{ id: 'c1', product: 'במבה', product_key: 'במבה', chain: 'רמי לוי', branch: '', price: 5.4, currency: 'ILS', barcode: '7290000066318', verified: true, by_id: null, status: 'approved', created_at: now },
+    { id: 'u1', product: 'במבה', product_key: 'במבה', chain: 'אושר עד', branch: 'אשדוד', price: 4.9, currency: 'ILS', verified: false, by_id: 'u1', status: 'approved', created_at: now }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; applyConfig('collector', { public: true }); state.city = 'אשדוד'; setTab('prices'); }, D);
+  await page.fill('#priceSearchInput', 'במבה'); await page.keyboard.press('Enter'); await page.waitForTimeout(900);
+  const r = await page.evaluate(() => [...document.querySelectorAll('#priceResults .price-row[data-pid]')].map((x) => ({ id: x.dataset.pid, where: x.querySelector('.pr-branch').textContent, city: !!x.querySelector('[data-prcity]'), waze: !!x.querySelector('a[title="Waze"]') })));
+  const c1 = r.find((x) => x.id === 'c1'), u1 = r.find((x) => x.id === 'u1');
+  assert(c1 && /כל הסניפים/.test(c1.where) && c1.city && !c1.waze, 'מחיר אוטומטי: ' + JSON.stringify(r));
+  assert(u1 && u1.where === 'אשדוד' && !u1.city && u1.waze, 'מחיר של משתמש: ' + JSON.stringify(r));
+  if (process.env.SHOTS_DIR) { await page.evaluate(() => document.querySelector('#priceResults').scrollIntoView()); await page.screenshot({ path: process.env.SHOTS_DIR + '/1-מחירים-כל-הסניפים.png' }); }
+  await page.click('#priceResults [data-prcity]'); await page.waitForTimeout(900);
+  const b = await page.evaluate(() => [...document.querySelectorAll('#srvRes .srvSt summary')].map((x) => x.textContent));
+  assert(asked.startsWith('במבה#7290000066318|') && b.length === 2 && b.every((t) => /אשדוד/.test(t)), 'לפי עיר: ' + asked + ' ' + JSON.stringify(b));
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: process.env.SHOTS_DIR + '/2-לפי-עיר.png' });
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('🔎 כל חיפוש ב"איפה הכי זול" נספר, ובבק אופיס ← 💰 מחירים רואים כמה חיפשו ומה הכי מחפשים', async () => {
   const api = (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(r.request().url()).pathname.endsWith('/chains') ? [] : { items: [{ q: 'חלב', qty: 1 }], stores: [], missing: [] }) });
   const { ctx, page, errors } = await newPage({ priceApi: api });

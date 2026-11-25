@@ -552,11 +552,11 @@ class Runner:
             except Exception as e:
                 log.warning("קודי יישובים: %s", e)
         try:
-            n = db.fix_city_codes(self.con)
+            n = db.fix_cities(self.con)
             if n:
-                log.info("תורגמו קודי יישוב ל-%d סניפים", n)
+                log.info("עיר תוקנה ל-%d סניפים", n)
         except Exception as e:
-            log.warning("תרגום קודי יישוב: %s", e)
+            log.warning("תיקון ערים: %s", e)
 
     def heartbeat(self, paused="", seconds=0):
         total = shutil.disk_usage(self.data)

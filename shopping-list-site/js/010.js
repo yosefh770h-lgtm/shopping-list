@@ -255,7 +255,7 @@ const HIST23_PAGE=30;const hist23={};
 function histBox23(name){const n=priceRows.filter(r=>r.product===name).length;
   return '<details class="phist23" data-ph="'+esc(name)+'"><summary>📜 '+T('כל המחירים הקודמים','All previous prices')+' <small>('+n+(n>=HIST23_PAGE?'+':'')+')</small></summary><div class="phbody23"><div class="empty" style="padding:8px">'+T('טוען...','Loading...')+'</div></div></details>';}
 function histRow23(r){const st=r.status==='pending'?' · ⏳ '+T('ממתין לאישור','pending'):r.status==='rejected'?' · 🚫 '+T('נדחה','rejected'):'';
-  return '<div class="phrow23'+(isStale(r)?' stale':'')+'"><span class="phd">'+esc(dt(r.created_at))+'</span><span>'+(chainKind(r.chain)==='online'?'🌐 ':'')+esc(r.chain)+(r.branch?' — '+esc(r.branch):'')+'</span>'+
+  return '<div class="phrow23'+(isStale(r)?' stale':'')+'"><span class="phd">'+esc(dt(r.created_at))+'</span><span>'+(chainKind(r.chain)==='online'?'🌐 ':'')+esc(r.chain)+(prWhere(r)?' — '+esc(prWhere(r)):'')+'</span>'+
     (r.is_deal?'<span class="dealbadge">🔥 '+esc(r.deal_text||T('מבצע','Deal'))+'</span>':'')+(r.verified?'<span class="verified">✔</span>':'')+
     '<span class="muted-note" style="margin:0">'+crSlot('prices',r.id,{p:T('דווח ע״י ','by ')})+(r.updated_at?' · ✏️ '+esc(dt(r.updated_at)):'')+st+'</span><span class="pha">'+fmtPrice(r.price,r.currency)+'</span></div>';}
 function drawHist23(name,box){const h=hist23[norm(name)];const body=box&&box.querySelector('.phbody23');if(!body||!h)return;
@@ -302,12 +302,12 @@ async function cityPriceCompare(product,city){
   if(!sb||!authUser){botSay(T('השוואת מחירים זמינה כשמחוברים 🙂','Sign in to compare prices 🙂'));return;}
   window.botTyping=true;renderBot();
   const key=norm(product).replace(/[%,()]/g,'');let rows=[];
-  try{const {data}=await sb.from('prices').select('product,chain,branch,price,currency,created_at,updated_at,is_deal,deal_text,status').ilike('product_key','%'+key+'%').eq('status','approved').order('created_at',{ascending:false}).limit(600);rows=data||[];}catch(e){}
+  try{const {data}=await sb.from('prices').select('product,chain,branch,price,currency,barcode,by_id,verified,created_at,updated_at,is_deal,deal_text,status').ilike('product_key','%'+key+'%').eq('status','approved').order('created_at',{ascending:false}).limit(600);rows=data||[];}catch(e){}
   const inCity=r=>!city||norm(r.branch||'').includes(norm(city))||allBranches().some(b=>b.chain===r.chain&&norm(b.city)===norm(city)&&(!r.branch||norm(r.branch).includes(norm(b.city))||norm(b.address||'').includes(norm(r.branch||'-'))));
   const best=new Map();rows.filter(inCity).forEach(r=>{const k=r.chain;const cur=best.get(k);const fresh=!isStale(r);if(!cur||(fresh&&!cur._f)||(fresh===cur._f&&r.price<cur.price))best.set(k,Object.assign({_f:fresh},r));});
   const ranked=[...best.values()].sort((a,b)=>(b._f-a._f)||a.price-b.price);
   let msg='📍 '+T('השוואת מחירים','Price comparison')+': '+product+(city?' '+T('ב','in ')+city:'')+'\n';
-  if(ranked.length){msg+=T('מהדיווחים באתר:','From site reports:')+'\n'+ranked.slice(0,8).map((r,i)=>(i===0&&r._f?'🥇 ':(i+1)+'. ')+r.chain+(r.branch?' ('+r.branch+')':'')+' — '+fmtPrice(r.price,r.currency)+(r.is_deal?' 🔥'+(r.deal_text?' '+r.deal_text:''):'')+' · '+agoText(r.updated_at||r.created_at)+(r._f?'':' 🕰️')).join('\n');
+  if(ranked.length){msg+=T('מהדיווחים באתר:','From site reports:')+'\n'+ranked.slice(0,8).map((r,i)=>(i===0&&r._f?'🥇 ':(i+1)+'. ')+r.chain+(prWhere(r)?' ('+prWhere(r)+')':'')+' — '+fmtPrice(r.price,r.currency)+(r.is_deal?' 🔥'+(r.deal_text?' '+r.deal_text:''):'')+' · '+agoText(r.updated_at||r.created_at)+(r._f?'':' 🕰️')).join('\n');
     const f=ranked.filter(r=>r._f);if(f.length>1)msg+='\n💡 '+T('הכי משתלם עכשיו: ','Best now: ')+f[0].chain+' — '+T('חוסכים ','save ')+fmtPrice(f[f.length-1].price-f[0].price,f[0].currency)+T(' לעומת היקר',' vs. the priciest');}
   else msg+=T('עוד אין דיווחים באתר על זה'+(city?' ב'+city:'')+' 🤷 — אפשר לדווח בלשונית "מחירים".','No site reports yet 🤷');
   let web=null;try{let {data,error}=await sb.functions.invoke('ai-chat',{body:{webprices:{query:product,city:city||''}}});if(!error&&data&&data.web&&data.text)web=data;}catch(e){}
