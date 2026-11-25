@@ -5934,6 +5934,12 @@ alter table public.support_messages drop constraint if exists support_messages_r
 alter table public.support_messages add constraint support_messages_react_chk
   check (react_user in ('','👍','❤️','😂','😮','🙏','👏','✅','😢') and react_staff in ('','👍','❤️','😂','😮','🙏','👏','✅','😢')) not valid;
 create index if not exists support_messages_reply on public.support_messages (reply_to) where reply_to is not null;
+-- ✓✓ נובמבר 2026: "הגיע" — ההודעה נטענה אצל הצד השני (בטלפון או במחשב), עוד לפני שקרא.
+-- ✓ נשלח · ✓✓ אפור הגיע · ✓✓ כחול נקרא. הודעות ישנות שכבר נקראו נחשבות כאלה שהגיעו.
+alter table public.support_messages add column if not exists delivered_user boolean not null default false;
+alter table public.support_messages add column if not exists delivered_staff boolean not null default false;
+update public.support_messages set delivered_user = true where read_by_user and not delivered_user;
+update public.support_messages set delivered_staff = true where read_by_staff and not delivered_staff;
 create or replace function public.support_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare adm boolean := public.is_admin(); mine boolean;
@@ -5942,9 +5948,9 @@ begin
   if tg_op = 'INSERT' then
     new.author_name := public.my_name(); new.created_at := now(); new.edited_at := null; new.react_user := ''; new.react_staff := '';
     if adm and new.user_id <> auth.uid() then
-      new.from_staff := true; new.read_by_staff := true; new.read_by_user := false;
+      new.from_staff := true; new.read_by_staff := true; new.read_by_user := false; new.delivered_staff := true; new.delivered_user := false;
     else
-      new.user_id := auth.uid(); new.from_staff := false; new.read_by_user := true; new.read_by_staff := false;
+      new.user_id := auth.uid(); new.from_staff := false; new.read_by_user := true; new.read_by_staff := false; new.delivered_user := true; new.delivered_staff := false;
     end if;
     -- 📷 תמונות — רק המנהל שולח
     if coalesce(new.image, '') <> '' and not (adm and new.from_staff) then raise exception 'images_admin_only' using errcode = '42501'; end if;
@@ -5967,8 +5973,10 @@ begin
     -- 😊 אימוג'י: הלקוח על ההודעות בשיחה שלו, המנהל על כל הודעה
     if new.react_user is distinct from old.react_user and old.user_id <> auth.uid() then new.react_user := old.react_user; end if;
     if new.react_staff is distinct from old.react_staff and not adm then new.react_staff := old.react_staff; end if;
-    if not adm then new.read_by_staff := old.read_by_staff; end if;
-    if old.user_id <> auth.uid() then new.read_by_user := old.read_by_user; end if;
+    if not adm then new.read_by_staff := old.read_by_staff; new.delivered_staff := old.delivered_staff; end if;
+    if old.user_id <> auth.uid() then new.read_by_user := old.read_by_user; new.delivered_user := old.delivered_user; end if;
+    -- מה שנקרא — גם הגיע
+    new.delivered_user := new.delivered_user or new.read_by_user; new.delivered_staff := new.delivered_staff or new.read_by_staff;
   end if;
   return new;
 end $$;

@@ -1127,6 +1127,19 @@ update public.support_messages set body = 'עדכון מהמנהל' where user_i
 reset role;
 select tst.ok((select react_staff = '🙏' from public.support_messages where body = 'תודה')
           and (select edited_at is not null from public.support_messages where body = 'עדכון מהמנהל'), '💬 the admin reacts and edits their own message');
+-- ✓✓ הגיע / נקרא
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000e');
+update public.support_messages set delivered_staff = true, read_by_staff = true where body = 'תודה';
+update public.support_messages set delivered_user = true where user_id = auth.uid() and from_staff;
+select tst.as_user('00000000-0000-0000-0000-00000000000f');
+update public.support_messages set delivered_user = false where user_id = '00000000-0000-0000-0000-00000000000e' and from_staff;
+reset role;
+select tst.ok((select not delivered_staff and not read_by_staff from public.support_messages where body = 'תודה'), '✓✓ a user cannot mark their own message as delivered or read by the staff');
+select tst.ok(not exists (select 1 from public.support_messages where user_id = '00000000-0000-0000-0000-00000000000e' and from_staff and not delivered_user), '✓✓ a user marks the staff''s messages as delivered, and another user cannot undo it');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000001');
+update public.support_messages set delivered_staff = true where body = 'תודה';
+reset role;
+select tst.ok((select delivered_staff and not read_by_staff from public.support_messages where body = 'תודה'), '✓✓ the admin marks a message as delivered (two gray ticks) without reading it');
 set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000001');
 select tst.err($$update public.support_messages set body = 'המנהל שינה' where body = 'תודה'$$, '💬 even the admin cannot rewrite what a user wrote');
 reset role;
