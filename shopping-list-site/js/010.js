@@ -227,38 +227,7 @@ function openDealReport(chain){
 /* ---------- צ'אט עם האתר — עסקי ומסודר ---------- */
 const SUP_TOPICS=[['שאלה כללית','❓'],['תקלה באתר','🛠️'],['מחירים ומבצעים','💰'],['הצעה לשיפור','💡'],['עסקים ושיתופי פעולה','🏪'],['חשבון וכניסה','🔐'],['אחר','💬']];
 let supStatus=null,supTopic='';
-openChat=async function(){
-  $10('#hMenu').classList.remove('open');
-  const b=openSheet('💬 '+T('שירות לקוחות','Customer service'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');b.oninput=null;b.onchange=null;
-  if(!sb||!authUser){b.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים כדי להתכתב 🙂','Sign in to chat 🙂')+'</p>';return;}
-  const r=await loadChat();if(r===null){b.innerHTML='<p class="muted-note">'+T('הצ\'אט עוד לא זמין 🙏','Chat is not available yet 🙏')+'</p>';return;}
-  try{const {data}=await sb.from('support_status').select('*').eq('user_id',authUser.id).maybeSingle();supStatus=data;}catch(e){}
-  const draw=()=>{const open=!supStatus||supStatus.status==='open';const newTicket=!chatMsgs.length||(supStatus&&supStatus.status==='closed');
-    let lastDay='';
-    b.innerHTML='<div class="suphead"><div class="supav">🛒</div><div class="grow"><b>'+T('צוות רשימת קניות','Shopping List team')+'</b><small>🟢 '+T('עונים בדרך כלל תוך כמה שעות · א׳–ה׳ 9:00–21:00','Usually replies within a few hours')+'</small></div>'+(chatMsgs.length?'<span class="supst '+(open?'open':'closed')+'">'+(open?T('פנייה פתוחה','Open'):T('טופל ✓','Resolved ✓'))+'</span>':'')+'</div>'+
-      (supStatus&&supStatus.topic&&open?'<div class="muted-note" style="margin:6px 0">📌 '+T('נושא: ','Topic: ')+esc(supStatus.topic)+'</div>':'')+
-      '<div class="chatbox" id="chatBox">'+(chatMsgs.length?chatMsgs.map(m=>{const d=new Date(m.created_at);const dk=dayKey(d);const sep=dk!==lastDay?'<div class="day"><span>'+esc(fmtDate(d))+'</span></div>':'';lastDay=dk;
-        return sep+'<div class="row '+(m.from_staff?'bot':'me')+'"><div class="bub">'+(m.from_staff?'<b class="supwho">🛒 '+esc(m.author_name||T('צוות האתר','Site team'))+'</b><br>':'')+(m.topic&&!m.from_staff?'<small class="suptopic">'+esc(m.topic)+'</small><br>':'')+esc(m.body).replace(/\n/g,'<br>')+'<div class="t">'+fmtTime(d)+(m.from_staff?'':' '+(m.read_by_staff&&chatShowRead()?'<span class="ticks seen" title="'+T('נקרא','Read')+'">✓✓</span>':'<span class="ticks" title="'+T('נשלח','Sent')+'">✓</span>'))+'</div></div></div>';}).join('')
-        :'<div class="empty">👋 '+T('שלום! איך אפשר לעזור? בחרו נושא וכתבו לנו — נחזור אליכם בהקדם.','Hi! How can we help? Pick a topic and write to us.')+'</div>')+'</div>'+
-      (newTicket?'<div class="suptopics" role="group" aria-label="'+T('נושא הפנייה','Topic')+'">'+SUP_TOPICS.map(([t,ic])=>'<button class="chip'+(supTopic===t?' on':'')+'" data-stopic="'+esc(t)+'">'+ic+' '+esc(t)+'</button>').join('')+'</div>':'')+
-      '<div class="row2"><textarea id="chatText" maxlength="4000" placeholder="'+T('כתבו הודעה...','Write a message...')+'" style="min-height:52px"></textarea><button id="chatSend" style="flex:0 0 auto" aria-label="'+T('שליחה','Send')+'">➤</button></div>'+
-      '<div class="row2" style="margin-top:6px"><button class="btn sec" id="chatBiz">🏪 '+T('יש לי עסק — בקשה להצטרף','I own a business')+'</button>'+(chatMsgs.length&&open?'<button class="btn sec" id="chatDone">✓ '+T('הבעיה נפתרה, תודה','Resolved, thanks')+'</button>':'')+'</div>'+
-      (isAdmin()?'<p class="muted-note">🛠️ '+T('את הפניות של כל המשתמשים רואים ועונים בבק אופיס ← 💬 צ\'אט עם משתמשים.','Admin: all chats are in the back office.')+'</p>':'');
-    const box=$10('#chatBox');box.scrollTop=box.scrollHeight;};
-  draw();
-  const unread=chatMsgs.filter(m=>m.from_staff&&!m.read_by_user).map(m=>m.id);if(unread.length)sb.from('support_messages').update({read_by_user:true}).in('id',unread).then(()=>{chatMsgs.forEach(m=>{if(unread.includes(m.id))m.read_by_user=true;});const bd=$10('#chatBadge');if(bd)bd.hidden=true;});
-  b.onclick=async e=>{
-    const tp=e.target.closest('[data-stopic]');if(tp){supTopic=tp.dataset.stopic;b.querySelectorAll('[data-stopic]').forEach(x=>x.classList.toggle('on',x===tp));$10('#chatText').focus();return;}
-    if(e.target.closest('#chatBiz')){openBizJoin();return;}
-    if(e.target.closest('#chatDone')){const {error}=await sb.from('support_messages').insert({user_id:authUser.id,body:'✓ '+T('הבעיה נפתרה, תודה!','Resolved, thanks!')});if(!error){supStatus={status:'closed'};flash('🙏 '+T('תודה! שמחנו לעזור','Thanks!'));await loadChat();draw();}return;}
-    if(e.target.closest('#chatSend')){const t=$10('#chatText').value.trim();if(!t)return;if(hasProfanity(t)){reportAbuse(t,'chat');flash('🙏 '+T('נא לכתוב בלשון נקייה','Please keep it clean'));return;}
-      const newTicket=!chatMsgs.length||(supStatus&&supStatus.status==='closed');if(newTicket&&!supTopic)supTopic='שאלה כללית';
-      const {error}=await sb.from('support_messages').insert({user_id:authUser.id,body:t.slice(0,4000),topic:newTicket?supTopic:''});if(error){flash('⚠️ '+error.message);return;}
-      supStatus={status:'open',topic:newTicket?supTopic:(supStatus&&supStatus.topic)||''};supTopic='';await loadChat();draw();flash('💬 '+T('נשלח — נענה בהקדם','Sent'));}
-  };
-  b.onkeydown=e=>{if(e.target.id==='chatText'&&e.key==='Enter'&&!e.shiftKey&&!TOUCH_KB&&!e.isComposing){e.preventDefault();$10('#chatSend').click();}};
-};
-
+/* החלון של שירות הלקוחות: js/040.js */
 /* ---------- זמני היום: הבהרה ---------- */
 const ZMAN_NOTE=T('⚠️ הזמנים מחושבים אוטומטית ונועדו לעזור בלבד — אין להסתמך עליהם להלכה, ובמיוחד לא בדברים שהם מדאורייתא. יש לבדוק בלוח מוסמך או לשאול רב.','⚠️ Times are computed automatically and are for convenience only — do not rely on them for halachic purposes.');
 const _v10ZmanimText=zmanimText;zmanimText=function(){return _v10ZmanimText.apply(this,arguments)+'\n\n'+ZMAN_NOTE;};

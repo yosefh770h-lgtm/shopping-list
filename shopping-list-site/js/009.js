@@ -381,27 +381,8 @@ function chatTell(list){
   fresh.forEach(m=>{if(prefs.notify&&!(inApp&&Date.parse(m.created_at)<CHAT_T0))sysNotify(T('הודעה חדשה מהאתר 💬','New message from us 💬'),m.body,'chat:'+m.id,'./');});
   try{localStorage.setItem(CHAT_TOLD_KEY,JSON.stringify(told.concat(fresh.map(m=>m.id)).slice(-200)));}catch(e){}
 }
-async function openChat(){
-  $9('#hMenu').classList.remove('open');
-  const b=openSheet('💬 '+T('התכתבות עם האתר','Chat with us'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');
-  if(!sb||!authUser){b.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים כדי להתכתב 🙂','Sign in to chat 🙂')+'</p>';return;}
-  const r=await loadChat();
-  if(r===null){b.innerHTML='<p class="muted-note">'+(isAdmin()?'⚠️ צריך להריץ שוב את קוד ה-SQL (בק אופיס ← ⚙️ הגדרה ראשונית)':T('הצ\'אט עוד לא זמין 🙏','Chat is not available yet 🙏'))+'</p>';return;}
-  const draw=()=>{b.innerHTML='<p class="muted-note">👋 '+T('כאן כותבים ישירות לצוות האתר — שאלה, הצעה, תקלה, או בקשה להצטרף כבעל עסק. נענה בהקדם 💚','Write to the site team — we will answer soon 💚')+'</p>'+
-    '<div class="chatbox" id="chatBox">'+(chatMsgs.length?chatMsgs.map(m=>'<div class="row '+(m.from_staff?'bot':'me')+'"><div class="bub">'+(m.from_staff?'<b style="font-size:12px;color:var(--hdr2)">🏪 '+T('צוות האתר','Site team')+'</b><br>':'')+esc(m.body).replace(/\n/g,'<br>')+'<div class="t">'+esc(agoText(m.created_at))+' '+fmtTime(new Date(m.created_at))+'</div></div></div>').join(''):'<div class="empty">'+T('עוד אין הודעות — כתבו לנו!','No messages yet — write to us!')+'</div>')+'</div>'+
-    '<div class="row2"><textarea id="chatText" maxlength="4000" placeholder="'+T('כתבו הודעה...','Write a message...')+'" style="min-height:52px"></textarea><button id="chatSend" style="flex:0 0 auto">➤</button></div>'+
-    (isAdmin()?'<p class="muted-note">🛠️ '+T('את ההודעות של כל המשתמשים רואים ועונים בבק אופיס ← 💬 צ\'אט עם משתמשים.','Admin: all chats are in the back office.')+'</p>':'')+
-    '<button class="btn sec" id="chatBiz" style="width:100%;margin-top:6px">🏪 '+T('יש לי חנות / סופר — בקשה להצטרף','I own a store — request to join')+'</button>';
-    const box=$9('#chatBox');box.scrollTop=box.scrollHeight;};
-  draw();
-  const unread=chatMsgs.filter(m=>m.from_staff&&!m.read_by_user).map(m=>m.id);if(unread.length){sb.from('support_messages').update({read_by_user:true}).in('id',unread).then(()=>{chatMsgs.forEach(m=>{if(unread.includes(m.id))m.read_by_user=true;});$9('#chatBadge').hidden=true;});}
-  b.onclick=async e=>{
-    if(e.target.closest('#chatBiz')){openBizJoin();return;}
-    if(e.target.closest('#chatSend')){const t=$9('#chatText').value.trim();if(!t)return;if(hasProfanity(t)){flash('🙏 '+T('נא לכתוב בלשון נקייה','Please keep it clean'));return;}
-      const {error}=await sb.from('support_messages').insert({user_id:authUser.id,body:t.slice(0,4000)});if(error){flash('⚠️ '+error.message);return;}await loadChat();draw();flash('💬 '+T('נשלח — נענה בהקדם','Sent'));}
-  };
-  b.onkeydown=e=>{if(e.target.id==='chatText'&&e.key==='Enter'&&!e.shiftKey&&!TOUCH_KB&&!e.isComposing){e.preventDefault();$9('#chatSend').click();}};
-}
+/* הצ'אט עצמו נמצא ב-js/040.js; עד שהוא נטען — מנסים שוב בעוד רגע */
+let openChat=()=>setTimeout(()=>openChat(),300);
 setInterval(()=>{if(document.visibilityState==='visible'&&authUser)loadChat();},90000);
 /* חוזרים לאתר או לאפליקציה (מהרקע, מחלון אחר, או כשהאינטרנט חזר) — בודקים מיד אם הצוות ענה, בלי לחכות לבדיקה הבאה.
    באפליקציה 2.0 הדף נשאר פתוח ברקע ולא נטען מחדש, ולכן בלי זה המספר על 💬 לא התעדכן עד שפתחו את הצ'אט */

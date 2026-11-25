@@ -39,7 +39,7 @@ function emo45(ta){if(!ta||ta._emo45||!ta.parentNode)return;ta._emo45=1;
   const lab=()=>{const on=!!pan;btn.textContent=on?'⌨️':'😊';const t=on?T('סגירת האימוג׳י','Close emoji'):T('הוספת אימוג׳י','Add emoji');btn.title=t;btn.setAttribute('aria-label',t);btn.setAttribute('aria-expanded',String(on));};
   w.appendChild(btn);
   /* הלוח נפתח מתחת לשורת ההקלדה (בבק אופיס — מתחת לשדה) */
-  const row=()=>{const r=w.parentElement&&w.parentElement.matches('.row2,.send161')?w.parentElement:w;return r;};
+  const row=()=>w.closest('.cmp96')||(w.parentElement&&w.parentElement.matches('.row2')?w.parentElement:w);
   let pan=null,cat=recent45().length?0:1,pos=null;lab();
   const keep=()=>{if(document.activeElement===ta)pos=[ta.selectionStart,ta.selectionEnd];};
   ['keyup','click','select','input'].forEach(k=>ta.addEventListener(k,keep));ta.addEventListener('blur',()=>{pos=[ta.selectionStart,ta.selectionEnd];});

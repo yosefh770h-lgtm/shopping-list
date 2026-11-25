@@ -658,25 +658,7 @@ VIEWS.messages=async function(){
     if(b.dataset.act==='del'){if(!(await uiConfirm('למחוק את הפנייה?')))return;q=sb.from('store_messages').delete().eq('id',id);}
     if(q&&await ok(q,'✔️ בוצע'))show('messages');};
 };
-/* ---------- 💬 צ'אט עם משתמשים (גרסה 9) ---------- */
-let supUser=null;
-VIEWS.support=async function(){
-  const {data,error}=await sb.rpc('support_threads');
-  if(error){$('#boMain').innerHTML='<div class="card"><p class="muted">⚠️ צריך להריץ שוב את קוד ה-SQL מ"⚙️ הגדרה ראשונית" — ואז יופיע כאן הצ\'אט עם המשתמשים.</p></div>';return;}
-  const th=data||[];if(supUser&&!th.some(t=>t.user_id===supUser))supUser=null;
-  const list='<div class="card"><h2>💬 שיחות עם משתמשים ('+th.length+') · לא נקראו: '+th.reduce((a,t)=>a+t.unread,0)+'</h2><p class="muted">כל לקוח ובעל עסק יכול לכתוב לאתר מהכפתור 💬 שליד הפעמון. התשובה שלך מופיעה אצלו בצ\'אט ובפעמון.</p>'+
-    (th.length?th.map(t=>'<div class="item" data-th="'+t.user_id+'" style="cursor:pointer'+(t.user_id===supUser?';outline:2px solid var(--ok)':'')+'"><div class="row" style="align-items:center"><span style="flex:1;min-width:200px"><b>'+esc(t.name||'—')+'</b> <span class="muted" dir="ltr">'+esc(t.email)+'</span><br><span class="muted">'+(t.last_from_staff?'↩️ אתה: ':'')+esc(String(t.last_body||'').slice(0,90))+'</span></span><span class="muted">'+fmt(t.last_at)+'</span>'+(t.unread?'<span class="badge" style="background:#25d366;color:#fff;border-radius:10px;padding:2px 8px">'+t.unread+'</span>':'')+'</div></div>').join(''):'<p class="muted">עוד אין הודעות.</p>')+'</div>';
-  let conv='';
-  if(supUser){const {data:ms}=await sb.from('support_messages').select('*').eq('user_id',supUser).order('created_at').limit(500);const t=th.find(x=>x.user_id===supUser)||{};
-    conv='<div class="card" id="supConv"><h2>💬 '+esc(t.name||'')+' <span class="muted" dir="ltr">'+esc(t.email||'')+'</span></h2><div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="supBox">'+
-      (ms||[]).map(m=>'<div style="max-width:80%;align-self:'+(m.from_staff?'flex-end':'flex-start')+';background:'+(m.from_staff?'var(--chip)':'rgba(37,211,102,.15)')+';border-radius:12px;padding:8px 11px;white-space:pre-wrap;overflow-wrap:anywhere">'+(m.from_staff?'<b class="muted">'+esc(m.author_name||'צוות האתר')+'</b><br>':'')+esc(m.body)+'<div class="muted" style="font-size:11px">'+fmt(m.created_at)+(m.from_staff?(m.read_by_user?' · ✓✓ נקרא':' · ✓ נשלח'):'')+'</div></div>').join('')+
-      '</div><textarea id="supReply" maxlength="2000" placeholder="כתבו תשובה..." style="min-height:70px"></textarea><div class="row" style="margin-top:6px"><button class="btn" id="supSend">📨 שליחה</button><button class="btn sec" id="supDel">🗑️ מחיקת כל השיחה</button></div></div>';
-    if((ms||[]).some(m=>!m.from_staff&&!m.read_by_staff))sb.from('support_messages').update({read_by_staff:true}).eq('user_id',supUser).eq('from_staff',false).eq('read_by_staff',false).then(()=>{});}
-  $('#boMain').innerHTML=conv+list;const bx=$('#supBox');if(bx)bx.scrollTop=bx.scrollHeight;
-  $('#boMain').onclick=async e=>{const t=e.target.closest('[data-th]');if(t){supUser=t.dataset.th;show('support');return;}
-    if(e.target.closest('#supSend')){const body=$('#supReply').value.trim();if(!body)return;if(await ok(sb.from('support_messages').insert({user_id:supUser,body:body.slice(0,2000)}),'📨 נשלח'))show('support');}
-    if(e.target.closest('#supDel')&&(await uiConfirm('למחוק את כל השיחה עם המשתמש?'))&&await ok(sb.from('support_messages').delete().eq('user_id',supUser),'🗑️ נמחק')){supUser=null;show('support');}};
-};
+/* 💬 צ'אט עם משתמשים: המסך נמצא ב-js/040.js (תיבת פניות) */
 /* ---------- 🏪 בקשות הצטרפות של בעלי עסקים (גרסה 9) ---------- */
 VIEWS.bizreq=async function(){
   const {data,error}=await sb.from('business_requests').select('*').order('created_at',{ascending:false}).limit(500);
@@ -735,35 +717,6 @@ VIEWS.abuse=async function(){
     if(a==='warn')await sb.from('support_messages').insert({user_id:id,body:'⚠️ '+reason});
     show('abuse');};
 };
-/* ---------- 💬 צ'אט עם משתמשים — מסודר: פתוחות/טופלו, נושא, תשובות מוכנות (גרסה 10) ---------- */
-let supFilter='open';
-const CANNED=['שלום! תודה שפנית אלינו 🙂 איך אפשר לעזור?','תודה על הדיווח! אנחנו בודקים ונעדכן בהקדם.','תוקן — אפשר לרענן את האתר ולנסות שוב 🙏','כדי לדווח מחיר: לשונית "מחירים" ← "דיווח מחיר" ← שם המוצר, החנות והמחיר.','לכניסה מחדש: במסך הכניסה לוחצים "שכחתי קוד" ומקבלים מייל לבחירת קוד חדש.','תודה רבה על ההצעה! העברנו אותה לצוות 💡','שמחנו לעזור! הפנייה נסגרה — אפשר תמיד לכתוב שוב 💚'];
-VIEWS.support=async function(){
-  const {data,error}=await sb.rpc('support_threads');
-  if(error){$('#boMain').innerHTML='<div class="card"><p class="muted">⚠️ צריך להריץ שוב את קוד ה-SQL מ"⚙️ הגדרה ראשונית".</p></div>';return;}
-  const all=data||[];const th=all.filter(t=>supFilter==='all'||(t.status||'open')===supFilter);if(supUser&&!all.some(t=>t.user_id===supUser))supUser=null;window.boSupUser=supUser;
-  const cnt=s=>all.filter(t=>(t.status||'open')===s).length;
-  const list='<div class="card"><h2>💬 פניות ('+all.length+') · לא נקראו: '+all.reduce((a,t)=>a+t.unread,0)+'</h2><div class="row" style="margin-bottom:8px">'+[['open','🟢 פתוחות ('+cnt('open')+')'],['closed','✓ טופלו ('+cnt('closed')+')'],['all','הכל']].map(([k,l])=>'<button class="btn sm'+(supFilter===k?'':' sec')+'" data-sf="'+k+'">'+l+'</button>').join('')+'</div>'+
-    (th.length?th.map(t=>'<div class="item" data-th="'+t.user_id+'" style="cursor:pointer'+(t.user_id===supUser?';outline:2px solid var(--ok)':'')+'"><div class="row" style="align-items:center"><span style="flex:1;min-width:200px"><b>'+esc(t.name||'—')+'</b> <span class="muted" dir="ltr">'+esc(t.email)+'</span>'+(t.topic?' <span class="pill">'+esc(t.topic)+'</span>':'')+'<br><span class="muted">'+(t.last_from_staff?'↩️ אתה: ':'')+esc(String(t.last_body||'').slice(0,90))+'</span></span><span class="muted">'+fmt(t.last_at)+'</span>'+(t.unread?'<span class="badge" style="background:#25d366;color:#fff;border-radius:10px;padding:2px 8px">'+t.unread+'</span>':'')+'</div></div>').join(''):'<p class="muted">אין פניות כאן.</p>')+'</div>';
-  let conv='';
-  if(supUser){const {data:ms}=await sb.from('support_messages').select('*').eq('user_id',supUser).order('created_at').limit(500);const t=all.find(x=>x.user_id===supUser)||{};const open=(t.status||'open')==='open';
-    conv='<div class="card"><h2>💬 '+esc(t.name||'')+' <span class="muted" dir="ltr">'+esc(t.email||'')+'</span> '+(t.topic?'<span class="pill">'+esc(t.topic)+'</span> ':'')+'<span class="pill">'+(open?'🟢 פתוחה':'✓ טופלה')+'</span></h2><div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="supBox">'+
-      (ms||[]).map(m=>'<div style="max-width:80%;align-self:'+(m.from_staff?'flex-end':'flex-start')+';background:'+(m.from_staff?'var(--chip)':'rgba(37,211,102,.15)')+';border-radius:12px;padding:8px 11px;white-space:pre-wrap;overflow-wrap:anywhere">'+(m.from_staff?'<b class="muted">'+esc(m.author_name||'צוות האתר')+'</b><br>':'')+(m.topic&&!m.from_staff?'<span class="pill">'+esc(m.topic)+'</span><br>':'')+esc(m.body)+'<div class="muted" style="font-size:11px">'+fmt(m.created_at)+(m.from_staff?(m.read_by_user?' · ✓✓ נקרא':' · ✓ נשלח'):'')+'</div></div>').join('')+
-      '</div><select id="supCanned"><option value="">📋 תשובה מוכנה...</option>'+CANNED.map(c=>'<option>'+esc(c)+'</option>').join('')+'</select><textarea id="supReply" maxlength="2000" placeholder="כתבו תשובה..." style="min-height:70px;margin-top:6px"></textarea>'+
-      '<div class="row" style="margin-top:6px"><button class="btn" id="supSend">📨 שליחה</button><button class="btn sec" id="supSendClose">📨 שליחה וסגירת הפנייה</button>'+(open?'<button class="btn sec" id="supClose">✓ סימון כטופלה</button>':'<button class="btn sec" id="supReopen">↩️ פתיחה מחדש</button>')+'<button class="btn sec" id="supDel">🗑️ מחיקת השיחה</button></div></div>';
-    if((ms||[]).some(m=>!m.from_staff&&!m.read_by_staff))sb.from('support_messages').update({read_by_staff:true}).eq('user_id',supUser).eq('from_staff',false).eq('read_by_staff',false).then(()=>{});}
-  $('#boMain').innerHTML=conv+list;const bx=$('#supBox');if(bx)bx.scrollTop=bx.scrollHeight;
-  const setSt=s=>sb.from('support_status').upsert({user_id:supUser,status:s,updated_at:new Date().toISOString()});
-  $('#boMain').onchange=e=>{if(e.target.id==='supCanned'&&e.target.value){const r=$('#supReply');r.value=(r.value?r.value+'\n':'')+e.target.value;e.target.value='';r.focus();}};
-  $('#boMain').onclick=async e=>{const f=e.target.closest('[data-sf]');if(f){supFilter=f.dataset.sf;show('support');return;}
-    const t=e.target.closest('[data-th]');if(t){supUser=t.dataset.th;show('support');return;}
-    const send=async close=>{const body=$('#supReply').value.trim();if(!body)return;if(!await ok(sb.from('support_messages').insert({user_id:supUser,body:body.slice(0,2000)}),close?'📨 נשלח והפנייה נסגרה':'📨 נשלח'))return;if(close)await setSt('closed');show('support');};
-    if(e.target.closest('#supSend'))return send(false);
-    if(e.target.closest('#supSendClose'))return send(true);
-    if(e.target.closest('#supClose')){await ok(setSt('closed'),'✓ סומנה כטופלה');show('support');return;}
-    if(e.target.closest('#supReopen')){await ok(setSt('open'),'↩️ נפתחה מחדש');show('support');return;}
-    if(e.target.closest('#supDel')&&(await uiConfirm('למחוק את כל השיחה עם המשתמש?'))&&await ok(sb.from('support_messages').delete().eq('user_id',supUser),'🗑️ נמחק')){await sb.from('support_status').delete().eq('user_id',supUser);supUser=null;show('support');}};
-};
 /* סקירה: גם דיווחי שפה */
 const _bo10Dash=VIEWS.dash;
 VIEWS.dash=async function(){await _bo10Dash.call(VIEWS);if(!isAdmin()||cur!=='dash')return;
@@ -819,11 +772,6 @@ VIEWS.biz=async function(){await _bo14Biz.call(VIEWS);if(cur!=='biz')return;
     if(b.dataset.bz==='delete'){if((await uiPrompt('מחיקה לצמיתות של "'+chain+'" — כולל המלאי, ההזמנות, המכירות, הסניפים, המחירים והמנהלים שלו.\nכדי לאשר, כתבו את שם העסק בדיוק:'))!==chain){flash('המחיקה בוטלה');return;}
       const {data,error}=await sb.rpc('biz_delete',{p_chain:chain});flash(error?'⚠️ '+error.message:data==='ok'?'🗑️ העסק נמחק':'⚠️ '+data);if(data==='ok'){loadChains();show('biz');}return;}
     return orig&&orig(e);};
-};
-const _bo14Support=VIEWS.support;
-VIEWS.support=async function(){await _bo14Support.call(VIEWS);if(cur!=='support')return;
-  $('#boMain').insertAdjacentHTML('afterbegin','<div class="card"><div class="check"><input type="checkbox" id="chRead"'+(chatCfg.showRead!==false?' checked':'')+'><label for="chRead" style="margin:0;color:var(--text)">הלקוחות רואים ✓✓ כשקראתי את ההודעה שלהם</label></div><p class="muted">כשכבוי — הלקוח רואה רק ✓ "נשלח", גם אחרי שקראת.</p></div>');
-  $('#chRead').onchange=async e=>{if(await setCfg('chat',{showRead:e.target.checked}))chatCfg.showRead=e.target.checked;};
 };
 const _bo14Products=VIEWS.products;
 VIEWS.products=async function(){await _bo14Products.call(VIEWS);if(cur!=='products'||!$('#ptb'))return;

@@ -53,7 +53,7 @@ body.dark .day span{background:#26302a;color:#8fa096}
 /* מלל ארוך (קישור, מספר, מילה בלי רווחים) נשבר בתוך הבועה במקום לדחוף את הצ'אט ימינה ושמאלה */
 .bub{min-width:0;overflow-wrap:anywhere;word-break:break-word}
 .bub img,.bub table,.bub pre{max-width:100%}.bub pre{white-space:pre-wrap}
-#botMsgs,.pane,.chatbox,.msgs161{overflow-x:hidden;overscroll-behavior-x:none}
+#botMsgs,.pane{overflow-x:hidden;overscroll-behavior-x:none}
 .row.me .bub{background:var(--sent);border-radius:12px 12px 3px 12px}
 .bub .t{font-size:11px;color:var(--muted);text-align:left;margin-top:3px}
 .bub .em{font-size:24px;margin-inline-end:8px;vertical-align:middle}
@@ -727,7 +727,6 @@ html:not(.rail66) body.r2 #sideRail{display:none!important}
 .scanbar button,.scanbar label{flex:1;min-width:110px}
 .sclist{max-height:30vh;overflow-y:auto}
 .chatbtn{position:relative}
-.chatbox{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;padding:6px 2px;margin-bottom:8px}
 .purday{font-size:13px;color:var(--muted);font-weight:700;margin:12px 2px 6px}
 .purcard{background:var(--recv);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px}
 .purits{font-size:13px;color:var(--muted);margin:4px 0 8px;line-height:1.5}
@@ -755,18 +754,11 @@ html:not(.rail66) body.r2 #sideRail{display:none!important}
 .pickrow{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:15px}
 .pickrow input{width:20px;height:20px;flex:0 0 auto}
 .pickrow .grow{flex:1}
-.suptopics .chip.on{background:var(--hdr2);color:#fff;border-color:var(--hdr2)}
 .rcat{background:var(--chipbg);border-radius:10px;padding:2px 8px;color:var(--text)}.rcat.warn{background:#fff3cd;color:#6b5200}
 .rsteps{line-height:1.75;font-size:15px}
-.suphead{display:flex;align-items:center;gap:10px;background:var(--chipbg);border-radius:14px;padding:10px 12px}
-.supav{width:42px;height:42px;border-radius:50%;background:var(--hdr2);display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto}
-body.d2 .suphead .supav svg.ic2{color:#fff}
-.suphead small{display:block;color:var(--muted);font-size:12px}
 .supst{font-size:12px;border-radius:10px;padding:3px 9px;font-weight:700;white-space:nowrap}
 .supst.open{background:#e3f6ec;color:#1d6b43}.supst.closed{background:var(--panel);color:var(--muted);border:1px solid var(--line)}
-.supwho{font-size:12px;color:var(--hdr2)}.suptopic{color:var(--muted);font-size:11px}
 .ticks{font-size:11px;color:var(--muted)}.ticks.seen{color:#34b7f1}
-.suptopics{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .zmannote{background:#fff3cd;color:#6b5200;border-radius:12px;padding:9px 11px;font-size:13px;line-height:1.55;margin:0 0 10px}
 body.dark .zmannote,body.dark .rcat.warn{background:#3a3323;color:#f3e3b0}
 .stalebadge{font-size:11px;background:var(--chipbg);color:var(--muted);border-radius:8px;padding:1px 7px}
@@ -949,13 +941,6 @@ body.bizmode #botFab,body.bizmode .siderail,body.bizmode .botnudge{display:none!
 .th161{display:grid;gap:2px;width:100%;text-align:start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin:6px 0;cursor:pointer;font-family:inherit;color:var(--text)}
 .th161.un{border-color:var(--hdr2);box-shadow:0 0 0 1px var(--hdr2) inset}
 .th161 small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.msgs161{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;padding:6px 2px;margin:8px 0}
-.m161{max-width:82%;padding:8px 11px;border-radius:14px;line-height:1.5;font-size:15px;overflow-wrap:anywhere}
-.m161 small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
-.m161.me{align-self:flex-start;background:var(--sent,#e3e9f2);color:#111}
-.m161.them{align-self:flex-end;background:var(--panel);border:1px solid var(--line)}
-.send161{display:flex;gap:8px;align-items:flex-end}.send161 textarea{flex:1;min-width:0;resize:vertical}
-.send161 button{width:46px;height:46px;border-radius:50%;border:none;background:var(--hdr2);color:#fff;font-size:18px;cursor:pointer;flex:0 0 auto}
 .nfbadge162{display:block;margin:10px auto 0;background:var(--chipbg);border:1px solid var(--hdr2);color:var(--text);border-radius:14px;padding:7px 12px;font-family:inherit;font-size:13px;line-height:1.5;cursor:pointer;text-align:center}
 .nf162{padding-inline-start:20px;display:grid;gap:8px;line-height:1.65}
 .nfbody162{max-height:65vh;overflow-y:auto;line-height:1.6}
@@ -1455,7 +1440,6 @@ body.dark .rkrow .amt,
 body.dark .kpi b,
 body.dark #botNew,
 body.dark .pcard.have .pq,
-body.dark .supwho,
 body.dark .catbar .cb.on small,
 body.dark .shsum,
 body.dark .cartbar button,
@@ -2616,3 +2600,127 @@ html.r2m body.r2 .tabs.bot52 .tabx14[data-x="receipt"]{order:6}
 details.ways66{margin-top:12px;border-top:1px solid var(--line,#ddd);padding-top:10px}
 details.ways66 summary{cursor:pointer;font-weight:700;font-size:14px}
 details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:10px;text-align:center}
+
+/* ================= 💬 צ'אט מודרני (js/040.js) — הלקוח, המנהל מתוך האתר והבק אופיס =================
+   כל כלל פותח ב-:is(#bo,body) כדי לגבור על האיפוס של הבק אופיס (#bo *) — בלי !important */
+:is(#bo,body) .c96{--c-acc:var(--hdr2);--c-acc2:color-mix(in srgb,var(--hdr2) 72%,#fff);--c-recv:var(--recv,#fff);--c-line:var(--line);--c-soft:color-mix(in srgb,var(--line) 45%,transparent);--c-panel:var(--panel,#fff);color:var(--text)}
+:is(#bo,body) .c96 svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+:is(#bo,body) .hd96{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:0 0 8px;background:var(--c-panel);border:1px solid var(--c-line);border-radius:16px}
+:is(#bo,body) .who96{flex:1;min-width:0}:is(#bo,body) .who96 b{display:block;font-size:15.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#bo,body) .who96 small{display:block;font-size:12px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#bo,body) .av96{width:42px;height:42px;border-radius:50%;display:inline-grid;place-items:center;flex:0 0 auto;color:#fff;font-weight:700;font-size:15px;background:linear-gradient(135deg,var(--c-acc2),var(--c-acc))}
+:is(#bo,body) .av96.c1{background:linear-gradient(135deg,#8b7be0,#5a4bb8)}:is(#bo,body) .av96.c2{background:linear-gradient(135deg,#eaa05a,#c46a1f)}:is(#bo,body) .av96.c3{background:linear-gradient(135deg,#5b9bd6,#2563a8)}:is(#bo,body) .av96.c4{background:linear-gradient(135deg,#9aa0a8,#666c75)}
+:is(#bo,body) .av96.brand svg{width:22px;height:22px}
+:is(#bo,body) .st96{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;flex:0 0 auto}
+:is(#bo,body) .st96.open{background:#e2f5ea;color:#1d6b43}:is(#bo,body) .st96.closed, :is(#bo,body) .st96.tp{background:var(--c-soft);color:var(--muted)}
+body.dark .c96 .st96.open{background:#173327;color:#7fdcae}
+:is(#bo,body) .tp96{font-size:13px;color:var(--muted);margin:0 4px 6px}
+:is(#bo,body) .bk96{display:none;width:34px;height:34px;border-radius:50%;place-items:center;border:0;background:none;color:inherit;cursor:pointer;flex:0 0 auto}
+#adm161 .bk96{display:inline-grid}
+/* ההודעות */
+:is(#bo,body) .box43{display:flex;flex-direction:column;gap:2px;min-height:180px;max-height:52vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:10px 10px 14px;margin:0 0 8px;border-radius:16px;
+  background-color:var(--chat,#f6f3ec);background-image:radial-gradient(color-mix(in srgb,var(--hdr2) 9%,transparent) 1px,transparent 1.3px);background-size:18px 18px}
+:is(#bo,body) .box43 .day{margin:10px 0 6px;text-align:center}:is(#bo,body) .box43 .day span{display:inline-block;background:var(--c-panel);color:var(--muted);font-size:12px;border-radius:999px;padding:3px 12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+:is(#bo,body) .r43{display:flex;justify-content:flex-start;margin-top:8px;position:relative}:is(#bo,body) .r43.me{justify-content:flex-end}:is(#bo,body) .r43.cont{margin-top:2px}:is(#bo,body) .r43.hasre{margin-bottom:12px}
+:is(#bo,body) .b43{position:relative;max-width:82%;min-width:64px;padding:7px 12px 5px;border-radius:18px;font-size:15px;line-height:1.5;overflow-wrap:anywhere;word-break:break-word;outline:none;
+  background:var(--c-recv);color:var(--text);border-end-start-radius:6px;box-shadow:0 1px 2px rgba(16,24,40,.08),0 1px 1px rgba(16,24,40,.04)}
+:is(#bo,body) .r43.me .b43{background:var(--c-acc);background-image:linear-gradient(135deg,var(--c-acc2),var(--c-acc));color:#fff;border-end-start-radius:18px;border-end-end-radius:6px;box-shadow:0 2px 6px color-mix(in srgb,var(--hdr2) 28%,transparent)}
+body.dark .c96 .r43.them .b43{box-shadow:none;border:1px solid var(--c-line)}
+:is(#bo,body) .b43:focus-visible{box-shadow:0 0 0 2px var(--c-acc)}:is(#bo,body) .hl43 .b43{box-shadow:0 0 0 2px #e0b100}
+:is(#bo,body) .nm43{display:block;font-size:12.5px;font-weight:700;color:var(--c-acc);margin:0 0 1px}body.dark .c96 .nm43{color:color-mix(in srgb,var(--hdr2) 45%,#fff)}
+:is(#bo,body) .tg43{display:inline-block;font-size:11.5px;color:var(--muted);background:var(--c-soft);border-radius:6px;padding:0 7px;margin:1px 0 4px}
+:is(#bo,body) .r43.me .tg43{background:rgba(255,255,255,.18);color:inherit}
+:is(#bo,body) .tx43{display:inline}
+:is(#bo,body) .t43{float:inline-end;display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:1;opacity:.75;margin:8px 0 0;margin-inline-start:10px;direction:ltr;unicode-bidi:isolate}
+:is(#bo,body) .t43 i{font-style:italic;margin-inline-end:4px}:is(#bo,body) .r43.me .ticks{color:#fff;opacity:.85}:is(#bo,body) .r43.me .ticks.seen{color:#bfe9ff;opacity:1}
+:is(#bo,body) .b43 a{color:inherit;text-decoration:underline}
+:is(#bo,body) .b43 button.q43{display:block;width:100%;min-height:0;min-width:0;text-align:start;border:0;border-inline-start:3px solid var(--c-acc);background:rgba(127,127,127,.12);box-shadow:none;border-radius:8px;padding:4px 9px;margin:2px 0 6px;font:inherit;font-size:13px;line-height:1.4;cursor:pointer;color:inherit}
+:is(#bo,body) .r43.me .b43 button.q43{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.75)}
+:is(#bo,body) .q43 b{display:block;font-size:12px;font-weight:700}:is(#bo,body) .q43 span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+:is(#bo,body) .img43{display:block;max-width:100%;max-height:260px;border-radius:12px;margin:2px 0 4px;cursor:zoom-in}
+:is(#bo,body) .re43{position:absolute;bottom:-14px;inset-inline-start:10px;background:var(--c-panel);color:var(--text);border:1px solid var(--c-line);border-radius:999px;padding:0 7px;font-size:13px;line-height:22px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+/* הסרגל של ההודעה: אימוג'י · תגובה · עריכה */
+:is(#bo,body) .tool43{position:absolute;bottom:calc(100% - 6px);inset-inline-start:6px;z-index:3;display:flex;align-items:center;gap:1px;padding:3px;border-radius:999px;background:var(--c-panel);color:var(--text);border:1px solid var(--c-line);box-shadow:0 6px 18px rgba(16,24,40,.16);
+  visibility:hidden;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s,visibility 0s .12s}
+:is(#bo,body) .r43.me .tool43{inset-inline-start:auto;inset-inline-end:6px}
+:is(#bo,body) .r43.open .tool43, :is(#bo,body) .r43:focus-within .tool43{visibility:visible;opacity:1;transform:none;transition:opacity .12s,transform .12s}
+@media (hover:hover){:is(#bo,body) .r43:hover .tool43{visibility:visible;opacity:1;transform:none;transition:opacity .12s,transform .12s}}
+:is(#bo,body) .tool43 button{width:32px;height:32px;min-width:0;min-height:0;padding:0;border:0;border-radius:50%;background:none;box-shadow:none;display:grid;place-items:center;font-size:17px;line-height:1;cursor:pointer;color:inherit}
+:is(#bo,body) .tool43 button:hover, :is(#bo,body) .tool43 button:focus-visible{background:var(--c-soft)}:is(#bo,body) .tool43 button.on{background:color-mix(in srgb,var(--hdr2) 16%,transparent)}
+:is(#bo,body) .tool43 svg{width:17px;height:17px}:is(#bo,body) .sep43{width:1px;align-self:stretch;margin:5px 2px;background:var(--c-line)}
+:is(#bo,body) .r43:first-child .tool43, :is(#bo,body) .box43 .day+.r43 .tool43{bottom:auto;top:calc(100% - 6px)}
+/* מה מוצג מעל שורת הכתיבה: תגובה ל / עריכה / תמונה */
+:is(#bo,body) .bar43:empty{display:none}
+:is(#bo,body) .bar43 .it43{display:flex;align-items:center;gap:8px;background:var(--c-panel);border:1px solid var(--c-line);border-inline-start:3px solid var(--c-acc);border-radius:12px;padding:6px 10px;margin:0 0 6px;font-size:13px}
+:is(#bo,body) .bar43 .it43 span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}:is(#bo,body) .bar43 img{width:44px;height:44px;object-fit:cover;border-radius:8px}
+:is(#bo,body) .bar43 button{border:0;background:none;font-size:16px;cursor:pointer;color:inherit;padding:2px 6px;min-height:0;min-width:0;width:auto}
+:is(#bo,body) .lb43{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}:is(#bo,body) .lb43 img{max-width:100%;max-height:100%;border-radius:8px}
+:is(#bo,body) .hi96{margin:auto;text-align:center;color:var(--muted);font-size:14px;padding:24px 12px;background:var(--c-panel);border-radius:14px;max-width:320px}
+/* נושאים / תשובות מוכנות */
+:is(#bo,body) .qr96{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+:is(#bo,body) .qr96 button{font:inherit;font-size:13px;line-height:1.3;padding:6px 12px;min-height:0;width:auto;border-radius:999px;border:1px solid var(--c-line);background:var(--c-panel);color:var(--text);cursor:pointer;white-space:nowrap;box-shadow:none}
+:is(#bo,body) .qr96 button:hover{border-color:var(--c-acc)}:is(#bo,body) .qr96 button.on{background:var(--c-acc);border-color:var(--c-acc);color:#fff}
+:is(#bo,body) .can96{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+/* שורת הכתיבה */
+:is(#bo,body) .cmp96{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+:is(#bo,body) .box96{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;background:var(--c-panel);border:1px solid transparent;border-radius:24px;padding:4px 6px;min-height:48px;box-shadow:0 2px 10px rgba(16,24,40,.08)}
+body.dark .c96 .box96{border-color:var(--c-line);box-shadow:none}
+:is(#bo,body) .box96:focus-within{border-color:var(--c-acc)}
+:is(#bo,body) .box96 .emw45{flex:1;min-width:0}
+:is(#bo,body) .box96 textarea{display:block;width:100%;min-height:38px;max-height:132px;resize:none;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:15px;line-height:1.45;padding:8px 40px 8px 6px;margin:0;box-shadow:none;border-radius:0}
+:is(#bo,body) .box96 .emw45>button.emb45{bottom:1px}
+:is(#bo,body) .ib96{width:38px;height:38px;min-width:0;min-height:0;padding:0;border:0;border-radius:50%;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:0 0 auto;box-shadow:none}
+:is(#bo,body) .ib96:hover{background:var(--c-soft);color:var(--text)}
+:is(#bo,body) .send96{width:48px;height:48px;min-width:0;min-height:0;padding:0;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:0 0 auto;color:#fff;background:var(--c-acc);background-image:linear-gradient(135deg,var(--c-acc2),var(--c-acc));box-shadow:0 4px 12px color-mix(in srgb,var(--hdr2) 35%,transparent)}
+:is(#bo,body) .send96 svg{transform:scaleX(-1)}:is(#bo,body) .send96:disabled{opacity:.6}
+:is(#bo,body) .cmp96>.emp45{flex:1 0 100%}
+:is(#bo,body) .ft96{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:6px 0 0}
+:is(#bo,body) .ft96 button{font:inherit;font-size:13px;color:var(--muted);background:none;border:0;padding:5px 10px;border-radius:999px;cursor:pointer;min-height:0;width:auto;box-shadow:none}
+:is(#bo,body) .ft96 button:hover{background:var(--c-soft);color:var(--text)}:is(#bo,body) .ft96 button.ok{color:#1d7a4f}body.dark .c96 .ft96 button.ok{color:#7fdcae}
+/* בק אופיס: תיבת פניות — רשימה בצד ושיחה */
+:is(#bo,body) .in96{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:14px;height:calc(100vh - 150px);min-height:520px}
+:is(#bo,body) .ls96, :is(#bo,body) .cv96{background:var(--card,var(--c-panel));border:1px solid var(--c-line);border-radius:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+:is(#bo,body) .cv96{padding:12px;background:var(--chat,#f6f3ec)}
+:is(#bo,body) .cv96 .hd96{margin:-12px -12px 0;border-radius:0;border-width:0 0 1px}
+:is(#bo,body) .cv96 .box43{flex:1;max-height:none;margin:0 -12px 8px;border-radius:0;min-height:0}
+:is(#bo,body) .lh96{display:flex;align-items:center;gap:8px;padding:14px 14px 8px;font-size:17px}:is(#bo,body) .lh96 b{flex:1}
+:is(#bo,body) .n96{font-size:12px;font-weight:700;background:var(--c-acc);color:#fff;border-radius:999px;padding:2px 9px}
+:is(#bo,body) .q96{display:flex;align-items:center;gap:8px;margin:0 14px;padding:0 10px;border-radius:10px;background:var(--bg,var(--c-soft));color:var(--muted);border:1px solid var(--c-line)}
+:is(#bo,body) .q96 input{flex:1;min-width:0;border:0;background:none;padding:9px 0;color:var(--text);font:inherit;font-size:14px;outline:none;width:auto}
+:is(#bo,body) .q96 svg{width:17px;height:17px}
+:is(#bo,body) .tabs96{display:flex;gap:4px;padding:10px 14px;border-bottom:1px solid var(--c-line)}
+:is(#bo,body) .tabs96 button{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:0;background:none;color:var(--muted);cursor:pointer}
+:is(#bo,body) .tabs96 button.on{background:var(--c-acc);color:#fff}
+:is(#bo,body) .items96{flex:1;overflow-y:auto;min-height:0}
+:is(#bo,body) .it96{display:flex;gap:10px;width:100%;text-align:start;padding:11px 14px;border:0;border-bottom:1px solid var(--c-line);background:none;color:var(--text);font:inherit;cursor:pointer;position:relative;align-items:flex-start}
+:is(#bo,body) .it96:hover{background:var(--c-soft)}:is(#bo,body) .it96.on{background:color-mix(in srgb,var(--hdr2) 10%,transparent)}
+:is(#bo,body) .it96.on::before{content:"";position:absolute;inset-block:8px;inset-inline-start:0;width:3px;border-radius:3px;background:var(--c-acc)}
+:is(#bo,body) .it96 .av96{width:40px;height:40px;font-size:14px}
+:is(#bo,body) .tx96{flex:1;min-width:0;display:block}
+:is(#bo,body) .tx96 .r1, :is(#bo,body) .tx96 .r2{display:flex;align-items:baseline;gap:6px}:is(#bo,body) .tx96 .r2{align-items:center;margin-top:2px}
+:is(#bo,body) .tx96 .r1 b{flex:1;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}:is(#bo,body) .tx96 .r1 small{font-size:12px;color:var(--muted)}
+:is(#bo,body) .tx96 .r2>span{flex:1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#bo,body) .it96.un .r2>span{color:var(--text);font-weight:500}:is(#bo,body) .it96.un .r1 small{color:var(--c-acc);font-weight:700}
+:is(#bo,body) .cnt96{min-width:20px;height:20px;border-radius:999px;background:var(--c-acc);color:#fff;font-size:11.5px;font-weight:700;font-style:normal;display:grid;place-items:center;padding:0 6px}
+:is(#bo,body) .tg96{display:inline-block;font-size:11px;color:var(--muted);background:var(--c-soft);border-radius:6px;padding:0 6px;margin-top:5px}
+:is(#bo,body) .em96{padding:18px 14px}
+:is(#bo,body) .rd96{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);padding:10px 14px;border-top:1px solid var(--c-line);cursor:pointer}
+:is(#bo,body) .rd96 input{width:auto;margin:0}
+:is(#bo,body) .none96{margin:auto;text-align:center;color:var(--muted);font-size:15px;line-height:2}
+:is(#bo,body) .hb96{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--c-line);background:var(--c-panel);color:var(--text);font:inherit;font-size:14px;cursor:pointer;flex:0 0 auto;white-space:nowrap}
+:is(#bo,body) .hb96.pri{background:var(--c-acc);border-color:transparent;color:#fff}:is(#bo,body) .hb96.ic{width:36px;padding:0;justify-content:center;color:var(--muted)}
+:is(#bo,body) .hb96 svg{width:17px;height:17px}
+:is(#bo,body) .cv96 .b43{max-width:66%}
+@media (max-width:760px){
+  :is(#bo,body) .in96{display:block;height:auto;min-height:0}
+  :is(#bo,body) .in96.has .ls96{display:none}:is(#bo,body) .in96:not(.has) .cv96{display:none}
+  :is(#bo,body) .cv96{min-height:calc(100vh - 140px)}:is(#bo,body) .cv96 .bk96{display:inline-grid}
+  :is(#bo,body) .cv96 .hd96{flex-wrap:wrap}:is(#bo,body) .cv96 .b43{max-width:82%}
+  :is(#bo,body) .ls96{max-height:none}}
+@media (min-width:900px){:is(#bo,body) .cu96 .b43, :is(#bo,body) #adm161.c96 .b43{max-width:70%}}
+:is(#bo,body) .cu96 .who96 small{white-space:normal}
+/* הטבעת של הפוקוס מוצגת על כל התיבה העגולה ולא על השדה שבתוכה */
+:is(#bo,body) .box96 textarea:focus,:is(#bo,body) .box96 textarea:focus-visible{outline:none!important;box-shadow:none}
+:is(#bo,body) .box96:focus-within{box-shadow:0 0 0 2px var(--c-acc)}
+/* בבק אופיס יש ערכת צבעים משלו (בהיר / כהה) — הצ'אט לוקח את הצבעים ממנה ולא מהאתר */
+#bo .c96{--c-recv:var(--card);--c-panel:var(--card);--chat:var(--bg)}

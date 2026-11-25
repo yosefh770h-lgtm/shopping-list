@@ -80,23 +80,8 @@ function broadcastForm161(b){
       if(error){flash('⚠️ '+(error.message.includes('admin_broadcast')?T('צריך להריץ שוב את קוד ה-SQL','Run the SQL again'):error.message));return;}
       logAct('broadcast',tg+' · '+body.slice(0,80));flash('📣 '+T('נשלח ל-','Sent to ')+(data||0)+T(' משתמשים',' users'));await drawThreads161(b);}};
 }
-async function drawThread161(b,uid,quiet){
-  const {data,error}=await sb.from('support_messages').select('id,from_staff,author_name,body,created_at,read_by_staff,topic').eq('user_id',uid).order('created_at').limit(300);
-  if(error){b.innerHTML='<p class="muted-note">⚠️ '+esc(error.message)+'</p>';return;}
-  const t=adm161.threads.find(x=>x.user_id===uid)||{};let who=t.name||t.email;
-  if(!who){if(!adm161.users){const {data:us}=await sb.rpc('admin_user_list');adm161.users=us||[];}const u=adm161.users.find(x=>x.id===uid)||{};who=u.name||u.email||'?';}
-  const draft=$161('#adm161txt')?$161('#adm161txt').value:'';if(quiet&&draft)return;
-  b.innerHTML='<div id="adm161"><div class="m16h"><button class="mini" data-back161>→ '+T('כל השיחות','All')+'</button><b>💬 '+esc(who)+'</b>'+(t.email?'<small dir="ltr">'+esc(t.email)+'</small>':'')+'</div>'+
-    '<div class="msgs161" id="adm161m">'+((data||[]).map(m=>'<div class="m161 '+(m.from_staff?'me':'them')+'"><div>'+esc(m.body).replace(/\n/g,'<br>')+'</div><small>'+(m.from_staff?esc(m.author_name||T('צוות','Team'))+' · ':'')+esc(fmtDate(new Date(m.created_at)))+' '+esc(fmtTime(new Date(m.created_at)))+(m.topic==='broadcast'?' · 📣':'')+'</small></div>').join('')||'<div class="empty">'+T('עוד אין הודעות — כתבו ראשונים 👇','No messages yet 👇')+'</div>')+'</div>'+
-    '<div class="send161"><textarea id="adm161txt" rows="2" maxlength="4000" placeholder="'+T('כתבו הודעה...','Write a message...')+'">'+esc(draft)+'</textarea><button id="adm161send" aria-label="'+T('שליחה','Send')+'">➤</button></div></div>';
-  const box=$161('#adm161m');if(box)box.scrollTop=box.scrollHeight;
-  const unread=(data||[]).filter(m=>!m.from_staff&&!m.read_by_staff).map(m=>m.id);if(unread.length)sb.from('support_messages').update({read_by_staff:true}).in('id',unread).then(()=>{},()=>{});
-  b.onclick=async e=>{if(e.target.closest('[data-back161]')){adm161.open=null;await drawThreads161(b);return;}
-    if(e.target.closest('#adm161send')){const body=$161('#adm161txt').value.trim();if(!body)return;e.target.disabled=true;
-      const {error:er}=await sb.from('support_messages').insert({user_id:uid,body});e.target.disabled=false;
-      if(er){flash('⚠️ '+er.message);return;}$161('#adm161txt').value='';logAct('message_user',who);await drawThread161(b,uid);}};
-  $161('#adm161txt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!TOUCH_KB){e.preventDefault();$161('#adm161send').click();}};
-}
+/* שיחה אחת עם משתמש: js/040.js */
+let drawThread161=null;
 /* כפתור בתפריט (רק למנהלים) + כפתור "שליחת הודעה" ליד כל משתמש בבק אופיס */
 (function(){const host=$161('#hMenu details[data-g="staff"] .mgbody')||$161('#hMenu');if(!host||$161('#miAdmChat'))return;
   const b=document.createElement('button');b.id='miAdmChat';b.className='admin-only';b.innerHTML='💬<span>'+T('הודעות למשתמשים','Messages to users')+'</span>';host.insertBefore(b,host.firstChild);b.onclick=()=>openAdminChat161();})();
