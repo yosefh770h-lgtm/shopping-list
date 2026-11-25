@@ -198,10 +198,11 @@ window.boView&&window.boView('support',async function(){const main=$43('#boMain'
   const all=sup96.threads,cnt=s=>all.filter(t=>(t.status||'open')===s).length,unread=all.reduce((a,t)=>a+(t.unread||0),0);
   main.innerHTML='<div class="c96 in96'+(sup96.uid?' has':'')+'"><aside class="ls96" aria-label="פניות">'+
       '<div class="lh96"><b>💬 פניות</b>'+(unread?'<span class="n96">'+unread+' לא נקראו</span>':'')+'</div>'+
+      '<label class="rd96" title="כשמסומן, הלקוחות רואים ✓✓ אפור (הגיע) גם אחרי שקראתם, ולא ✓✓ כחול"><input type="checkbox" id="chRead" role="switch"'+(chatCfg.showRead===false?' checked':'')+'><span class="sw96" aria-hidden="true"></span>🙈 לא להראות ללקוחות שקראתי</label>'+
       '<label class="q96">'+SVG43.search+'<input id="supQ96" type="search" placeholder="חיפוש לפי שם, מייל או תוכן..." aria-label="חיפוש פנייה" value="'+esc(sup96.q)+'"></label>'+
       '<div class="tabs96" role="group" aria-label="סינון">'+[['open','פתוחות · '+cnt('open')],['closed','טופלו · '+cnt('closed')],['all','הכל']].map(([k,l])=>'<button type="button" data-sf="'+k+'" aria-pressed="'+(sup96.filter===k)+'" class="'+(sup96.filter===k?'on':'')+'">'+l+'</button>').join('')+'</div>'+
       '<div class="items96" id="supList96"></div>'+
-      '<label class="rd96"><input type="checkbox" id="chRead"'+(chatCfg.showRead!==false?' checked':'')+'> הלקוחות רואים ✓✓ כשקראתי (כשכבוי — רק ✓ "נשלח")</label></aside>'+
+      '</aside>'+
     '<section class="cv96" id="supConv96" aria-label="שיחה"></section><aside class="sd96" id="supSide96" aria-label="פרטי המשתמש"></aside></div>';
   const drawList=()=>{const q=norm(sup96.q).toLowerCase();
     const th=all.filter(t=>(sup96.filter==='all'||(t.status||'open')===sup96.filter)&&(!q||(norm(t.name)+' '+t.email+' '+norm(t.last_body)).toLowerCase().includes(q)));
@@ -238,7 +239,7 @@ window.boView&&window.boView('support',async function(){const main=$43('#boMain'
   const setSt=s=>sb.from('support_status').upsert({user_id:sup96.uid,status:s,updated_at:new Date().toISOString()});
   const okq=async(q,msg)=>{const {error:e}=await q;if(e){flash('⚠️ '+e.message);return false;}if(msg)flash(msg);return true;};
   main.oninput=e=>{if(e.target.id==='supQ96'){sup96.q=e.target.value;drawList();}};
-  main.onchange=async e=>{if(e.target.id==='chRead'){const v=e.target.checked;if(await okq(sb.from('site_config').upsert({key:'chat',value:Object.assign({},chatCfg,{showRead:v}),updated_at:new Date().toISOString()}),'✔️ נשמר'))chatCfg.showRead=v;}};
+  main.onchange=async e=>{if(e.target.id==='chRead'){const v=!e.target.checked;if(await okq(sb.from('site_config').upsert({key:'chat',value:Object.assign({},chatCfg,{showRead:v}),updated_at:new Date().toISOString()}),'✔️ נשמר'))chatCfg.showRead=v;}};
   main.onkeydown=e=>{if(e.key==="Escape"&&bo43&&main.contains(bo43.box)&&bo43.escape())e.stopPropagation();};
   main.onclick=async e=>{
     if(bo43&&main.contains(bo43.box)&&await bo43.click(e))return;

@@ -1239,6 +1239,22 @@ await test('📲 התקנת האפליקציה: הכפתור תמיד בראש �
   await app.ctx.close();
 });
 
+await test('💬 תיבת פניות: רקע מכסה שיחה ארוכה, מתג "לא להראות שקראתי"', async () => {
+  const { ctx, page, errors } = await newPage({ viewport: { width: 1366, height: 820 } });
+  const M = Array.from({ length: 60 }, (_, i) => ({ id: 'L' + i, user_id: 'u1', from_staff: i % 2 === 0, body: 'הודעה מספר ' + i, created_at: new Date(Date.now() - (60 - i) * 60000).toISOString(), read_by_user: true, read_by_staff: true, delivered_user: true, delivered_staff: true }));
+  await page.evaluate((M) => { sb = __stub({ 'rpc:support_threads': [{ user_id: 'u1', name: 'משה', email: 'm@x.z', status: 'open', unread: 0, last_at: new Date().toISOString() }], support_messages: M });
+    authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('support'); }, M);
+  await page.waitForTimeout(900);
+  await page.click('[data-th="u1"]'); await page.waitForTimeout(700);
+  const r = await page.evaluate(() => { const b = document.querySelector('#supBox'); b.scrollTop = b.scrollHeight; const cs = getComputedStyle(b);
+    return { long: b.scrollHeight > b.clientHeight * 2, att: cs.backgroundAttachment, img: cs.backgroundImage.includes('svg'), sw: !!document.querySelector('.rd96 #chRead[role="switch"]'), checked: document.querySelector('#chRead').checked }; });
+  assert(r.long, 'השיחה לא ארוכה מספיק לבדיקה');
+  assert(r.img && !/local/.test(r.att), 'הרקע לא קבוע מאחורי השיחה: ' + r.att);
+  assert(r.sw && r.checked === false, 'מתג "לא להראות שקראתי" חסר או מסומן בלי סיבה');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('💬 צ׳אט עם האתר: תגובה להודעה מסוימת, עריכה, אימוג׳י; כפתור תמונה רק אצל המנהל', async () => {
   const { ctx, page, errors } = await newPage();
   const at = (m) => new Date(Date.now() - m * 60000).toISOString();
