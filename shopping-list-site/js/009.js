@@ -389,25 +389,6 @@ setInterval(()=>{if(document.visibilityState==='visible'&&authUser)loadChat();},
 {let lastChatChk=0;const chatNow=()=>{if(document.visibilityState!=='visible'||!sb||!authUser)return;const t=Date.now();if(t-lastChatChk<15000)return;lastChatChk=t;loadChat();};
   document.addEventListener('visibilitychange',chatNow);window.addEventListener('focus',chatNow);window.addEventListener('pageshow',chatNow);window.addEventListener('online',chatNow);}
 
-/* ---------- בקשת הצטרפות של בעלי עסקים ---------- */
-async function openBizJoin(){
-  const b=openSheet('🏪 '+T('הצטרפות כבעל עסק','Join as a business'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');
-  if(!sb||!authUser){b.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים 🙂','Sign in first 🙂')+'</p>';return;}
-  let mine=[];try{const {data}=await sb.from('business_requests').select('*').eq('user_id',authUser.id).order('created_at',{ascending:false});mine=data||[];}catch(e){}
-  b.innerHTML=(myStore?'<p class="muted-note">✅ '+T('את/ה כבר מקושר/ת לחנות '+esc(myStore.chain)+' — ✏️ עריכת הפרופיל בלשונית 🏪 חנויות.','You are already linked to '+esc(myStore.chain))+'</p>':'')+
-    (mine.length?'<div class="mecard"><h4>📋 '+T('הבקשות שלי','My requests')+'</h4>'+mine.map(r=>'<div class="merow"><span class="grow"><b>'+esc(r.business)+'</b><small>'+esc(agoText(r.created_at))+'</small></span><span>'+({pending:'⏳ '+T('בבדיקה','Pending'),approved:'✅ '+T('אושרה','Approved'),rejected:'✕ '+T('לא אושרה','Declined')}[r.status])+'</span></div>').join('')+'</div>':'')+
-    '<p class="muted-note">'+T('בעלי חנויות וסופרים מקבלים: פרופיל עסקי ציבורי, עדכון מחירים ומבצעים (גם בקובץ), ופניות מלקוחות. ממלאים — ואנחנו חוזרים אליכם.','Store owners get a public profile, price & deal updates and customer messages.')+'</p>'+
-    '<label class="il">'+T('שם העסק','Business name')+'</label><input id="bjBiz" list="bjChains" maxlength="60"><datalist id="bjChains">'+allChainNames().map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
-    '<div class="grid2"><div><label class="il">'+T('סניף / כתובת','Branch / address')+'</label><input id="bjBranch" maxlength="120"></div><div><label class="il">'+T('סוג העסק','Type')+'</label><select id="bjCat">'+Object.keys(STORE_TYPES).map(k=>'<option value="'+k+'">'+STORE_TYPES[k][0]+' '+esc(typeName(k))+'</option>').join('')+'</select></div>'+
-    '<div><label class="il">'+T('התפקיד שלי','My role')+'</label><select id="bjRole"><option value="owner">'+T('בעל/ת העסק','Owner')+'</option><option value="manager">'+T('אחראי/ת סניף','Manager')+'</option></select></div><div><label class="il">'+T('טלפון','Phone')+'</label><input id="bjPhone" type="tel" maxlength="30" dir="ltr" style="text-align:right"></div></div>'+
-    '<label class="il">'+T('השם שלי','My name')+'</label><input id="bjName" maxlength="60" value="'+esc((state.user&&state.user.name)||'')+'"><label class="il">'+T('מה תרצו לספר לנו?','Anything to add?')+'</label><textarea id="bjMsg" maxlength="2000" style="min-height:60px"></textarea>'+
-    '<button id="bjSend" style="width:100%">📨 '+T('שליחת הבקשה','Send request')+'</button>';
-  b.onclick=async e=>{if(!e.target.closest('#bjSend'))return;const v=id=>$9(id).value.trim();
-    if(!v('#bjBiz')||!v('#bjPhone')){flash(T('צריך שם עסק וטלפון','Business name and phone needed'));return;}if([v('#bjBiz'),v('#bjBranch'),v('#bjName'),v('#bjMsg')].some(hasProfanity)){flash('🙏');return;}
-    const {error}=await sb.from('business_requests').insert({business:v('#bjBiz'),branch:v('#bjBranch'),category:v('#bjCat'),role:v('#bjRole'),phone:v('#bjPhone'),name:v('#bjName'),message:v('#bjMsg'),user_id:authUser.id});
-    if(error){flash('⚠️ '+error.message);return;}flash('📨 '+T('הבקשה נשלחה! נחזור אליך בהקדם','Request sent!'));openBizJoin();};
-}
-
 /* ---------- המוניטין שלי ---------- */
 const REP_LEVELS=[[0,'🌱',T('חדש/ה בקהילה','Newcomer')],[5,'🥉',T('מדווח/ת','Reporter')],[15,'🥈',T('מדווח/ת פעיל/ה','Active reporter')],[40,'🥇',T('מוביל/ה בקהילה','Community leader')],[70,'💎',T('אלוף/ת הקהילה','Community champion')]];
 if(!ME_TABS.some(t=>t[0]==='rep'))ME_TABS.splice(1,0,['rep','🏅 המוניטין שלי','🏅 My reputation']);

@@ -2038,6 +2038,31 @@ await test('📍 מחיר אוטומטי מקבצי הרשת: כתוב "כל ה�
   await ctx.close();
 });
 
+await test('🏪 חנות קטנה: מחיר שהחנות העלתה מסומן "דווח ע״י החנות", ובהצטרפות חובה לאשר תנאים והדיוור השיווקי רשות', async () => {
+  const { ctx, page, errors } = await newPage();
+  const now = new Date().toISOString();
+  const D = { prices: [{ id: 'c1', product: 'במבה', product_key: 'במבה', chain: 'רמי לוי', branch: '', price: 5.4, currency: 'ILS', verified: true, by_id: null, status: 'approved', created_at: now },
+    { id: 's1', product: 'במבה', product_key: 'במבה', chain: 'המכולת של משה', branch: 'בני ברק', price: 4.5, currency: 'ILS', verified: true, by_id: 'own1', status: 'approved', created_at: now }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; setTab('prices'); }, D);
+  await page.fill('#priceSearchInput', 'במבה'); await page.keyboard.press('Enter'); await page.waitForTimeout(900);
+  const b = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#priceResults .price-row[data-pid]')].map((x) => [x.dataset.pid, (x.querySelector('.verified') || {}).textContent || ''])));
+  assert(/דווח ע״י החנות/.test(b.s1 || '') && /רשמי/.test(b.c1 || '') && !/החנות/.test(b.c1 || ''), 'סימון מקור המחיר: ' + JSON.stringify(b));
+  if (process.env.SHOTS_DIR) { await page.evaluate(() => document.querySelector('#priceResults').scrollIntoView()); await page.screenshot({ path: process.env.SHOTS_DIR + '/1-מחיר-שהחנות-דיווחה.png' }); }
+  const sent = await page.evaluate(async () => { window.__ins = []; const s0 = sb.from; sb.from = (n) => { const q = s0(n); if (n === 'business_requests') return new Proxy(q, { get(t, p) { if (p === 'insert') return (rec) => { window.__ins.push(rec); return Promise.resolve({ data: null, error: null }); }; return t[p]; } }); return q; };
+    window.setAccountType = async () => {}; await openBizJoin(); await new Promise((r) => setTimeout(r, 300));
+    document.querySelector('#bjBiz').value = 'המכולת של משה'; document.querySelector('#bjPhone').value = '0501234567';
+    document.querySelector('#bjSend').click(); await new Promise((r) => setTimeout(r, 200)); const before = window.__ins.length;
+    document.querySelector('#bjTerms').checked = true; return before; });
+  assert(sent === 0, 'אפשר היה לשלוח בלי לאשר את התנאים');
+  assert(await page.evaluate(() => !document.querySelector('#bjMkt').checked && !!document.querySelector('#bjTerms + span a[href="/terms.html#biz"]')), 'הדיוור השיווקי מסומן מראש / אין קישור לתנאים');
+  if (process.env.SHOTS_DIR) { await page.evaluate(() => document.querySelector('#bjTerms').scrollIntoView({ block: 'center' })); await page.waitForTimeout(3500); await page.screenshot({ path: process.env.SHOTS_DIR + '/2-טופס-הצטרפות-עסק.png' }); }
+  await page.evaluate(async () => { document.querySelector('#bjSend').click(); await new Promise((r) => setTimeout(r, 300)); });
+  const rec = await page.evaluate(() => window.__ins[0]);
+  assert(rec && rec.terms_ok === true && rec.marketing_ok === false, 'מה שנשלח: ' + JSON.stringify(rec));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('🔎 כל חיפוש ב"איפה הכי זול" נספר, ובבק אופיס ← 💰 מחירים רואים כמה חיפשו ומה הכי מחפשים', async () => {
   const api = (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(r.request().url()).pathname.endsWith('/chains') ? [] : { items: [{ q: 'חלב', qty: 1 }], stores: [], missing: [] }) });
   const { ctx, page, errors } = await newPage({ priceApi: api });
@@ -2779,6 +2804,43 @@ await test('📴 הורדת האפליקציה האופליין מתוך האפ�
   const s = await page.evaluate(() => window.__saved[0]);
   assert(s[0] === 'yamshopping-offline.apk' && /android\.package-archive/.test(s[1]) && s[2] > 1000000, 'הקובץ לא נשמר: ' + JSON.stringify(s));
   assert(await page.evaluate(() => /נשמר/.test(document.querySelector('#offDl').textContent) && !!document.querySelector('.offsaved')), 'אין הודעה שהקובץ נשמר');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
+await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מקור + יום פעם אחת, ובבק אופיס רואים לפי מקור ולפי שבוע', async () => {
+  const { ctx, page, errors } = await newPage();
+  const day = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const run = (src, d, ret) => page.evaluate(([src, d, ret]) => { window.__rc = []; sb = { rpc: (n, a) => { window.__rc.push([n, a]); return Promise.resolve({ error: null }); } };
+    localStorage.setItem('yam_src', src); if (d) localStorage.setItem('yam_src_day', d); else localStorage.removeItem('yam_src_day');
+    if (ret) localStorage.setItem('yam_src_ret', ret); else localStorage.removeItem('yam_src_ret'); srcVisit40();
+    return new Promise((r) => setTimeout(() => r({ calls: window.__rc, ret: localStorage.getItem('yam_src_ret') || '' }), 50)); }, [src, d, ret]);
+  let r = await run('qr-shul', day(10));
+  assert(r.calls.length === 1 && r.calls[0][0] === 'visit_src_return' && r.calls[0][1].p_src === 'qr-shul' && r.calls[0][1].p_day === day(10) && Object.keys(r.calls[0][1]).length === 2 && r.ret === '1', 'חזר אחרי 10 ימים — לא נספר: ' + JSON.stringify(r));
+  r = await run('qr-shul', day(10), '1');
+  assert(!r.calls.length, 'נספר פעמיים: ' + JSON.stringify(r));
+  r = await run('qr-shul', day(3));
+  assert(!r.calls.length && !r.ret, 'נספר לפני שעבר שבוע: ' + JSON.stringify(r));
+  r = await run('qr-shul', day(90));
+  assert(!r.calls.length && r.ret === '0', 'אחרי חודשיים — צריך להפסיק לבדוק: ' + JSON.stringify(r));
+  r = await run('existing', day(10));
+  assert(!r.calls.length, 'משתמש ותיק נספר: ' + JSON.stringify(r));
+  // מבקר חדש: נשמר יום הביקור הראשון, ונשלח רק המקור
+  r = await page.evaluate(() => { localStorage.removeItem('yam_src'); localStorage.removeItem('yam_src_day'); window.__rc = []; sb = { rpc: (n, a) => { window.__rc.push([n, a]); return Promise.resolve({ error: null }); } }; state.user = null; srcVisit40();
+    return { calls: window.__rc, day: localStorage.getItem('yam_src_day') }; });
+  assert(r.calls.length === 1 && r.calls[0][0] === 'visit_src' && r.day === new Date().toISOString().slice(0, 10), 'מבקר חדש: ' + JSON.stringify(r));
+  const D = { 'rpc:admin_visit_sources': [{ src: 'whatsapp', visits: 120, signups: 18, week_old: 10, active7: 6, ret_base: 90, returned: 27 }, { src: 'qr-shul', visits: 40, signups: 9, week_old: 5, active7: 4, ret_base: 30, returned: 15 }, { src: 'google', visits: 60, signups: 4, week_old: 2, active7: 1, ret_base: 50, returned: 6 }, { src: 'direct', visits: 8, signups: 1, week_old: 0, active7: 0, ret_base: 0, returned: 0 }],
+    'rpc:admin_visit_return_weeks': [{ week: '2026-11-15', visits: 35, returned: 9, partial: true }, { week: '2026-11-08', visits: 64, returned: 19, partial: false }, { week: '2026-11-01', visits: 51, returned: 13, partial: false }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; state.user = { id: 'me', name: 'מנהל', email: 'owner@x.com' }; openBO('guests'); }, D);
+  await page.waitForTimeout(700);
+  const t = await page.$eval('#src40', (e) => e.innerText);
+  assert(/27 מתוך 90/.test(t) && /\(30%\)/.test(t) && /15 מתוך 30/.test(t) && /מי חוזר — לפי שבוע/.test(t) && /8\.11–14\.11/.test(t) && /חלקי/.test(t), 'בק אופיס: ' + t.slice(0, 600));
+  if (process.env.SHOTS) {
+    await page.setViewportSize({ width: 1366, height: 1000 }); await page.waitForTimeout(300);
+    await page.locator('#src40').screenshot({ path: process.env.SHOTS + '/1-מחשב-מקור-וחזרה.png' });
+    await page.setViewportSize({ width: 412, height: 900 }); await page.waitForTimeout(300);
+    await page.locator('#src40').screenshot({ path: process.env.SHOTS + '/2-טלפון-מקור-וחזרה.png' });
+  }
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
 });
