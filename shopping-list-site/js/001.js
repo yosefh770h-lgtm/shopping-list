@@ -30,9 +30,9 @@ if(OFF_APP){try{const off=Number(localStorage.getItem('yam_off_clock'))||0;if(of
   /* ☁️ הקלטה דרך האתר: מקליטים כאן (המיקרופון של חלון האפליקציה), נעצרים לבד כשמפסיקים לדבר, ושולחים WAV קצר
      לפענוח בבינה המלאכותית (ai-chat ← transcribe). ההקלטה לא נשמרת. אחרי שהטלפון נכשל פעם אחת — 7 ימים ישר בדרך הזאת */
   var FALL={'service-not-allowed':1,'network':1,'language-not-supported':1,'aborted':1,'audio-capture':1};
-  /* שירות הדיבור של הטלפון לא ענה בכלל (4 שניות בלי "מתחיל", או 15 שניות בלי שום תשובה) — עוברים להקלטה דרך האתר */
+  /* שירות הדיבור של הטלפון לא ענה בכלל (4 שניות בלי "מתחיל", או 8 שניות בלי שום מילה כשמבקשים גם תוצאות ביניים, 12 בלי) — עוברים להקלטה דרך האתר */
   function watch(r){clearTimeout(r._wd);r._wd=setTimeout(function(){if(cur!==r||r._c||r._heard)return;
-      if(!r._got){go('no-answer');return;}r._wd=setTimeout(function(){if(cur===r&&!r._c&&!r._heard)go('hang');},11000);},4000);
+      if(!r._got){go('no-answer');return;}r._wd=setTimeout(function(){if(cur===r&&!r._c&&!r._heard)go('hang');},r.interimResults?4000:8000);},4000);
     function go(code){var old=r._id;try{A.speechAbort(old);}catch(e){}diag(code,Date.now()-r._t0);cloudRemember(code);var f=!r._got;r._id=++seq;cloud(r,f);}}
   /* כל תקלה של זיהוי הדיבור בטלפון נרשמת ביומן התקלות (עד 5 ביום מכל טלפון), כדי שנדע מה קרה בדגם הזה */
   function diag(code,ms){try{var k='yam_sr_diag',d=new Date().toDateString(),o=JSON.parse(localStorage.getItem(k)||'{}');if(o.d!==d)o={d:d,n:0};if(o.n>=5)return;o.n++;localStorage.setItem(k,JSON.stringify(o));
