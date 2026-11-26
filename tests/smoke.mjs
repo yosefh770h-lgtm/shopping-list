@@ -1327,6 +1327,42 @@ await test('💬 צ׳אט עם האתר: תגובה להודעה מסוימת, �
   await ctx.close();
 });
 
+await test('💬 צ׳אט ארוך בטלפון: ההודעות נגללות בתוך החלון (בלי :has, כמו ב-WebView ישן), שליחה בלי שגיאה', async () => {
+  const { ctx, page, errors } = await newPage();
+  const at = (m) => new Date(Date.now() - m * 60000).toISOString();
+  const M = Array.from({ length: 40 }, (_, i) => ({ id: 'L' + i, user_id: 'me', from_staff: i % 2 === 1, author_name: i % 2 ? 'צוות האתר' : 'בודק', body: 'הודעה מספר ' + i + ' — טקסט קצת ארוך כדי למלא שורה', created_at: at(200 - i), read_by_staff: true, read_by_user: true, topic: i ? '' : 'שאלה כללית', reply_to: null, edited_at: null, react_user: '', react_staff: '', image: '' }));
+  await page.evaluate((M) => { sb = __stub({ support_messages: M }); authUser = { id: 'me', email: 'x@y.z' }; openChat(); }, M);
+  await page.waitForTimeout(600);
+  const s = await page.evaluate(() => { const b = document.querySelector('#chatBox'), body = document.querySelector('#v8SheetBody');
+    return { cls: document.querySelector('#v8Sheet').classList.contains('cu96s'), sh: b.scrollHeight, ch: b.clientHeight, st: b.scrollTop, bodyScroll: body.scrollHeight - body.clientHeight, head: getComputedStyle(document.querySelector('#v8Sheet .phead')).display }; });
+  assert(s.cls, 'חלון הצ׳אט בלי המחלקה cu96s');
+  assert(s.sh > s.ch + 200, 'ההודעות לא בתוך תיבה נגללת: ' + s.sh + '/' + s.ch);
+  assert(s.sh - s.st - s.ch < 40, 'הצ׳אט לא נפתח בהודעה האחרונה');
+  assert(s.bodyScroll <= 1, 'כל החלון נגלל במקום ההודעות: ' + s.bodyScroll);
+  assert(s.head === 'none', 'כותרת כפולה');
+  if (process.env.SHOT) { await page.mouse.wheel(0, -600); await page.waitForTimeout(200); await page.screenshot({ path: process.env.SHOT + '/chat-scrolled.png' }); }
+  await page.fill('#chatText', 'בדיקה');
+  await page.click('#chatSend');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => openSheet('x', '<p>x</p>'));
+  assert(!(await page.evaluate(() => document.querySelector('#v8Sheet').classList.contains('cu96s'))), 'חלון אחר נשאר בעיצוב הצ׳אט');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
+await test('📋 תוכנית להיום: יאמי שומר רק כשמבקשים ליום מסוים, ואפשר למחוק את הבאנר ב-✕', async () => {
+  const { ctx, page, errors } = await newPage();
+  const r = await page.evaluate(async () => { const d = new Date().getDay(); delete state.plans[d];
+    await botReply('יום ' + DAYS[d] + ' צריך להתקשר לאמא'); const junk = (state.plans[d] || []).length;
+    state.plans[d] = ['חלב', 'לחם']; save(); render(); const open = document.querySelector('#banner').classList.contains('open');
+    document.querySelector('#banner [data-plandel]').click();
+    return { junk, open, after: document.querySelector('#banner').classList.contains('open'), left: (state.plans[d] || []).length }; });
+  assert(!r.junk, 'משפט שמוזכר בו יום נשמר כתוכנית');
+  assert(r.open && !r.after && !r.left, 'הבאנר לא נמחק ב-✕');
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('🤝 קהילה: לוח הצעות עם "גם אני רוצה" וסטטוסים, טיפים באישור, מבצעים שמצאתי, שגרירים ותגים, ו"מחיר שגוי" עם טיפול המנהל', async () => {
   const { ctx, page, errors } = await newPage();
   const B = [{ e: '🎖️', l: 'שגריר' }];

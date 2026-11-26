@@ -40,6 +40,7 @@ header{background:var(--hbg,#fff);color:var(--hfg,#1e3a5f);padding:8px 14px;flex
 .banner{display:none;align-items:center;justify-content:space-between;gap:10px;margin:10px 12px;padding:10px 14px;background:#fff6d8;border:1px solid #ecd9a0;border-radius:12px;font-size:14px}
 body.dark .banner{background:#3a3323;border-color:#5c5136}
 .banner.open{display:flex}
+.banner .pl05{display:flex;align-items:center;gap:6px;flex:0 0 auto}.banner .plx05{background:none;color:var(--muted);padding:4px 8px;font-size:16px;line-height:1}
 .banner button{background:var(--hdr2);color:#fff;border:none;border-radius:10px;padding:6px 12px;font-family:inherit;cursor:pointer;white-space:nowrap}
 .pane{flex:1;overflow-y:auto;display:none;padding:14px 14px 8px;position:relative}
 .pane.on{display:block}
@@ -2619,7 +2620,7 @@ details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:
 :is(#bo,body) .bk96{display:none;width:34px;height:34px;border-radius:50%;place-items:center;border:0;background:none;color:inherit;cursor:pointer;flex:0 0 auto}
 #adm161 .bk96{display:inline-grid}
 /* ההודעות */
-:is(#bo,body) .box43{display:flex;flex-direction:column;gap:2px;min-height:180px;max-height:52vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:10px 10px 14px;margin:0 0 8px;border-radius:16px;position:relative;
+:is(#bo,body) .box43{display:flex;flex-direction:column;gap:2px;min-height:180px;max-height:52vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;contain:layout paint;padding:10px 10px 14px;margin:0 0 8px;border-radius:16px;position:relative;
   background-color:var(--c-bg);background-image:linear-gradient(rgba(244,241,234,.88),rgba(244,241,234,.88)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180' fill='none' stroke='%230d7064' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 18h6l5 20h20l5-14H23'/%3E%3Ccircle cx='28' cy='44' r='2.2'/%3E%3Ccircle cx='43' cy='44' r='2.2'/%3E%3Cpath d='M124 34c-4-3-12-2-12 6 0 8 6 14 10 14 2 0 3-1 4-1s2 1 4 1c4 0 10-6 10-14 0-8-8-9-12-6'/%3E%3Cpath d='M126 33c0-4 2-7 6-8'/%3E%3Cpath d='M70 92h24l-2.5 24h-19z'/%3E%3Cpath d='M76 92v-4a6 6 0 0 1 12 0v4'/%3E%3Cpath d='M156 96l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z'/%3E%3Cpath d='M18 146l15-24c3-4 9 0 7 4l-15 24z'/%3E%3Cpath d='M36 120l3-7M39 123l7-3'/%3E%3Cpath d='M114 140h11v4l3 6v22h-17v-22l3-6z'/%3E%3Cpath d='M111 158h17'/%3E%3Ccircle cx='96' cy='30' r='1.6'/%3E%3Ccircle cx='160' cy='160' r='1.6'/%3E%3Ccircle cx='50' cy='84' r='1.6'/%3E%3C/svg%3E"),radial-gradient(120% 80% at 100% 0,rgba(20,147,127,.10),transparent 60%),radial-gradient(90% 70% at 0 100%,rgba(224,177,0,.07),transparent 60%);background-size:auto,180px 180px,auto,auto;background-attachment:scroll}
 /* הציורים (עגלה, תפוח, שקית, כוכב, גזר, בקבוק) עדינים יותר במצב כהה */
 :is(#zz96,body.dark) .c96 .box43{background-image:linear-gradient(rgba(15,20,26,.93),rgba(15,20,26,.93)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180' fill='none' stroke='%237fdcc6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 18h6l5 20h20l5-14H23'/%3E%3Ccircle cx='28' cy='44' r='2.2'/%3E%3Ccircle cx='43' cy='44' r='2.2'/%3E%3Cpath d='M124 34c-4-3-12-2-12 6 0 8 6 14 10 14 2 0 3-1 4-1s2 1 4 1c4 0 10-6 10-14 0-8-8-9-12-6'/%3E%3Cpath d='M126 33c0-4 2-7 6-8'/%3E%3Cpath d='M70 92h24l-2.5 24h-19z'/%3E%3Cpath d='M76 92v-4a6 6 0 0 1 12 0v4'/%3E%3Cpath d='M156 96l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z'/%3E%3Cpath d='M18 146l15-24c3-4 9 0 7 4l-15 24z'/%3E%3Cpath d='M36 120l3-7M39 123l7-3'/%3E%3Cpath d='M114 140h11v4l3 6v22h-17v-22l3-6z'/%3E%3Cpath d='M111 158h17'/%3E%3Ccircle cx='96' cy='30' r='1.6'/%3E%3Ccircle cx='160' cy='160' r='1.6'/%3E%3Ccircle cx='50' cy='84' r='1.6'/%3E%3C/svg%3E"),radial-gradient(120% 80% at 100% 0,rgba(20,147,127,.16),transparent 60%),radial-gradient(90% 70% at 0 100%,rgba(224,177,0,.06),transparent 60%)}
@@ -2733,9 +2734,9 @@ details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:
 /* הטבעת של הפוקוס מוצגת על כל התיבה העגולה ולא על השדה שבתוכה */
 :is(#bo,body) .box96 textarea:focus,:is(#bo,body) .box96 textarea:focus-visible{outline:none!important;box-shadow:none}
 :is(#bo,body) .box96:focus-within{box-shadow:0 0 0 2px var(--c-acc)}
-/* כמו בהדמיה: חלון שירות הלקוחות בלי כותרת כפולה — הכותרת של הצ'אט היא הכותרת (בדפדפנים ישנים בלי :has נשארת גם הכותרת הרגילה) */
-#v8Sheet:has(.cu96) .phead{display:none}
-#v8Sheet:has(.cu96) #v8SheetBody{padding:0;display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0}
+/* כמו בהדמיה: חלון שירות הלקוחות בלי כותרת כפולה, וההודעות נגללות בתוך החלון. בלי :has — ה-WebView של האפליקציה (Chrome 91) לא מכיר אותו, ואז ההודעות לא נגללו בכלל. המחלקה cu96s נוספת ב-openChat (js/040.js) */
+#v8Sheet.cu96s .phead{display:none}
+#v8Sheet.cu96s #v8SheetBody{padding:0;display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0}
 :is(#bo,body) .cu96{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--c-bg)}
 :is(#bo,body) .cu96 .hd96{margin:0;border-radius:0;border-width:0 0 1px;padding:14px 16px}
 :is(#bo,body) .cu96 .box43{flex:1 1 auto;max-height:none;margin:0;border-radius:0;padding:12px 14px 14px}
