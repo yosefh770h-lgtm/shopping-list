@@ -337,6 +337,7 @@ add26('miInv26','💌','הזמנת חברים','Invite friends','miTop26',openIn
 /* ---------- יאמי ---------- */
 yamiStep(async raw=>{const t=String(raw||'').trim();let m;
   if(/^(כמה חסכתי|כמה חסכנו|החיסכון שלי)\??$/.test(t)){botSay('💰 '+T('פתחתי את "כמה חסכתי"','Opened "My savings"'));openSavings26();return true;}
+  if(/^(הסל הזול|הסל הזול בעיר|איפה הסל הזול|הסל הזול השבוע)\??$/.test(t)){botSay('📣 '+T('פותחת את הסל הזול השבוע ב'+userCity(),'Opening the cheapest basket in '+userCity()));setTimeout(openSal26,600);return true;}
   if(/^(מצב קנייה|אני בסופר|אני בחנות)$/.test(t)){botSay('🛍️ '+T('בהצלחה בקנייה!','Happy shopping!'));setTab('list');openShop26();return true;}
   if(/^(הסל השבועי|הסל השבועי שלי|איפה הכי זול השבוע)\??$/.test(t)){botSay('🛒 '+T('בודקת איפה הסל הקבוע שלך הכי זול השבוע...','Checking your weekly basket...'));openWeekly26();return true;}
   if(/^(המדווחים של החודש|טבלת המדווחים)$/.test(t)){openTop26();botSay('🏆');return true;}
