@@ -2846,7 +2846,7 @@ await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מק
 });
 
 await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), הסל של האתר או שלי, שם ויום ההשוואה בתמונה, וצבע לפרו', async () => {
-  const prods = [{ code: '7290000000011', name: 'טחינה 500 גרם', manufacturer: 'צבר', stores: 1200 }, { code: '7290000000028', name: 'במבה 80 גרם', manufacturer: 'אסם', stores: 1800 }];
+  const prods = [{ code: '7290000000011', name: 'טחינה 500 גרם', manufacturer: 'צבר', stores: 1200, chains: 22 }, { code: '7290000000028', name: 'במבה 80 גרם', manufacturer: 'אסם השקעות בע"מ', stores: 1800, chains: 26 }, { code: '7290000000035', name: 'רוטב מיוחד', manufacturer: 'מחלבת יטבתה', stores: 300, chains: 6 }];
   const api = (r) => { const u = new URL(r.request().url()); const j = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     if (u.pathname.endsWith('/products')) return j(prods);
     if (u.pathname.endsWith('/health')) return j({ ok: true, updated: 1795678052 });
@@ -2866,10 +2866,14 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   await page.waitForTimeout(500);
   let bo = await page.$eval('#boMain', (e) => e.textContent);
   assert(bo.includes('כל יום מבחר אחר') && bo.includes('הרשימה (6)') && /היום .* בסל 4 מוצרים/.test(bo), 'בק אופיס: ' + bo.slice(0, 300));
-  await page.fill('#salQ', 'טחינה'); await page.waitForSelector('[data-addp]'); await page.click('[data-addp="7290000000011"]');
+  await page.fill('#salQ', 'טחינה'); await page.waitForSelector('[data-addp]');
+  // 🏷️ שם החברה בשם המוצר, ומוצר שנמכר במעט סניפים — אי אפשר להוסיף, וכתוב שבשאר החנויות יש מוצר אחר
+  const res = await page.$eval('#salRes', (e) => ({ t: e.textContent, off: e.querySelector('[data-addp="7290000000035"]').disabled }));
+  assert(res.off && res.t.includes('בשאר החנויות יש מוצר אחר') && res.t.includes('טחינה 500 גרם · צבר') && res.t.includes('רוטב מיוחד · יטבתה'), 'תוצאות החיפוש: ' + JSON.stringify(res));
+  await page.click('[data-addp="7290000000011"]');
   await page.click('[data-rm="0"]'); await page.click('input[name="salMd"][value="fixed"]'); await page.click('#salSave'); await page.waitForTimeout(200);
   const up = await page.evaluate(() => window.__up[0]);
-  assert(up && up.key === 'sal' && up.value.mode === 'fixed' && up.value.items.length === 6 && up.value.items.some((i) => i[1] === '7290000000011') && !up.value.items.some((i) => i[0] === 'א'), 'שמירה: ' + JSON.stringify(up));
+  assert(up && up.key === 'sal' && up.value.mode === 'fixed' && up.value.items.length === 6 && up.value.items.some((i) => i[1] === '7290000000011') && !up.value.items.some((i) => i[0] === 'א') && up.value.items.some((i) => i[0] === 'טחינה 500 גרם · צבר'), 'שמירה: ' + JSON.stringify(up));
   assert(!errors.length, errors.join(' | '));
   await ctx.close();
   // 2) הדף: המשתמש משנה את המוצרים, והסל עובר בקישור
@@ -2883,6 +2887,7 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   await p2.click('#edSave'); await p2.waitForFunction(() => document.querySelector('#h1').textContent.startsWith('הסל שלי'));
   const c = await p2.evaluate(() => ({ url: __sal.cur.url, n: __sal.basket.length, mine: JSON.parse(localStorage.getItem('yam_sal_mine') || '[]').length }));
   assert(c.n === 12 && c.mine === 12 && /&p=[\d,]+7290000000028/.test(c.url), 'עריכה: ' + JSON.stringify(c));
+  assert((await p2.evaluate(() => __sal.basket.some((b) => b[0] === 'במבה 80 גרם · אסם'))), 'שם החברה בסל של המשתמש');
   // רשימת המוצרים בתמונה — רק כשמסמנים
   const h = await p2.evaluate(async () => { const px = async () => { const cv = await __sal.draw(1080, 1350); return cv.toDataURL().length; }; const a = await px(); document.querySelector('#showItems').click(); const b = await px(); return { a, b, saved: localStorage.getItem('yam_sal_showitems') }; });
   assert(h.b !== h.a && h.saved === '1', 'רשימת המוצרים בתמונה: ' + JSON.stringify(h));

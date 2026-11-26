@@ -73,7 +73,7 @@ footer{text-align:center;padding:4px 16px 32px}
 .edl,.edr{list-style:none;padding:0;margin:6px 0}
 .edl li{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:4px 0}
 .edl .x{background:transparent;color:var(--muted);border:1px solid var(--line);padding:2px 10px;font-size:15px}
-.edr button{width:100%;justify-content:flex-start;background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500;margin:3px 0;text-align:start}
+.edr button{width:100%;justify-content:flex-start;background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500;margin:3px 0;text-align:start;flex-direction:column;align-items:flex-start;gap:2px}
 .edr small{color:var(--muted)}
 #edQ{width:100%;font:inherit;font-size:16px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
 .chk{display:flex;gap:8px;align-items:center;font-size:15px;margin:4px 0;cursor:pointer}
@@ -118,7 +118,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </div>
 <section id="ed" class="ed" hidden aria-label="שינוי המוצרים בסל">
   <h2>✏️ המוצרים בסל שלי</h2>
-  <p class="muted">משווים רק חנויות שיש בהן את כל המוצרים, אז כדאי לבחור מוצרים שנמכרים בהרבה סניפים. השינוי נשמר רק אצלכם, ומי שמקבל מכם את התמונה רואה את אותו סל.</p>
+  <p class="muted">משווים רק חנויות שיש בהן את כל המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). השינוי נשמר רק אצלכם, ומי שמקבל מכם את התמונה רואה את אותו סל.</p>
   <ul class="edl" id="edList"></ul>
   <p class="muted" id="edN"></p>
   <input id="edQ" type="search" placeholder="להוסיף מוצר: למשל טחינה, במבה, ביצים" autocomplete="off" maxlength="60" aria-label="חיפוש מוצר להוספה">
@@ -156,7 +156,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </main>
 <footer class="muted"><a href="/terms.html">תנאי שימוש</a> · <a href="/privacy.html">פרטיות</a></footer>
 <script src="/js/089-hcal.js?v=e2ea143fdb"></script>
-<script src="/js/sal-pick.js?v=12d340e54f"></script>
-<script src="/js/pages/sal.js?v=01b7c35707"></script>
+<script src="/js/sal-pick.js?v=c42b82e360"></script>
+<script src="/js/pages/sal.js?v=8bfa7923e5"></script>
 </body>
 </html>

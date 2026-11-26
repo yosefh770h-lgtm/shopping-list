@@ -310,7 +310,7 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
     const {data}=await sb.from('site_config').select('value').eq('key','sal').maybeSingle();const v=(data&&data.value)||{};
     let items=SP.clean(v.items);if(items.length<SP.MIN)items=SP.DEFAULT.slice();let md=v.mode==='daily'?'daily':'fixed',cnt=Math.max(SP.MIN,parseInt(v.count,10)||12);const counts={};
     const today=()=>{const t=SP.pick({items,mode:md,count:cnt});return '<p class="muted">'+(md==='daily'?'היום ('+esc(SP.today())+') בסל '+t.length+' מוצרים: ':'בסל '+t.length+' מוצרים: ')+esc(t.map(i=>i[0]).join(' · '))+'</p>';};
-    const draw=()=>{m.innerHTML='<div class="card"><h2>📣 הסל הזול בעיר</h2><p class="muted">המוצרים שבודקים בדף "הסל הזול" (<a href="/sal-zol-hashavua.html" target="_blank" rel="noopener">לדף</a>). משווים רק חנויות שיש בהן את <b>כל</b> המוצרים, אז כדאי לבחור מוצרים שנמכרים בהרבה סניפים (המספר בסוגריים). משתמשים יכולים לשנות לעצמם את הסל — זה לא משנה את ההגדרה כאן.</p>'+
+    const draw=()=>{m.innerHTML='<div class="card"><h2>📣 הסל הזול בעיר</h2><p class="muted">המוצרים שבודקים בדף "הסל הזול" (<a href="/sal-zol-hashavua.html" target="_blank" rel="noopener">לדף</a>). משווים רק חנויות שיש בהן את <b>כל</b> המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). מוצר שנמכר בפחות — ברוב החנויות יש מוצר אחר במקומו, והחיפוש כותב את זה. שם החברה נכנס לשם המוצר, ואפשר לתקן את השם בטבלה. משתמשים יכולים לשנות לעצמם את הסל — זה לא משנה את ההגדרה כאן.</p>'+
       '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="fixed"'+(md==='fixed'?' checked':'')+'> אותם מוצרים כל יום (כל הרשימה)</label></div>'+
       '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="daily"'+(md==='daily'?' checked':'')+'> כל יום מבחר אחר מתוך הרשימה</label> <label'+(md==='daily'?'':' hidden')+'>— כמה מוצרים בכל יום: <input id="salCnt" type="number" min="'+SP.MIN+'" max="'+SP.MAX+'" value="'+cnt+'" style="width:80px"></label></div>'+
       today()+'</div>'+
@@ -324,7 +324,7 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
       if(t.id==='salQ'){clearTimeout(m._t);const q=t.value.trim();if(q.length<2){$26('#salRes').innerHTML='';return;}
         m._t=setTimeout(async()=>{try{const r=await fetch(PRICE_API+'/products?'+new URLSearchParams({q,limit:'8'}));const d=r.ok?await r.json():[];
           d.forEach(p=>counts[p.code]=p.stores);
-          $26('#salRes').innerHTML=d.length?d.map(p=>'<button class="chip" data-addp="'+esc(p.code)+'" data-n="'+esc(p.name)+'"'+(items.some(i=>i[1]===p.code)?' disabled':'')+'>➕ '+esc(p.name)+' · '+esc(p.manufacturer||'')+' ('+(p.stores||0)+' סניפים)</button>').join(' '):'<p class="muted">לא נמצא</p>';}catch(err){$26('#salRes').innerHTML='<p class="muted">שרת המחירים לא ענה</p>';}},300);}};
+          $26('#salRes').innerHTML=d.length?d.map(p=>'<div class="row"><button class="chip" data-addp="'+esc(p.code)+'" data-n="'+esc(SP.label(p))+'"'+(items.some(i=>i[1]===p.code)||!SP.ok(p)?' disabled':'')+'>➕ '+esc(SP.label(p))+'</button> <small class="muted">'+esc(SP.badge(p))+'</small></div>').join(''):'<p class="muted">לא נמצא</p>';}catch(err){$26('#salRes').innerHTML='<p class="muted">שרת המחירים לא ענה</p>';}},300);}};
     m.onchange=e=>{if(e.target.name==='salMd'){md=e.target.value;draw();}};
     m.onclick=async e=>{const t=e.target;
       if(t.closest('[data-rm]')){items.splice(+t.closest('[data-rm]').dataset.rm,1);draw();return;}
