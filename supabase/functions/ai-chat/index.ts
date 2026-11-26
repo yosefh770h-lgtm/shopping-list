@@ -161,7 +161,7 @@ Deno.serve(withOriginCheck(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
-  let reqBody: { ping?: boolean; messages?: ChatTurn[]; context?: string; diag?: boolean; vision?: string; images?: string[]; text?: string; webprices?: { query?: string; city?: string }; nearby?: { where?: string; kind?: string }; categorize?: { items?: unknown[]; cats?: unknown[] } } = {};
+  let reqBody: { ping?: boolean; transcribe?: { audio?: string; lang?: string }; messages?: ChatTurn[]; context?: string; diag?: boolean; vision?: string; images?: string[]; text?: string; webprices?: { query?: string; city?: string }; nearby?: { where?: string; kind?: string }; categorize?: { items?: unknown[]; cats?: unknown[] } } = {};
   try { reqBody = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
   // "חימום": האתר שולח ping כשפותחים את יאמי, כדי שהשאלה עצמה לא תחכה להפעלה של השרת
   if (reqBody.ping) return json({ ok: true });
@@ -256,6 +256,27 @@ Deno.serve(withOriginCheck(async (req) => {
 
   const body = reqBody;
 
+  // 🎤 רשימה קולית בטלפון שאין בו זיהוי דיבור (בלי אפליקציית Google, או שהסינון חוסם אותה): האתר מקליט בעצמו (WAV קצר)
+  // ושולח לכאן — Gemini כותב מה נאמר. ההקלטה לא נשמרת אצלנו. נספר במכסה היומית כמו כל שאלה
+  if (body.transcribe && typeof body.transcribe === "object") {
+    const audio = String(body.transcribe.audio || "");
+    if (!/^data:audio\/wav;base64,/.test(audio) || audio.length > 2_000_000) return json({ error: "no_input" }, 400);
+    const gKey = provider === "gemini" ? apiKey : geminiKeys()[0];
+    if (!gKey) return json({ disabled: true, reason: "no_key" });
+    const en = /^en/i.test(String(body.transcribe.lang || ""));
+    const mime = "audio/wav", data = audio.slice(audio.indexOf(",") + 1);
+    const r = await geminiFetch(gKey, "gemini-2.5-flash", {
+      contents: [{ role: "user", parts: [
+        { text: (en ? "Transcribe this short recording of someone saying grocery items, in English. "
+          : "תמללי את ההקלטה הקצרה הזאת בעברית, בדיוק כפי שנאמרה (בדרך כלל רשימת מוצרים לקנייה). ")
+          + "Return only the spoken words, no comments. If nothing was said, return an empty string." },
+        { inline_data: { mime_type: mime, data } },
+      ] }],
+      generationConfig: { temperature: 0, maxOutputTokens: 600 },
+    }, { timeoutMs: 25000 });
+    if (!r.ok) return json({ error: "ai_failed", ...(isAdmin ? { detail: `Gemini ${r.status} (${r.model}): ${r.error}` } : {}) }, r.status === 429 ? 429 : 502);
+    return json({ transcript: partsText(r.data).replace(/^["'\s]+|["'\s]+$/g, "").slice(0, 1000) });
+  }
   // הצעת קטגוריה למוצרים חדשים שלא במאגר (המשתמש מאשר או משנה)
   if (body.categorize && typeof body.categorize === "object") {
     const items = (Array.isArray(body.categorize.items) ? body.categorize.items : []).map((x) => String(x).slice(0, 60)).filter(Boolean).slice(0, 30);
