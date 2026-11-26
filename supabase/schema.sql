@@ -1381,12 +1381,21 @@ drop policy if exists "bizreq admin" on public.business_requests;
 create policy "bizreq send" on public.business_requests for insert with check (auth.uid() is not null and user_id = auth.uid() and status = 'pending');
 create policy "bizreq own" on public.business_requests for select using (user_id = auth.uid());
 create policy "bizreq admin" on public.business_requests for all using (public.is_admin()) with check (public.is_admin());
+-- אישור התנאים לעסקים (העסק אחראי למחירים שהוא מפרסם) והסכמה לדיוור שיווקי (חוק התקשורת, סעיף 30א — רק מי שסימן בעצמו).
+-- הזמן נקבע בשרת, כדי שיהיה תיעוד אמין מתי ניתנה ההסכמה.
+alter table public.business_requests add column if not exists terms_ok boolean not null default false;
+alter table public.business_requests add column if not exists terms_at timestamptz;
+alter table public.business_requests add column if not exists marketing_ok boolean not null default false;
+alter table public.business_requests add column if not exists marketing_at timestamptz;
 create or replace function public.bizreq_guard() returns trigger
 language plpgsql security definer set search_path = public, auth as $$
 begin
   if auth.uid() is null or public.is_admin() then return new; end if;
   new.user_id := auth.uid(); new.status := 'pending';
   new.email := coalesce((select email from auth.users where id = auth.uid()), '');
+  new.terms_ok := coalesce(new.terms_ok, false); new.marketing_ok := coalesce(new.marketing_ok, false);
+  new.terms_at := case when new.terms_ok then now() end;
+  new.marketing_at := case when new.marketing_ok then now() end;
   return new;
 end $$;
 drop trigger if exists bizreq_guard on public.business_requests;

@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+# דפי המחיר לגוגל (מחיר מוצר בכל עיר) מוגשים משרת המחירים דרך /api/prices — רק הם פתוחים לסריקה
+Allow: /api/prices/mechir/
 # כתובות פנימיות שאינן דפים (שרת המחירים, סרטונים, כלי צוות, וכתובות שגוגל "מנחש" מתוך הקוד)
 Disallow: /api/
 Disallow: /m/
@@ -19,3 +21,4 @@ Disallow: /unit
 Disallow: /kg
 
 Sitemap: https://www.yamshopping.com/sitemap.xml
+Sitemap: https://www.yamshopping.com/api/prices/mechir/sitemap.xml

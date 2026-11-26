@@ -1340,3 +1340,39 @@ def test_receipt_pairzon_short_link(built, monkeypatch):
     c = TestClient(api.app)
     r = c.get("/receipt", params={"u": short}, headers={"Referer": "https://www.yamshopping.com/"})
     assert r.status_code == 502 and r.json()["short"] == short and r.json()["kind"] == "pairzon" and "api" not in r.json()
+
+
+def test_seo_pages(built, monkeypatch):
+    """דפי המחיר לגוגל: HTML עם המחיר הזול ביותר, רק לרשתות שפתוחות למשתמשים, ומפת אתר."""
+    con, api = built
+    from fastapi.testclient import TestClient
+    from yam import seo
+    seo.clear_cache()
+    monkeypatch.setattr(seo, "MIN_CITY_STORES", 1)
+    monkeypatch.setitem(seo.BY_SLUG, "chalav", ("chalav", "חלב 3%", "חלב"))
+    c = TestClient(api.app)
+    # עוד לא נשמרה הגדרה מהבק אופיס — אין רשתות גלויות, אין דפים
+    assert c.get("/mechir/chalav/בני-ברק").status_code == 404
+    con.execute("insert or replace into meta(k, v) values ('visible', ?)", ('{"public": true, "hidden": []}',))
+    con.commit()
+    seo.clear_cache()
+    r = c.get("/mechir/chalav/בני-ברק")
+    assert r.status_code == 200, r.text
+    assert "text/html" in r.headers["content-type"] and "style-src 'unsafe-inline'" in r.headers["content-security-policy"]
+    t = r.text
+    assert "<h1>מחיר חלב 3% בבני ברק" in t and "הכי זול כרגע" in t and "AggregateOffer" in t
+    assert t.count("<tr>") >= 3 and "<script>" not in t
+    assert 'rel="canonical" href="https://www.yamshopping.com/api/prices/mechir/chalav/%D7%91' in t
+    assert c.get("/mechir/chalav").status_code == 200
+    assert c.get("/mechir/ir/בני-ברק").status_code == 200
+    assert c.get("/mechir/").status_code == 200
+    assert c.get("/mechir/no-such-thing").status_code == 404
+    sm = c.get("/mechir/sitemap.xml")
+    assert sm.status_code == 200 and "/mechir/chalav/%D7%91%D7%A0%D7%99-%D7%91%D7%A8%D7%A7</loc>" in sm.text
+    # רשת שהמנהל הסתיר לא מופיעה בדף
+    con.execute("insert or replace into meta(k, v) values ('visible', ?)", ('{"public": true, "hidden": ["RAMI_LEVY"]}',))
+    con.commit()
+    seo.clear_cache()
+    assert "רמי לוי" not in c.get("/mechir/chalav/בני-ברק").text
+    # דף לגוגל לא נספר במכסה של ה-API
+    assert not api._daily or all(not v for v in api._daily.values())

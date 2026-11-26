@@ -63,12 +63,19 @@ class Runner:
         if self.supa:
             try:
                 self.cfg = self.supa.config(self.cfg)
+                self.save_visible()
             except Exception as e:
                 log.warning("לא הצלחנו לקרוא את ההגדרות מהבק אופיס, ממשיכים עם ברירת המחדל: %s", e)
         self.threads = int(env("THREADS", "3"))
         self.rep_limit = int(env("REP_LIMIT", "4000"))
         self.summary = []
         self.failed = []
+
+    def save_visible(self):
+        """אילו רשתות המשתמשים רואים (מהבק אופיס) — נשמר במאגר, כדי שדפי המחיר לגוגל (seo.py) יציגו רק אותן."""
+        v = {"public": self.cfg.get("public") is True, "hidden": [x for x in (self.cfg.get("hidden") or []) if isinstance(x, str)]}
+        self.con.execute("insert or replace into meta(k, v) values ('visible', ?)", (json.dumps(v),))
+        self.con.commit()
 
     # ---------- השהיית שבת ----------
     def paused(self):
