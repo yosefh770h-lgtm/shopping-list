@@ -69,9 +69,12 @@ window.errCtx=errCtx;
   window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const fn=r&&r.stack?fnOf(r.stack):'';send((r&&(r.message||r))||'promise',r&&r.stack?(fn?fn+' · ':'')+(String(r.stack).split('\n')[1]||'').trim():'');});
   window.logClientError=send;
   /* 🛡️ CSP: קוד שנחסם (או שהיה נחסם, במדיניות "לדיווח בלבד" — Report-Only) נרשם ביומן התקלות. ככה יודעים בבטחה מתי אפשר לאכוף. תוספים בדפדפן מסוננים (IGN) */
-  /* נובמבר 2026: נטפרי מזריק לדף סקריפט משלו (netfree.link). ה-CSP חוסם אותו כמו שצריך, וזו לא תקלה באתר — לא נרשם ביומן */
+  /* נובמבר 2026: מסננים (נטפרי) מזריקים לדף סקריפט משלהם — קובץ מ-netfree.link, וקוד שמודבק בתוך הדף עצמו (inline).
+     ה-CSP חוסם אותם כמו שצריך, וזו לא תקלה באתר — לא נרשם ביומן. בדפים שלנו אין קוד בתוך הדף (tests/stamp-js.mjs בודק),
+     אז inline שנחסם בתוך הדף (ולא מקובץ js שלנו) תמיד הגיע מבחוץ. inline שנוצר מתוך קובץ js שלנו — כן נרשם */
   const FILTER_INJ=/(^|[\/.])netfree\.[a-z]+(\/|$)/i;
-  document.addEventListener('securitypolicyviolation',e=>{const d=e.effectiveDirective||e.violatedDirective||'';if(!/^script-src/.test(d)||FILTER_INJ.test(e.blockedURI||'')||FILTER_INJ.test(e.sourceFile||''))return;
+  const injected=e=>FILTER_INJ.test(e.blockedURI||'')||FILTER_INJ.test(e.sourceFile||'')||(e.blockedURI==='inline'&&!/\.m?js([?#]|$)/i.test(e.sourceFile||''));
+  document.addEventListener('securitypolicyviolation',e=>{const d=e.effectiveDirective||e.violatedDirective||'';if(!/^script-src/.test(d)||injected(e))return;
     post('🛡️ CSP'+(e.disposition==='report'?' (דיווח בלבד)':'')+': '+d+' '+(e.blockedURI||''),(e.sourceFile||'').replace(location.origin,'')+':'+(e.lineNumber||0)+' '+String(e.sample||'').slice(0,80));});
   /* 💥 אפליקציה מגרסה 2.2: אם האפליקציה עצמה קרסה (או שחלון האתר קרס) — בפתיחה הבאה זה נשלח ליומן התקלות, פעם אחת */
   setTimeout(()=>{try{const y=window.YamApp,c=y&&typeof y.lastCrash==='function'?y.lastCrash():'';if(!c)return;const o=JSON.parse(c);
