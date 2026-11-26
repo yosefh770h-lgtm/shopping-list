@@ -102,6 +102,9 @@ async function autoBasket(cfg){const day=SP.today(),n=parseInt(cfg.count,10)||12
     const items=await SP.auto({terms,count:n,search:q=>fetch(API+'/products?'+new URLSearchParams({q,limit:'6'})).then(x=>x.ok?x.json():[])});
     if(items.length<SP.MIN)return null;ls.set(AUTO,JSON.stringify({day,n,items}));return items;}catch(e){return null;}}
 const basketReady=loadBasket().then(drawSrc);
+/* → חזרה: למקום באפליקציה שממנו באו (אותו אתר), ואם נכנסו ישר לדף (קישור ששיתפו) — לדף הבית */
+$('#back').onclick=e=>{let same=false;try{same=!!document.referrer&&new URL(document.referrer).origin===location.origin&&!/sal-zol-hashavua/.test(document.referrer);}catch(x){}
+  if(same&&history.length>1){e.preventDefault();history.back();}};
 function drawSrc(){$('#srcSite').setAttribute('aria-pressed',String(!custom&&!holi));$('#srcHoli').setAttribute('aria-pressed',String(!!holi));$('#srcMine').setAttribute('aria-pressed',String(custom));}
 const N=()=>BASKET.length;
 const title=()=>custom?'הסל שלי — איפה הכי זול':holi?'הסל הזול ל'+holi.name:mode==='daily'||mode==='auto'?'הסל הזול היום':'הסל הזול השבוע';
