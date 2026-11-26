@@ -549,13 +549,14 @@ async function yamiCore(raw){
   }
   /* תוכניות לפי יום */
   const d=findDay(t);
-  if(d>=0&&/(תוכנית|צריך|רק|תוסיף|הוסף|תרשום|תזכיר|רשום|מה יש)/.test(t)&&!YAMI_ASK.test(t)&&t.length<=80){
+  /* רק כשמבקשים במפורש תוכנית ליום ("תוכנית", "ליום חמישי", "לשבת") — לא כל משפט שמוזכר בו יום (אחרת נשמרו מילים מהמשפט כ"תוכנית להיום") */
+  if(d>=0&&(/תוכנית/.test(t)||/(^|\s)(ל|ב)(יום |שבת)/.test(t))&&/(תוכנית|צריך|רק|תוסיף|הוסף|תרשום|תזכיר|רשום|מה יש)/.test(t)&&!YAMI_ASK.test(t)&&t.length<=80){
     const plan=state.plans[d]||[];
     if(/(מחק|הסר|בטל).*(תוכנית|יום)/.test(t)){delete state.plans[d];save();return botSay('מחקתי את התוכנית של יום '+DAYS[d]+' 🗑️');}
     if(/מה (יש|צריך)/.test(t))return botSay(plan.length?('התוכנית של יום '+DAYS[d]+':\n• '+plan.join('\n• ')):('אין עדיין תוכנית ליום '+DAYS[d]));
     if(/(הוסף|העבר|קנה).*(תוכנית)/.test(t)){if(!plan.length)return botSay('אין תוכנית ליום '+DAYS[d]+' 🤷');plan.forEach(n=>addItem(n,''));return botSay('העברתי את התוכנית של יום '+DAYS[d]+' לרשימה ✅');}
     const m2=t.match(/(?:רק|צריכה|צריך|תוסיף|הוסף|תרשום|רשום|תזכיר)\s+(.+)/);const its=parseItems(m2?m2[1]:t);
-    if(its.length){state.plans[d]=its.map(i=>i.name);save();return botSay('שמרתי תוכנית ליום '+DAYS[d]+' 📅\n• '+its.map(i=>i.name).join('\n• '));}
+    if(its.length){state.plans[d]=its.map(i=>i.name);save();return botSay('שמרתי תוכנית ליום '+DAYS[d]+' 📅\n• '+its.map(i=>i.name).join('\n• ')+'\n(ביום הזה היא תופיע למעלה ברשימה, ואפשר למחוק אותה ב-✕)');}
   }
   /* מה שלימדו אותי */
   const known=knowledgeAnswer(t);
@@ -2060,6 +2061,7 @@ document.querySelector('#favs').addEventListener('click',e=>{
   if(e.target.dataset.favhide){state.hideFavs=true;save(true);render();flash(T('שורת המועדפים הוסתרה — אפשר להחזיר בתפריט ⚙️','Hidden — restore from ⚙️ menu'));return;}
   if(e.target.dataset.fav)addItem(e.target.dataset.fav,'');});
 document.querySelector('#banner').addEventListener('click',e=>{
+  if(e.target.closest('[data-plandel]')){delete state.plans[new Date().getDay()];save();render();flash('🗑️ '+T('התוכנית להיום נמחקה','Today\'s plan deleted'));return;}
   if(e.target.dataset.planadd){(state.plans[new Date().getDay()]||[]).forEach(n=>{if(!curList().items.find(i=>i.n===n&&!i.done))addItem(n,'');});}});
 document.querySelector('#paneList').addEventListener('click',e=>{
   if(e.target.closest('[data-cheapopen]')){storesView='cmp';if(typeof cmpFirst!=='undefined')cmpFirst=false;setTab('stores');}});

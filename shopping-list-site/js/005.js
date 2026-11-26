@@ -359,7 +359,7 @@ function render(){
   const b=document.querySelector('#banner');
   if(plan.length){const l=curList();const missing=plan.filter(n=>!l.items.find(i=>i.n===n));
     b.classList.add('open');
-    b.innerHTML='<span>📋 תוכנית להיום: <b>'+plan.map(esc).join(', ')+'</b></span>'+(missing.length?'<button data-planadd="1">הוסף לרשימה ('+missing.length+')</button>':'<span style="color:var(--muted)">הכל כבר ברשימה ✔</span>');
+    b.innerHTML='<span>📋 תוכנית להיום: <b>'+plan.map(esc).join(', ')+'</b></span>'+'<span class="pl05">'+(missing.length?'<button data-planadd="1">הוסף לרשימה ('+missing.length+')</button>':'<span style="color:var(--muted)">הכל כבר ברשימה ✔</span>')+'<button class="plx05" data-plandel="1" aria-label="'+T('מחיקת התוכנית להיום','Delete today\'s plan')+'" title="'+T('מחיקת התוכנית להיום','Delete today\'s plan')+'">✕</button></span>';
   }else b.classList.remove('open');
   /* ⚡ כל שינוי ברשימה קורא ל-render — את השיחה עם יאמי (עד 150 הודעות) מציירים רק כשהיא פתוחה ורק אם השתנתה.
      כל פתיחה שלה (גם העמודה במחשב) עוברת דרך openBot, שמצייר אותה */

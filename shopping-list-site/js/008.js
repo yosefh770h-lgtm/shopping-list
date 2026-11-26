@@ -2,7 +2,7 @@
 /* ================= גרסה 8 ================= */
 let uiCfg={},meCfg={};
 const $8=s=>document.querySelector(s);
-function openSheet(title,html){$8('#v8SheetTitle').textContent=title;const b=$8('#v8SheetBody');b.innerHTML=html||'';$8('#hMenu').classList.remove('open');$8('#v8Sheet').classList.add('open');return b;}
+function openSheet(title,html){$8('#v8SheetTitle').textContent=title;const b=$8('#v8SheetBody');b.innerHTML=html||'';$8('#hMenu').classList.remove('open');$8('#v8Sheet').classList.remove('cu96s');$8('#v8Sheet').classList.add('open');return b;}
 function closeSheet(){$8('#v8Sheet').classList.remove('open');}
 $8('#btnCloseSheet').onclick=closeSheet;
 $8('#v8Sheet').addEventListener('click',e=>{if(e.target.id==='v8Sheet')closeSheet();});

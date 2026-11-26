@@ -130,7 +130,7 @@ async function igChange96(e){const s=e.target.closest&&e.target.closest('[data-i
 /* ---------- 1. הלקוח: שירות לקוחות ---------- */
 openChat=async function(){
   $43('#hMenu').classList.remove('open');
-  const b=openSheet('💬 '+T('שירות לקוחות','Customer service'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');b.oninput=null;b.onchange=null;
+  const b=openSheet('💬 '+T('שירות לקוחות','Customer service'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');b.oninput=null;b.onchange=null;$43('#v8Sheet').classList.add('cu96s');
   if(!sb||!authUser){b.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים כדי להתכתב 🙂','Sign in to chat 🙂')+'</p>';return;}
   const r=await loadChat();if(r===null){b.innerHTML='<p class="muted-note">'+T('הצ\'אט עוד לא זמין 🙏','Chat is not available yet 🙏')+'</p>';return;}
   try{const {data}=await sb.from('support_status').select('*').eq('user_id',authUser.id).maybeSingle();supStatus=data;}catch(e){}
@@ -165,7 +165,7 @@ openChat=async function(){
       const btn=e.target.closest('#chatSend');btn.disabled=true;const res=await ch.submit(t,{topic:newTicket?supTopic:''});btn.disabled=false;if(!res)return;
       $43('#chatText').value='';
       if(res==='sent'){supStatus={status:'open',topic:newTicket?supTopic:(supStatus&&supStatus.topic)||''};supTopic='';}
-      if(pic)gr=await grant96(authUser.id);await loadChat();draw();if(res!=='same')flash(res==='edited'?'✏️ '+T('ההודעה עודכנה','Message updated'):'💬 '+T('נשלח — נענה בהקדם','Sent'));}
+      if(grantOn96(gr))gr=await grant96(authUser.id);await loadChat();draw();if(res!=='same')flash(res==='edited'?'✏️ '+T('ההודעה עודכנה','Message updated'):'💬 '+T('נשלח — נענה בהקדם','Sent'));}
   };
   b.onkeydown=e=>{if(e.key==='Escape'&&ch&&ch.escape()){e.stopPropagation();return;}
     if(e.target.id==='chatText')enterSends96(e,$43('#chatSend'));};
