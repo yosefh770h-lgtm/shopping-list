@@ -44,10 +44,15 @@ function visitSrc40(){let s='';try{const q=new URLSearchParams(location.search);
   const a=appSrc41();if(a)return a;
   try{const h=document.referrer?new URL(document.referrer).hostname.toLowerCase():'';if(h&&h!==location.hostname)return /(^|\.)google\./.test(h)?'google':/(^|\.)bing\./.test(h)?'bing':/facebook\.|(^|\.)fb\./.test(h)?'facebook':/whatsapp/.test(h)?'whatsapp':/(^|\.)t\.me$|telegram/.test(h)?'telegram':('site-'+h.replace(/^www\./,'').replace(/[^a-z0-9.-]/g,'')).slice(0,40);}catch(e){}
   return 'direct';}
-(function(){let had='';try{had=localStorage.getItem('yam_src')||'';}catch(e){}if(had)return;
+/* המכשיר זוכר רק את המקור ואת יום הביקור הראשון (לפי השעון של השרת, UTC). כשהוא חוזר שבוע עד 60 יום אחר כך — מוסיף 1 למונה של אותו מקור ויום, פעם אחת. בלי שום מזהה */
+function srcVisit40(){let had='',day='',ret='';try{had=localStorage.getItem('yam_src')||'';day=localStorage.getItem('yam_src_day')||'';ret=localStorage.getItem('yam_src_ret')||'';}catch(e){}
+  if(had){if(had==='existing'||ret||!/^\d{4}-\d{2}-\d{2}$/.test(day)||!sb)return;const age=Math.floor((Date.now()-Date.parse(day+'T00:00:00Z'))/864e5);
+    if(age<7)return;if(age>60){try{localStorage.setItem('yam_src_ret','0');}catch(e){}return;}
+    try{sb.rpc('visit_src_return',{p_src:had,p_day:day}).then(({error})=>{if(!error)try{localStorage.setItem('yam_src_ret','1');}catch(e){}},()=>{});}catch(e){}return;}
   /* מי שכבר השתמש באתר לפני שהמעקב נוסף — לא נספר כמבקר חדש */
-  const src=(state&&state.user)?'existing':visitSrc40();try{localStorage.setItem('yam_src',src);}catch(e){}
-  if(src!=='existing'&&sb)try{sb.rpc('visit_src',{p_src:src}).then(()=>{},()=>{});}catch(e){}})();
+  const src=(state&&state.user)?'existing':visitSrc40();try{localStorage.setItem('yam_src',src);if(src!=='existing')localStorage.setItem('yam_src_day',new Date().toISOString().slice(0,10));}catch(e){}
+  if(src!=='existing'&&sb)try{sb.rpc('visit_src',{p_src:src}).then(()=>{},()=>{});}catch(e){}}
+srcVisit40();
 async function visitSignup40(){let src='';try{src=localStorage.getItem('yam_src')||'';}catch(e){}if(!src||src==='existing'||!sb||!authUser)return;
   /* רק חשבון חדש (נוצר ביממה האחרונה) — לא מי שנכנס ממכשיר חדש לחשבון ישן */
   const made=Date.parse(authUser.created_at||'');if(!(made>Date.now()-864e5))return;let done='';try{done=localStorage.getItem('yam_src_signup')||'';}catch(e){}if(done===authUser.id)return;
@@ -60,11 +65,19 @@ window.boAfter&&window.boAfter('guests',async main=>{if(!main||main.querySelecto
   if(error){box.textContent='⚠️ צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)';return;}
   const rows=Array.isArray(data)?data:[];if(!rows.length){box.textContent='עוד אין נתונים.';return;}
   const NM={direct:'ישירות (הקלידו את הכתובת / סימנייה)',google:'גוגל',bing:'בינג',facebook:'פייסבוק',whatsapp:'וואטסאפ',telegram:'טלגרם',shared:'רשימה משותפת',share:'קישור שיתוף אישי ("שתפו אותי")',shabbat:'דף "רשימת קניות לשבת"',pesach:'דף "רשימת קניות לפסח"',chanukah:'דף "רשימת קניות לחנוכה"',purim:'דף "רשימת קניות לפורים"',roshhashana:'דף "רשימת קניות לראש השנה"',sukkot:'דף "רשימת קניות לסוכות"',mechir:'דפי המחיר לפי מוצר ועיר',prices:'דף "השוואת מחירים"',qr:'מודעת QR'};
-  box.className='';box.innerHTML='<div class="tw" tabindex="0" role="region" aria-label="מקורות מבקרים"><table><thead><tr><th>מקור</th><th>מבקרים חדשים</th><th>נרשמו</th><th>פעילים אחרי שבוע</th></tr></thead><tbody>'+
+  box.className='';box.innerHTML='<div class="tw" tabindex="0" role="region" aria-label="מקורות מבקרים"><table><thead><tr><th>מקור</th><th>מבקרים חדשים</th><th>נרשמו</th><th>נרשמו ופעילים אחרי שבוע</th><th>🔁 חזרו אחרי שבוע (כולם)</th></tr></thead><tbody>'+
     rows.map(r=>{const pct=(a,b)=>b?' <small class="muted">('+Math.round(100*a/b)+'%)</small>':'';
-      return '<tr><td>'+esc(NM[r.src]||r.src)+(NM[r.src]?' <small class="muted" dir="ltr">'+esc(r.src)+'</small>':'')+'</td><td>'+(r.visits|0)+'</td><td>'+(r.signups|0)+pct(r.signups|0,r.visits|0)+'</td><td>'+((r.week_old|0)?(r.active7|0)+' מתוך '+(r.week_old|0)+pct(r.active7|0,r.week_old|0):'<span class="muted">—</span>')+'</td></tr>';}).join('')+'</tbody></table></div>'+
-    '<p class="muted" style="margin-top:6px">"פעילים אחרי שבוע" — מתוך מי שנרשם לפני יותר משבוע, כמה עוד נכנסו לאתר שבוע אחרי ההרשמה. כך רואים איזה פרסום מביא אנשים שנשארים.</p>';};
+      return '<tr><td>'+esc(NM[r.src]||r.src)+(NM[r.src]?' <small class="muted" dir="ltr">'+esc(r.src)+'</small>':'')+'</td><td>'+(r.visits|0)+'</td><td>'+(r.signups|0)+pct(r.signups|0,r.visits|0)+'</td><td>'+((r.week_old|0)?(r.active7|0)+' מתוך '+(r.week_old|0)+pct(r.active7|0,r.week_old|0):'<span class="muted">—</span>')+'</td><td>'+((r.ret_base|0)?(r.returned|0)+' מתוך '+(r.ret_base|0)+pct(r.returned|0,r.ret_base|0):'<span class="muted">—</span>')+'</td></tr>';}).join('')+'</tbody></table></div>'+
+    '<p class="muted" style="margin-top:6px">"פעילים אחרי שבוע" — מתוך מי שנרשם לפני יותר משבוע, כמה עוד נכנסו לאתר שבוע אחרי ההרשמה. כך רואים איזה פרסום מביא אנשים שנשארים.<br>"חזרו אחרי שבוע (כולם)" — מכל המבקרים החדשים, גם מי שלא נרשם: כמה חזרו לאתר שבוע עד חודשיים אחרי הביקור הראשון. נספרים רק מי שעבר עליהם כבר שבוע. בלי עוגיות ובלי לדעת מי חזר — רק מספר.</p>'+await weeks40();};
   dSel.onchange=run;await run();});
+/* 🔁 לפי שבוע של הביקור הראשון: כמה מבקרים חדשים וכמה מהם חזרו */
+async function weeks40(){const {data,error}=await sb.rpc('admin_visit_return_weeks');const rows=!error&&Array.isArray(data)?data:[];
+  if(!rows.length)return '<h3 style="margin-top:14px">🔁 מי חוזר — לפי שבוע</h3><p class="muted">'+(error?'⚠️ צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית)':'עוד אין נתונים. המספרים מתחילים להופיע שבוע אחרי שמריצים את ה-SQL.')+'</p>';
+  const dm=d=>{const p=String(d).split('-');return +p[2]+'.'+(+p[1]);};
+  return '<h3 style="margin-top:14px">🔁 מי חוזר — לפי שבוע</h3><div class="tw" tabindex="0" role="region" aria-label="חוזרים לפי שבוע"><table><thead><tr><th>שבוע הביקור הראשון</th><th>מבקרים חדשים</th><th>חזרו אחרי שבוע</th></tr></thead><tbody>'+
+    rows.map(r=>{const p=r.visits?Math.round(100*r.returned/r.visits):0;const end=new Date(Date.parse(r.week+'T00:00:00Z')+6*864e5).toISOString().slice(0,10);
+      return '<tr><td>'+dm(r.week)+'–'+dm(end)+(r.partial?' <small class="muted">(חלקי)</small>':'')+'</td><td>'+(r.visits|0)+'</td><td><b>'+p+'%</b> <small class="muted">('+(r.returned|0)+')</small></td></tr>';}).join('')+
+    '</tbody></table></div><p class="muted">"חלקי" — שבוע שחלק מימיו עוד לא עבר עליהם שבוע, ולכן נספרים רק הימים הראשונים שבו.</p>';}
 /* ---------- ⚠️ אלרגיות בבית: בוחרים פעם אחת, ובכל סריקת ברקוד מקבלים אזהרה ---------- */
 const ALG27=['גלוטן','חלב','ביצים','אגוזים','בוטנים','סויה','שומשום','דגים','רכיכות','סלרי','חרדל','תורמוס','סולפיטים'];
 const myAlg27=()=>{try{return Array.isArray(meData().allergies)?meData().allergies:[];}catch(e){return [];}};

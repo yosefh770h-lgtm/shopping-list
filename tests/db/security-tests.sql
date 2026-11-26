@@ -2090,6 +2090,30 @@ select tst.err($$insert into public.feedback_replies (feedback_id, body) select 
 reset role;
 delete from public.feedback where email = '050-1234567';
 select tst.ok((select count(*) from public.feedback_replies) = 0, 'replies: deleted together with the inquiry');
+-- 🔁 חוזרים אחרי שבוע: רק מונה לפי יום + מקור, אף פעם לא יותר ממספר המבקרים החדשים, ורק הצוות רואה
+update public.visit_returns_start set day = current_date - 30;
+insert into public.visit_sources(day, src, n) values (current_date - 10, 'qr-test', 2), (current_date - 3, 'qr-test', 5)
+  on conflict (day, src) do update set n = excluded.n;
+set role anon;
+select tst.ok(public.visit_src_return('qr-test', current_date - 10), 'return: a device that came back after a week is counted');
+select tst.ok(public.visit_src_return('qr-test', current_date - 10), 'return: a second device from the same day too');
+select public.visit_src_return('qr-test', current_date - 10);
+select tst.ok(not public.visit_src_return('qr-test', current_date - 3), 'return: less than a week later is not counted');
+select tst.ok(not public.visit_src_return('qr-test', current_date - 40), 'return: before measuring started is not counted');
+select tst.ok(not public.visit_src_return('no-such-src', current_date - 10), 'return: a source/day that had no new visitors is ignored');
+select tst.err($$select count(*) from public.visit_returns$$, 'return: anon cannot read the counts');
+select tst.err($$insert into public.visit_returns values (current_date - 9, 'x', 99)$$, 'return: anon cannot write the counts directly');
+reset role;
+select tst.ok((select n from public.visit_returns where src = 'qr-test') = 2, 'return: never more returns than new visitors (2 of 2)');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a');
+select tst.ok(public.admin_visit_sources(30) is null and public.admin_visit_return_weeks() is null, 'return: a regular user gets no stats');
+select tst.as_user('00000000-0000-0000-0000-000000000001'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select tst.ok((select (x->>'ret_base')::int = 2 and (x->>'returned')::int = 2 and (x->>'visits')::int = 7
+                 from jsonb_array_elements(public.admin_visit_sources(30)) x where x->>'src' = 'qr-test'), 'return: staff see per source 2 of 2 came back (the 5 from 3 days ago not counted yet)');
+select tst.ok((select sum((x->>'visits')::int) = 2 and sum((x->>'returned')::int) = 2 from jsonb_array_elements(public.admin_visit_return_weeks()) x), 'return: weekly table counts only days a week old');
+select set_config('request.jwt.claims', '', false);
+reset role;
+delete from public.visit_returns where src = 'qr-test'; delete from public.visit_sources where src = 'qr-test';
 select set_config('request.headers', '', false);
 select tst.ok(true, 'ALL DONE');
 -- auth_user_state: only the server may call it
