@@ -91,7 +91,7 @@ jobs:
       - name: Collector tests
         run: python -m pytest -q tests
       - name: Install scripts are valid bash
-        run: bash -n setup.sh && bash -n bin/cron-run.sh
+        run: bash -n setup.sh && bash -n bin/cron-run.sh && bash -n bin/lockdown-install.sh
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 10

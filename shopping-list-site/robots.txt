@@ -8,6 +8,7 @@ Disallow: /m/
 Disallow: /collector/
 Disallow: /ext/
 Disallow: /admin.html
+Disallow: /maintenance.html
 Disallow: /server-code.html
 Disallow: /auth/
 Disallow: /functions

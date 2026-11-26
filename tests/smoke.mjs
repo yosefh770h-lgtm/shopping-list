@@ -2845,6 +2845,62 @@ await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מק
   await ctx.close();
 });
 
+await test('🚧 מצב שיפוצים: סגירה בלחיצה, בדיקה לפני פתיחה, ומסך "בשיפוצים" למי שמחובר', async () => {
+  const { ctx, page, errors } = await newPage();
+  const now = new Date().toISOString();
+  const ev = [{ at: now, kind: 'perm', n: 0, detail: { what: 'mod@x.com נוסף/ה לצוות (moderator)' } }, { at: now, kind: 'sys_change', n: 1, detail: { what: '/home/ubuntu/.ssh/authorized_keys' } }];
+  const D = { 'site_lock:one': { id: 1, locked: false, server_seen: now, auto_tamper: true, auto_new_device: false }, security_events: ev };
+  await page.evaluate((D) => { sb = __stub(D); window.__rc = []; const rpc = sb.rpc; sb.rpc = (n, a) => { window.__rc.push([n, a]); return Promise.resolve({ data: 3, error: null }); };
+    authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; window.uiConfirm = async () => true; openBO('lockdown'); }, D);
+  await page.waitForTimeout(800);
+  let r = await page.evaluate(() => ({ nav: !!document.querySelector('#boNav [data-s="lockdown"]'), txt: document.querySelector('#boMain').textContent, btn: !!document.querySelector('#ldClose') }));
+  assert(r.nav && r.btn && r.txt.includes('האתר פתוח') && r.txt.includes('השומר בשרת פעיל') && r.txt.includes('שינוי בהרשאות'), 'מסך מצב שיפוצים (פתוח): ' + r.txt.slice(0, 200));
+  if (process.env.SHOTS) {
+    await page.setViewportSize({ width: 412, height: 2600 }); await page.waitForTimeout(300);
+    await page.locator('#ldMain').screenshot({ path: process.env.SHOTS + '/1-טלפון-כפתור-סגירה.png' });
+    await page.setViewportSize({ width: 1366, height: 2000 }); await page.waitForTimeout(300);
+    await page.locator('#ldMain').screenshot({ path: process.env.SHOTS + '/2-מחשב-כפתור-סגירה.png' });
+  }
+  await page.evaluate(() => { document.querySelector('#ldWhy').value = 'בדיקה'; document.querySelector('#ldClose').click(); });
+  await page.waitForTimeout(400);
+  r = await page.evaluate(() => window.__rc);
+  assert(r.some((c) => c[0] === 'site_lock_close' && c[1].p_reason === 'בדיקה'), 'הסגירה לא נשלחה: ' + JSON.stringify(r));
+  // סגור, והבדיקה מצאה קבצים שהשתנו → נשאר סגור ומראה מה
+  D['site_lock:one'] = { id: 1, locked: true, src: 'auto', reason: 'חשד לפריצה: 2 קבצים באתר שונים מ-GitHub', locked_at: now, server_seen: now, auto_tamper: true,
+    check_at: now, check_ok: false, check_detail: { problems: ['2 קבצים באתר שונים מ-GitHub'], files: ['site:shopping-list-site/js/006.js', 'site:shopping-list-site/x.php'], commits: ['a1b2c3d yosef: תיקון'] } };
+  D.security_events = [{ at: now, kind: 'tamper', n: 2, detail: { why: '2 קבצים שונים מ-GitHub', closed: true } }, { at: now, kind: 'lock', n: 41, detail: { reason: 'חשד לפריצה', by: 'auto' } }].concat(ev);
+  await page.evaluate((D) => { const rpc = sb.rpc; sb = __stub(D); sb.rpc = rpc; document.querySelector('#boNav [data-s="lockdown"]').click(); }, D);
+  await page.waitForTimeout(800);
+  r = await page.evaluate(() => ({ txt: document.querySelector('#boMain').textContent, open: !!document.querySelector('#ldOpen'), force: !!document.querySelector('#ldForce') }));
+  assert(r.open && r.force && r.txt.includes('האתר סגור') && r.txt.includes('נסגר אוטומטית') && r.txt.includes('x.php') && r.txt.includes('מה נכנס ל-GitHub'), 'מסך מצב שיפוצים (סגור): ' + r.txt.slice(0, 300));
+  if (process.env.SHOTS) {
+    await page.setViewportSize({ width: 412, height: 2800 }); await page.waitForTimeout(300);
+    await page.locator('#ldMain').screenshot({ path: process.env.SHOTS + '/3-טלפון-סגור-ובדיקה-נכשלה.png' });
+    await page.setViewportSize({ width: 1366, height: 2200 }); await page.waitForTimeout(300);
+    await page.locator('#ldMain').screenshot({ path: process.env.SHOTS + '/4-מחשב-סגור-ובדיקה-נכשלה.png' });
+  }
+  await page.evaluate(() => document.querySelector('#ldOpen').click()); await page.waitForTimeout(300);
+  r = await page.evaluate(() => window.__rc);
+  assert(r.some((c) => c[0] === 'site_lock_open' && c[1].p_force === false), 'הבקשה לפתוח לא נשלחה: ' + JSON.stringify(r));
+  // משתמש רגיל שהאתר כבר פתוח אצלו: המסד עונה 503 → מסך "בשיפוצים"
+  await page.route(/\/rest\/v1\/test-maint$/, (rt) => rt.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'PT503', details: 'maintenance', message: 'האתר בשיפוצים' }) }));
+  await page.evaluate(() => { if (typeof closeBO === 'function') closeBO(); return yamFetch('https://ygyfodxfbebnkwdcbjrp.supabase.co/rest/v1/test-maint'); }); await page.waitForTimeout(400);
+  r = await page.evaluate(() => { const d = document.querySelector('#yamMaint'); return d && d.textContent; });
+  assert(r && r.includes('האתר בשיפוצים'), 'מסך השיפוצים לא הופיע');
+  if (process.env.SHOTS) { await page.setViewportSize({ width: 412, height: 800 }); await page.waitForTimeout(200); await page.screenshot({ path: process.env.SHOTS + '/5-טלפון-משתמש-מחובר-רואה-שיפוצים.png' }); }
+  // הדף שהשרת מציג לכולם
+  const p2 = await ctx.newPage(); const errs2 = []; p2.on('console', (m) => { if (m.type() === 'error') errs2.push(m.text()); });
+  await p2.goto(BASE.replace('index.html', 'maintenance.html'));
+  assert((await p2.textContent('h1')) === 'האתר בשיפוצים' && !errs2.length, 'דף השיפוצים: ' + errs2.join(' | '));
+  if (process.env.SHOTS) {
+    await p2.setViewportSize({ width: 412, height: 800 }); await p2.screenshot({ path: process.env.SHOTS + '/6-טלפון-דף-השיפוצים.png' });
+    await p2.emulateMedia({ colorScheme: 'dark' }); await p2.screenshot({ path: process.env.SHOTS + '/7-טלפון-דף-השיפוצים-כהה.png' });
+    await p2.setViewportSize({ width: 1366, height: 800 }); await p2.emulateMedia({ colorScheme: 'light' }); await p2.screenshot({ path: process.env.SHOTS + '/8-מחשב-דף-השיפוצים.png' });
+  }
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('🛡️ אף בדיקה לא נתקלה בקוד שנחסם (CSP)', async () => { assert(!cspHits.size, [...cspHits].join(' | ')); });
 
 await browser.close(); server.close();

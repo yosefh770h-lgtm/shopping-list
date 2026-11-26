@@ -14,7 +14,18 @@ const MAIN_SITE='https://yamshopping.com';
   location.replace(MAIN_SITE+location.pathname+u);
 }catch(e){}})();
 let sb=null;
-try{if(!OFF_APP&&window.supabase&&window.supabase.createClient)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}catch(e){console.error('supabase init failed',e);}
+/* 🚧 מצב שיפוצים: כשהבעלים סוגר את האתר, המסד עונה 503 (maintenance) לכל בקשה. מי שהאתר כבר פתוח אצלו (או נפתח מהעותק השמור)
+   מקבל מסך "האתר בשיפוצים", מתנתק בטלפון, והמסך בודק כל דקה — כשהאתר נפתח מחדש הוא נטען לבד */
+function yamMaint(){if(window.__yamMaint)return;window.__yamMaint=1;
+  try{if(sb)sb.auth.signOut({scope:'local'}).catch(()=>{});}catch(e){}
+  const d=document.createElement('div');d.id='yamMaint';d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','yamMaintH');
+  d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:var(--bg,#f4f8f5);color:var(--text,#1d2b24);display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;direction:rtl';
+  d.innerHTML='<div style="max-width:420px"><div style="font-size:56px" aria-hidden="true">🚧</div><h1 id="yamMaintH" style="margin:8px 0;color:var(--hdr,#2e7d5b)">האתר בשיפוצים</h1><p style="font-size:17px;line-height:1.6">אנחנו עושים עבודות תחזוקה. <b>נתראה בקרוב!</b></p><p style="opacity:.75;font-size:14px">הרשימות שלכם שמורות. כשהאתר יחזור הוא ייפתח מעצמו.</p></div>';
+  (document.body||document.documentElement).appendChild(d);
+  const t=setInterval(()=>{if(!navigator.onLine||!sb)return;sb.rpc('site_lock_status').then(({data})=>{if(data&&data.locked===false){clearInterval(t);location.reload();}}).catch(()=>{});},60000);}
+const yamFetch=(u,o)=>fetch(u,o).then(r=>{if(r.status===503&&!window.__yamMaint&&/\/rest\/v1\//.test(String(u&&u.url||u)))
+  r.clone().json().then(j=>{if(j&&(j.details==='maintenance'||j.code==='PT503'))yamMaint();}).catch(()=>{});return r;});
+try{if(!OFF_APP&&window.supabase&&window.supabase.createClient)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},global:{fetch:yamFetch}});}catch(e){console.error('supabase init failed',e);}
 let authUser=null; /* המשתמש המחובר מ-Supabase */
 /* תפקידים: בעלים (המייל שלך) · מנהל נוסף · צוות פיקוח — נקבעים בשרת, כאן רק מחליטים מה להציג */
 let myRole=null;

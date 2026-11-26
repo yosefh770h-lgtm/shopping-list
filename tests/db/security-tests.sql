@@ -2115,6 +2115,64 @@ select set_config('request.jwt.claims', '', false);
 reset role;
 delete from public.visit_returns where src = 'qr-test'; delete from public.visit_sources where src = 'qr-test';
 select set_config('request.headers', '', false);
+
+-- 🚧 מצב שיפוצים: רק הבעלים סוגר ופותח, כולם מנותקים, וכל בקשה (חוץ מהבעלים) מקבלת 503
+reset role; select set_config('request.jwt.claims', '', false); select set_config('request.path', '', false); select tst.as_user('');
+insert into auth.sessions(id, user_id) values
+  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a'),
+  ('10000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b') on conflict do nothing;
+set role anon;
+select tst.ok((public.site_lock_status()->>'locked') = 'false', 'lock: anon sees the site is open');
+select tst.err($$select public.site_lock_close('x')$$, 'lock: anon cannot close the site');
+select tst.ok((select count(*) from public.site_lock) = 0, 'lock: anon cannot read lock details');
+select tst.err($$update public.site_lock set locked = true$$, 'lock: anon cannot write the lock directly');
+select tst.err($$select public.site_lock_auto('x')$$, 'lock: anon cannot call the auto close');
+reset role;
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a');
+select tst.err($$select public.site_lock_close('x')$$, 'lock: a regular user cannot close the site');
+select tst.err($$select public.site_lock_open(true)$$, 'lock: a regular user cannot open the site');
+select tst.err($$select public.site_lock_settings(false, false)$$, 'lock: a regular user cannot change lock settings');
+select tst.err($$select public.site_lock_kick(null)$$, 'lock: a regular user cannot kick sessions');
+select tst.as_user('00000000-0000-0000-0000-000000000003'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select tst.err($$select public.site_lock_close('x')$$, 'lock: an admin who is not the owner cannot close the site');
+select tst.as_user('00000000-0000-0000-0000-000000000001'); select set_config('request.jwt.claims', '{"aal":"aal1"}', false);
+reset role; insert into auth.mfa_factors(id, user_id, status) values ('20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'verified'); set role authenticated;
+select tst.err($$select public.site_lock_close('x')$$, 'lock: an owner with 2FA set up must use it to close the site');
+reset role; delete from auth.mfa_factors where id = '20000000-0000-0000-0000-000000000001'; set role authenticated;
+select set_config('request.jwt.claims', '{"aal":"aal2","session_id":"10000000-0000-0000-0000-000000000001"}', false);
+select tst.ok(public.site_lock_close('בדיקה') = 2, 'lock: the owner closes the site and 2 other sessions are cut');
+reset role;
+select tst.ok((select count(*) from auth.sessions where id::text like '10000000-%') = 1, 'lock: only the owner session is left');
+select tst.ok((select count(*) from public.security_events where kind = 'lock') >= 1, 'lock: a lock event is logged (alerts admins)');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a'); select set_config('request.jwt.claims', '{}', false);
+select tst.err($$select public.yam_pre_request()$$, 'lock: every request of a regular user gets 503 while closed');
+select set_config('request.path', '/rpc/site_lock_status', false);
+select tst.ok((select true from (select public.yam_pre_request()) x), 'lock: the status check still works while closed');
+select tst.ok((public.site_lock_status()->>'locked') = 'true', 'lock: status says closed');
+select set_config('request.path', '', false);
+select tst.as_user('00000000-0000-0000-0000-000000000001'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select tst.ok((select true from (select public.yam_pre_request()) x), 'lock: the owner with 2FA still gets in');
+select tst.ok(public.site_lock_open(false) = 'no_server', 'lock: open asks the server to check (no server yet)');
+select tst.ok(public.site_locked(), 'lock: still closed until the server check');
+reset role;
+set role service_role; select set_config('request.jwt.claims', '{"role":"service_role"}', false);
+select tst.ok((select true from (select public.yam_pre_request()) x), 'lock: the server key is never blocked');
+update public.site_lock set locked = false, open_req = null, check_ok = true, check_at = now() where id = 1;
+select tst.ok(public.site_lock_auto('קבצים השתנו', '{"files":["index.html"]}') >= 1, 'lock: the server can auto close and cut everyone');
+reset role;
+select tst.ok((select count(*) from auth.sessions where id::text like '10000000-%') = 0, 'lock: auto close cuts the owner too');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000001'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select tst.ok(public.site_lock_open(true) = 'open', 'lock: the owner can force open');
+reset role; select set_config('request.jwt.claims', '', false);
+select tst.ok(not public.site_locked(), 'lock: open again');
+-- 👤 שינוי בהרשאות → אירוע (התראה)
+delete from public.security_events where kind = 'perm';
+insert into public.staff(user_id, role) values ('00000000-0000-0000-0000-00000000000e', 'moderator') on conflict (user_id) do update set role = 'moderator';
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"yam_owner":true}' where id = '00000000-0000-0000-0000-00000000000e';
+update auth.users set raw_app_meta_data = raw_app_meta_data - 'yam_owner' where id = '00000000-0000-0000-0000-00000000000e';
+delete from public.staff where user_id = '00000000-0000-0000-0000-00000000000e';
+select tst.ok((select count(*) from public.security_events where kind = 'perm') = 4, 'perm: staff add, owner flag on/off and staff removal each raise an alert');
 select tst.ok(true, 'ALL DONE');
 -- auth_user_state: only the server may call it
 do $$ begin

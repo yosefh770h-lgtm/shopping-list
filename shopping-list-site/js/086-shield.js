@@ -11,7 +11,8 @@ const ago=d=>{const m=Math.floor((Date.now()-new Date(d).getTime())/60000);retur
 const KIND={flood:['🛡️','הצפה נחסמה','יותר מדי חיבורים בבת אחת מכתובת אחת'],ddos:['🚨','התקפת עומס (DDoS)','קפיצה חדה בחיבורים מהרבה כתובות — ההגנה הוחמרה ל-15 דקות'],
   probe:['🚨','ניסיון פריצה','חיפש קבצים רגישים או כלי ניהול שאין אצלנו (למשל ‎/.env, wp-login)'],direct:['⚡','פנייה ישירה לשרת','פנה ל-server.yamshopping.com ולא דרך האתר — נחסם'],
   ssh:['🔑','ניחוש סיסמה לשרת','ניסיונות כניסה כושלים ל-SSH'],db_rate:['🗄️','הצפת בקשות למסד','יותר מדי בקשות כתיבה בדקה ל-Supabase'],
-  load:['🔥','עומס גבוה על השרת',''],down:['🔴','האתר לא ענה',''],up:['🟢','האתר חזר',''],unblock:['✅','שוחרר ע״י מנהל','']};
+  load:['🔥','עומס גבוה על השרת',''],down:['🔴','האתר לא ענה',''],up:['🟢','האתר חזר',''],unblock:['✅','שוחרר ע״י מנהל',''],
+  lock:['🚧','האתר נסגר (שיפוצים)',''],unlock:['✅','האתר נפתח',''],tamper:['🚨','חשד לפריצה','קבצים בשרת השתנו בלי GitHub'],perm:['👤','שינוי בהרשאות',''],sys_change:['⚠️','שינוי בהגדרות השרת','']};
 const ALERTS=[['flood','הצפה שנחסמה'],['ddos','התקפת עומס'],['probe','ניסיון פריצה'],['down','האתר לא עונה / חזר'],['load','עומס גבוה'],['db_rate','חסימה במסד'],['direct','פנייה ישירה לשרת'],['ssh','ניחוש סיסמה ל-SSH']];
 const ALERT_DEF={flood:1,ddos:1,probe:1,down:1,up:1,load:1,db_rate:1};
 const DEF={rate:40,burst:200,conns:300,block_min:10,shared_mult:10,probe_hours:24,direct_min:60,ssh_max:10,db_user_per_min:600,db_ip_per_min:600,db_block_min:10};
@@ -100,6 +101,7 @@ window.boView('shield',async function(){const m=$s('#boMain');if(!m)return;
     else if(e.kind==='db_rate')t=num(e.n)+' בקשות כתיבה בדקה · חסום '+(d.min||10)+' דק׳'+(d.user?' · <small class="muted">חשבון '+esc(String(d.user).slice(0,8))+'…</small>':'');
     else if(e.kind==='ssh')t=num(e.n)+' כישלונות · חסום ל-SSH '+(d.min||60)+' דק׳';
     else if(e.kind==='load'||e.kind==='down')t=esc(d.why||'');
+    else if(['lock','tamper','perm','sys_change'].includes(e.kind))t=esc(d.reason||d.why||d.what||t);
     if(d.ua)t+='<br><small class="muted" dir="ltr">'+esc(String(d.ua).slice(0,90))+'</small>';return t;};
   const KF=[['','הכל'],['flood','🛡️ הצפות'],['ddos','🚨 DDoS'],['probe','🚨 פריצה'],['direct','⚡ ישירות'],['ssh','🔑 SSH'],['db_rate','🗄️ מסד'],['load','🔥 עומס / נפילה']];
   h+='<div class="card"><h2>📜 מה קרה (7 ימים)</h2><div class="row" style="gap:8px;flex-wrap:wrap"><input id="shQ" placeholder="סינון לפי כתובת" dir="ltr" style="max-width:200px"><select id="shK">'+KF.map(([k,l])=>'<option value="'+k+'">'+l+'</option>').join('')+'</select></div>'+

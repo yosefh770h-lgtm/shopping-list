@@ -6159,6 +6159,11 @@ begin
     perform public.push_enqueue(o, 'staff', '🔐 כניסה ממכשיר חדש',
       who || ' נכנס/ה עכשיו מדפדפן או ממקום שלא נראו קודם. אם זה לא את/ה — להחליף סיסמה מיד.', '/#admin-staff', 'newdev:' || new.id);
   end loop;
+  -- 🚧 אם הבעלים ביקש (בק אופיס ← 🚧 מצב שיפוצים): מנהל שנכנס ממכשיר חדש סוגר את האתר מיד ומנתק את כולם
+  if exists (select 1 from public.admin_ids() a where a = new.user_id)
+     and coalesce((select l.auto_new_device from public.site_lock l where l.id = 1), false) then
+    perform public.site_lock_auto('כניסה של מנהל ממכשיר חדש: ' || who, jsonb_build_object('user', new.user_id, 'ip', new.ip));
+  end if;
   return new;
 exception when others then raise notice 'staff_new_device_alert: %', sqlerrm; return new;
 end $$;
@@ -9220,6 +9225,10 @@ begin
   begin
     begin claims := coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb; exception when others then claims := '{}'::jsonb; end;
     if coalesce(claims->>'role', '') = 'service_role' then return; end if;
+    -- 🚧 מצב שיפוצים: רק הבעלים (עם אימות דו-שלבי) עובר. כל השאר מקבלים 503 — גם עם חשבון או מפתח שנגנבו
+    if public.site_locked() and coalesce(current_setting('request.path', true), '') !~ '/rpc/site_lock_status$' and not public.is_owner() then
+      raise sqlstate 'PT503' using message = 'האתר בשיפוצים. נתראה בקרוב', detail = 'maintenance';
+    end if;
     c := coalesce((select value from public.site_config where key = 'shield'), '{}'::jsonb);
     if coalesce(c->>'db_off', '') = 'true' then return; end if;
     if coalesce(claims->>'sub', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then uid := claims->>'sub'; end if;
@@ -9249,7 +9258,9 @@ begin
         if random() < 0.002 then delete from public.rate_hits where rate_hits.w < v_w - 3; end if;
       end if;
     end if;
-  exception when others then
+  exception when sqlstate 'PT503' then
+    raise;  -- מצב שיפוצים — עוצרים
+  when others then
     return;  -- ההגנה לעולם לא מפילה את האתר
   end;
   if stop then
@@ -9267,9 +9278,9 @@ begin
   s := coalesce((select value from public.site_config where key = 'security'), '{}'::jsonb);
   if coalesce(s->>'alerts_off', '') = 'true' then return null; end if;
   c := coalesce((select value from public.site_config where key = 'shield'), '{}'::jsonb);
-  if coalesce(c->'alerts'->>new.kind, case when new.kind in ('flood', 'ddos', 'probe', 'load', 'down', 'up', 'db_rate') then 'true' else 'false' end) <> 'true' then return null; end if;
+  if coalesce(c->'alerts'->>new.kind, case when new.kind in ('flood', 'ddos', 'probe', 'load', 'down', 'up', 'db_rate', 'lock', 'unlock', 'tamper', 'perm', 'sys_change') then 'true' else 'false' end) <> 'true' then return null; end if;
   kk := 'sh:' || new.kind || ':' || coalesce(new.ip, '');
-  if new.kind not in ('down', 'up') then
+  if new.kind not in ('down', 'up', 'lock', 'unlock', 'tamper', 'perm') then
     if exists (select 1 from public.admin_alerts_sent where kind = kk and sent_at > now() - interval '30 minutes') then return null; end if;
     if exists (select 1 from public.admin_alerts_sent where kind = 'sh:' || new.kind and sent_at > now() - interval '3 minutes') then return null; end if;
   end if;
@@ -9286,6 +9297,11 @@ begin
          when 'up'      then '🟢 האתר חזר לעבוד'
          when 'db_rate' then '🛡️ הצפת בקשות למסד נחסמה' || case when new.ip <> '' then ': ' || new.ip else '' end
          when 'ssh'     then '🚨 ניסיונות כניסה לשרת: ' || new.ip
+         when 'lock'    then '🚧 האתר נסגר (מצב שיפוצים)'
+         when 'unlock'  then '✅ האתר נפתח מחדש'
+         when 'tamper'  then '🚨 חשד לפריצה: קבצים בשרת השתנו'
+         when 'perm'    then '👤 שינוי בהרשאות ניהול'
+         when 'sys_change' then '⚠️ שינוי בהגדרות השרת'
          else '🛡️ ' || new.kind end;
   b := case new.kind
          when 'flood'   then 'יותר מדי חיבורים בבת אחת. הכתובת חסומה ל-' || coalesce(new.detail->>'min', '10') || ' דקות.'
@@ -9297,9 +9313,14 @@ begin
          when 'up'      then 'האתר עונה שוב.'
          when 'db_rate' then new.n || ' בקשות כתיבה בדקה. חסום ל-' || coalesce(new.detail->>'min', '10') || ' דקות.'
          when 'ssh'     then new.n || ' ניסיונות כושלים.'
+         when 'lock'    then left(coalesce(nullif(new.detail->>'reason', ''), 'נסגר מהבק אופיס'), 120) || '. ' || new.n || ' חיבורים נותקו.'
+         when 'unlock'  then case when new.detail->>'force' = 'true' then 'נפתח בלי בדיקת קבצים.' else 'הקבצים בשרת זהים ל-GitHub.' end
+         when 'tamper'  then left(coalesce(new.detail->>'why', ''), 140) || case when new.detail->>'closed' = 'true' then ' — האתר נסגר אוטומטית.' else '' end
+         when 'perm'    then left(coalesce(new.detail->>'what', ''), 140)
+         when 'sys_change' then left(coalesce(new.detail->>'what', ''), 140)
          else '' end || case when more > 0 then ' (ועוד ' || more || ' ב-10 הדקות האחרונות)' else '' end;
   for a in select distinct id from public.admin_ids() id loop
-    perform public.push_enqueue(a.id, 'staff', t, b, '/#admin-shield', 'shield:' || new.kind);
+    perform public.push_enqueue(a.id, 'staff', t, b, case when new.kind in ('lock', 'unlock', 'tamper', 'perm', 'sys_change') then '/#admin-lockdown' else '/#admin-shield' end, 'shield:' || new.kind);
   end loop;
   return null;
 exception when others then return null;  -- התראה שנכשלה לא מבטלת את הרישום
@@ -9464,3 +9485,149 @@ revoke insert, update, delete on public.feedback_replies from anon, authenticate
 -- ================= 🛡️ יומן התקלות בלי חסימות של נטפרי (נובמבר 2026) =================
 -- מוחק דיווחי CSP ישנים על הסקריפט שנטפרי מזריק (netfree.link). מעכשיו הם לא נרשמים בכלל (באתר וב-log_client_error)
 delete from public.client_errors where msg ~* 'CSP[^:]*: script-src.*netfree\.[a-z]+';
+
+-- ================= 🚧 מצב שיפוצים וזיהוי פריצה (נובמבר 2026) =================
+-- לחיצה אחת של הבעלים (בק אופיס ← 🚧 מצב שיפוצים) סוגרת את האתר לכולם:
+--   • במסד: yam_pre_request מחזיר 503 לכל בקשה, חוץ מהבעלים עם אימות דו-שלבי (גם חשבון או מפתח גנובים לא עובדים)
+--   • כל החיבורים (sessions) נמחקים — כולם מנותקים. הבעלים שלחץ נשאר מחובר
+--   • בשרת: השומר (collector/yam/lockdown.py) יוצר קובץ דגל, ו-Caddy מציג לכולם "האתר בשיפוצים" (תוך כ-10 שניות)
+-- פתיחה: הבעלים מבקש, השרת משווה את כל הקבצים ל-GitHub, ורק אם הכל זהה — האתר נפתח. אחרת נשאר סגור ומראה מה השתנה.
+-- סגירה אוטומטית: קבצים באתר או בקוד השרת שהשתנו בלי לעבור דרך GitHub (ואופציונלית: מנהל שנכנס ממכשיר חדש).
+create table if not exists public.site_lock (
+  id int primary key default 1 check (id = 1),
+  locked boolean not null default false,
+  reason text not null default '' check (char_length(reason) <= 300),
+  src text not null default '' check (src in ('', 'owner', 'auto', 'server')),
+  locked_at timestamptz,
+  locked_by uuid,
+  open_req timestamptz,           -- הבעלים ביקש לפתוח — מחכה לבדיקת הקבצים בשרת
+  check_at timestamptz,
+  check_ok boolean,
+  check_detail jsonb not null default '{}'::jsonb,
+  server_seen timestamptz,        -- השומר בשרת דיווח (כל 30 שניות)
+  auto_tamper boolean not null default true,
+  auto_new_device boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+insert into public.site_lock (id) values (1) on conflict (id) do nothing;
+alter table public.site_lock enable row level security;
+drop policy if exists "site lock admin read" on public.site_lock;
+create policy "site lock admin read" on public.site_lock for select using (public.is_admin());
+revoke insert, update, delete on public.site_lock from anon, authenticated;
+grant select, insert, update on public.site_lock to service_role;
+
+create or replace function public.site_locked() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select locked from public.site_lock where id = 1), false);
+$$;
+revoke all on function public.site_locked() from public;
+grant execute on function public.site_locked() to anon, authenticated, service_role;
+
+-- לכולם (גם אורחים): רק האם סגור ומאז מתי. בלי סיבה ובלי פרטים
+create or replace function public.site_lock_status() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('locked', coalesce(l.locked, false), 'since', case when l.locked then l.locked_at end)
+  from (select 1) x left join public.site_lock l on l.id = 1;
+$$;
+revoke all on function public.site_lock_status() from public;
+grant execute on function public.site_lock_status() to anon, authenticated, service_role;
+
+-- ניתוק כולם: מוחקים את כל החיבורים (חוץ מאחד, אם ביקשו). פנימי בלבד
+create or replace function public.site_lock_kick(p_keep text) returns int
+language plpgsql security definer set search_path = public, auth as $$
+declare n int;
+begin
+  delete from auth.sessions s where p_keep is null or s.id::text <> p_keep;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.site_lock_kick(text) from public, anon, authenticated;
+
+create or replace function public.site_lock_close(p_reason text) returns int
+language plpgsql security definer set search_path = public, auth as $$
+declare n int;
+begin
+  if not public.is_owner() then raise exception 'forbidden' using errcode = '42501'; end if;
+  update public.site_lock set locked = true, src = 'owner', reason = left(coalesce(p_reason, ''), 300), locked_at = now(),
+         locked_by = auth.uid(), open_req = null, check_at = null, check_ok = null, check_detail = '{}'::jsonb, updated_at = now()
+   where id = 1;
+  n := public.site_lock_kick(nullif(coalesce(auth.jwt()->>'session_id', ''), ''));
+  insert into public.security_events (src, kind, n, detail)
+  values ('db', 'lock', n, jsonb_build_object('reason', left(coalesce(p_reason, ''), 300), 'by', 'owner'));
+  return n;
+end $$;
+revoke all on function public.site_lock_close(text) from public, anon;
+grant execute on function public.site_lock_close(text) to authenticated;
+
+-- סגירה אוטומטית (השומר בשרת במפתח השירות, או הטריגר של מכשיר חדש). מנתק את כולם — גם את הבעלים
+create or replace function public.site_lock_auto(p_reason text, p_detail jsonb default '{}'::jsonb) returns int
+language plpgsql security definer set search_path = public, auth as $$
+declare n int;
+begin
+  if coalesce((select locked from public.site_lock where id = 1), false) then return 0; end if;
+  update public.site_lock set locked = true, src = 'auto', reason = left(coalesce(p_reason, ''), 300), locked_at = now(),
+         locked_by = null, open_req = null, check_at = null, check_ok = null, check_detail = coalesce(p_detail, '{}'::jsonb), updated_at = now()
+   where id = 1;
+  n := public.site_lock_kick(null);
+  insert into public.security_events (src, kind, n, detail)
+  values ('db', 'lock', n, jsonb_build_object('reason', left(coalesce(p_reason, ''), 300), 'by', 'auto') || coalesce(p_detail, '{}'::jsonb));
+  return n;
+end $$;
+revoke all on function public.site_lock_auto(text, jsonb) from public, anon, authenticated;
+grant execute on function public.site_lock_auto(text, jsonb) to service_role;
+
+-- פתיחה. רגיל: בקשה, והשרת פותח רק אחרי שהקבצים זהים ל-GitHub. p_force: מיד, בלי בדיקה (למשל כשהשומר לא מותקן)
+create or replace function public.site_lock_open(p_force boolean default false) returns text
+language plpgsql security definer set search_path = public, auth as $$
+declare l public.site_lock;
+begin
+  if not public.is_owner() then raise exception 'forbidden' using errcode = '42501'; end if;
+  select * into l from public.site_lock where id = 1;
+  if not coalesce(l.locked, false) then return 'open'; end if;
+  if coalesce(p_force, false) then
+    update public.site_lock set locked = false, open_req = null, updated_at = now() where id = 1;
+    insert into public.security_events (src, kind, detail) values ('db', 'unlock', jsonb_build_object('force', true));
+    return 'open';
+  end if;
+  update public.site_lock set open_req = now(), check_at = null, check_ok = null, updated_at = now() where id = 1;
+  return case when l.server_seen is null or l.server_seen < now() - interval '3 minutes' then 'no_server' else 'pending' end;
+end $$;
+revoke all on function public.site_lock_open(boolean) from public, anon;
+grant execute on function public.site_lock_open(boolean) to authenticated;
+
+create or replace function public.site_lock_settings(p_auto_tamper boolean, p_auto_new_device boolean) returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_owner() then raise exception 'forbidden' using errcode = '42501'; end if;
+  update public.site_lock set auto_tamper = coalesce(p_auto_tamper, auto_tamper), auto_new_device = coalesce(p_auto_new_device, auto_new_device), updated_at = now()
+   where id = 1;
+end $$;
+revoke all on function public.site_lock_settings(boolean, boolean) from public, anon;
+grant execute on function public.site_lock_settings(boolean, boolean) to authenticated;
+
+-- 👤 שינוי בהרשאות: מישהו נוסף לצוות / הוסר / קיבל תפקיד אחר, או סימון "בעלים" השתנה → התראה מיידית למנהלים
+create or replace function public.perm_change_alert() returns trigger
+language plpgsql security definer set search_path = public, auth as $$
+declare what text; u uuid; em text;
+begin
+  if tg_table_schema = 'auth' then
+    if coalesce(new.raw_app_meta_data->>'yam_owner', '') is not distinct from coalesce(old.raw_app_meta_data->>'yam_owner', '') then return new; end if;
+    what := 'סימון "בעלים" ' || case when public.yam_owner_match(new.email, new.raw_app_meta_data) then 'נוסף ל-' else 'הוסר מ-' end || coalesce(new.email, '');
+  else
+    if tg_op = 'UPDATE' and new.role is not distinct from old.role then return new; end if;
+    u := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
+    select email into em from auth.users where id = u;
+    what := coalesce(em, u::text) || case tg_op when 'INSERT' then ' נוסף/ה לצוות (' || new.role || ')'
+                                             when 'DELETE' then ' הוסר/ה מהצוות'
+                                             else ': ' || old.role || ' ← ' || new.role end;
+  end if;
+  insert into public.security_events (src, kind, detail)
+  values ('db', 'perm', jsonb_build_object('what', left(what, 200), 'by', coalesce(auth.uid()::text, 'sql')));
+  return coalesce(new, old);
+exception when others then return coalesce(new, old);  -- התראה שנכשלה לא מבטלת את השינוי
+end $$;
+revoke all on function public.perm_change_alert() from public, anon, authenticated;
+drop trigger if exists perm_change_alert on public.staff;
+create trigger perm_change_alert after insert or update or delete on public.staff for each row execute function public.perm_change_alert();
+drop trigger if exists perm_change_alert on auth.users;
+create trigger perm_change_alert after update of raw_app_meta_data on auth.users for each row execute function public.perm_change_alert();

@@ -25,6 +25,8 @@ const isJs = (url) => url.origin === self.location.origin && /^\/js\/[^/]+\.(js|
 const jsOf = (html, lazy) => [...html.matchAll(/<script\b([^>]*)\ssrc="(\/js\/[^"]+)"/g)].filter((m) => lazy || !/\sdata-lazy=/.test(m[1])).map((m) => new URL(m[2], self.location).href)
   .concat([...html.matchAll(/<link\b[^>]*\shref="(\/js\/[^"]+\.css[^"]*)"/g)].map((m) => new URL(m[1], self.location).href));
 async function storeHome(res) {
+  /* 🚧 דף "האתר בשיפוצים" (השרת מסמן אותו ב-X-Yam-Maint) — לא שומרים במקום האתר, כדי שאחרי הפתיחה מחדש ייפתח האתר האמיתי */
+  if (res.headers.get('x-yam-maint')) return;
   const html = await res.clone().text();
   const c = await caches.open(CACHE);
   const want = jsOf(html);

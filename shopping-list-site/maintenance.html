@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- 🚧 דף "האתר בשיפוצים". השרת (Caddy, /etc/caddy/maint.caddy) מציג אותו במקום כל דף באתר כשהאתר סגור.
+     בלי סקריפטים ובלי קבצים חיצוניים (בזמן שיפוצים השרת לא מגיש שום קובץ אחר). נטען מחדש לבד כל דקה, וכשהאתר נפתח — חוזרים אליו. -->
+<meta http-equiv="refresh" content="60">
+<meta name="theme-color" content="#2e7d5b">
+<title>האתר בשיפוצים · ים שופינג YamShopping</title>
+<style>
+:root{--bg:#f4f8f5;--card:#fff;--text:#1d2b24;--muted:#5d6f66;--accent:#2e7d5b;--line:#dfe9e3}
+@media (prefers-color-scheme:dark){:root{--bg:#121815;--card:#1b241f;--text:#e8f0eb;--muted:#9fb3a8;--accent:#5fbf92;--line:#2a3730}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+main{background:var(--card);border:1px solid var(--line);border-radius:20px;max-width:440px;width:100%;padding:32px 24px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+.ic{font-size:56px;line-height:1;margin-bottom:12px}
+h1{margin:0 0 10px;font-size:26px;color:var(--accent)}
+p{margin:8px 0;font-size:17px;line-height:1.6}
+.muted{color:var(--muted);font-size:14px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <div class="ic" aria-hidden="true">🚧</div>
+  <h1>האתר בשיפוצים</h1>
+  <p>אנחנו עושים עבודות תחזוקה באתר.</p>
+  <p><b>נתראה בקרוב!</b></p>
+  <p class="muted">הרשימות שלכם שמורות ולא נמחקו. הדף הזה יתרענן לבד, וכשהאתר יחזור הוא ייפתח מעצמו.</p>
+  <p class="muted">שאלה דחופה? <a href="mailto:info@yamshopping.com">info@yamshopping.com</a></p>
+</main>
+</body>
+</html>

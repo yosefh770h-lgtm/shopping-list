@@ -1150,7 +1150,7 @@ if(!MOD_TABS.includes('clothing'))MOD_TABS.push('clothing');
 /* ---------- תפריט בקבוצות: בצד במחשב, ובטלפון כפתור אחד שנפתח ---------- */
 const BO_GROUPS=[
   ['📊','ראשי',['dash','pending','activity']],
-  ['🛡️','בוטים ואבטחה',['shield','scrapers','security']],
+  ['🛡️','בוטים ואבטחה',['lockdown','shield','scrapers','security']],
   ['✅','לאישור ותוכן מהקהילה',['reviews','clothing']],
   ['👥','משתמשים וקשר',['users','support','broadcast','feedback','abuse','secondary','reporters','staff']],
   ['🏪','חנויות ומחירים',['chains','biz','bizreq','stores','posts','messages','prices','sources','products','categories','icons','ready']],
@@ -1162,6 +1162,8 @@ const BO_GROUPS=[
   if(!nav.querySelector('[data-s="errors"]'))nav.insertAdjacentHTML('beforeend','<button data-s="errors">🐞 יומן תקלות</button>');
   /* 🛡️ בוטים ואבטחה — קטגוריה נפרדת, שנייה בתפריט (המסכים עצמם ב-js/086-shield.js וב-js/052.js) */
   if(!nav.querySelector('[data-s="shield"]'))nav.insertAdjacentHTML('beforeend','<button data-s="shield">🛡️ חומת הגנה ובוטים <span class="bobadge" id="boShN" hidden></span></button>');
+  /* 🚧 מצב שיפוצים — סגירת האתר לכולם בלחיצה (js/093-lockdown.js) */
+  if(!nav.querySelector('[data-s="lockdown"]'))nav.insertAdjacentHTML('beforeend','<button data-s="lockdown">🚧 מצב שיפוצים</button>');
   if(!nav.querySelector('[data-s="scrapers"]'))nav.insertAdjacentHTML('beforeend','<button data-s="scrapers">🕵️ מי מעתיק מחירים</button>');
   const act=nav.querySelector('[data-s="activity"]');if(act)act.textContent='👀 מה כולם עושים';
   const btns={};nav.querySelectorAll('button[data-s]').forEach(b=>btns[b.dataset.s]=b);
