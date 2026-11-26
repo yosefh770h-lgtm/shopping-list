@@ -2038,6 +2038,31 @@ await test('📍 מחיר אוטומטי מקבצי הרשת: כתוב "כל ה�
   await ctx.close();
 });
 
+await test('🏪 חנות קטנה: מחיר שהחנות העלתה מסומן "דווח ע״י החנות", ובהצטרפות חובה לאשר תנאים והדיוור השיווקי רשות', async () => {
+  const { ctx, page, errors } = await newPage();
+  const now = new Date().toISOString();
+  const D = { prices: [{ id: 'c1', product: 'במבה', product_key: 'במבה', chain: 'רמי לוי', branch: '', price: 5.4, currency: 'ILS', verified: true, by_id: null, status: 'approved', created_at: now },
+    { id: 's1', product: 'במבה', product_key: 'במבה', chain: 'המכולת של משה', branch: 'בני ברק', price: 4.5, currency: 'ILS', verified: true, by_id: 'own1', status: 'approved', created_at: now }] };
+  await page.evaluate((D) => { sb = __stub(D); authUser = { id: 'me', email: 'x@y.z' }; setTab('prices'); }, D);
+  await page.fill('#priceSearchInput', 'במבה'); await page.keyboard.press('Enter'); await page.waitForTimeout(900);
+  const b = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#priceResults .price-row[data-pid]')].map((x) => [x.dataset.pid, (x.querySelector('.verified') || {}).textContent || ''])));
+  assert(/דווח ע״י החנות/.test(b.s1 || '') && /רשמי/.test(b.c1 || '') && !/החנות/.test(b.c1 || ''), 'סימון מקור המחיר: ' + JSON.stringify(b));
+  if (process.env.SHOTS_DIR) { await page.evaluate(() => document.querySelector('#priceResults').scrollIntoView()); await page.screenshot({ path: process.env.SHOTS_DIR + '/1-מחיר-שהחנות-דיווחה.png' }); }
+  const sent = await page.evaluate(async () => { window.__ins = []; const s0 = sb.from; sb.from = (n) => { const q = s0(n); if (n === 'business_requests') return new Proxy(q, { get(t, p) { if (p === 'insert') return (rec) => { window.__ins.push(rec); return Promise.resolve({ data: null, error: null }); }; return t[p]; } }); return q; };
+    window.setAccountType = async () => {}; await openBizJoin(); await new Promise((r) => setTimeout(r, 300));
+    document.querySelector('#bjBiz').value = 'המכולת של משה'; document.querySelector('#bjPhone').value = '0501234567';
+    document.querySelector('#bjSend').click(); await new Promise((r) => setTimeout(r, 200)); const before = window.__ins.length;
+    document.querySelector('#bjTerms').checked = true; return before; });
+  assert(sent === 0, 'אפשר היה לשלוח בלי לאשר את התנאים');
+  assert(await page.evaluate(() => !document.querySelector('#bjMkt').checked && !!document.querySelector('#bjTerms + span a[href="/terms.html#biz"]')), 'הדיוור השיווקי מסומן מראש / אין קישור לתנאים');
+  if (process.env.SHOTS_DIR) { await page.evaluate(() => document.querySelector('#bjTerms').scrollIntoView({ block: 'center' })); await page.waitForTimeout(3500); await page.screenshot({ path: process.env.SHOTS_DIR + '/2-טופס-הצטרפות-עסק.png' }); }
+  await page.evaluate(async () => { document.querySelector('#bjSend').click(); await new Promise((r) => setTimeout(r, 300)); });
+  const rec = await page.evaluate(() => window.__ins[0]);
+  assert(rec && rec.terms_ok === true && rec.marketing_ok === false, 'מה שנשלח: ' + JSON.stringify(rec));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+});
+
 await test('🔎 כל חיפוש ב"איפה הכי זול" נספר, ובבק אופיס ← 💰 מחירים רואים כמה חיפשו ומה הכי מחפשים', async () => {
   const api = (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(r.request().url()).pathname.endsWith('/chains') ? [] : { items: [{ q: 'חלב', qty: 1 }], stores: [], missing: [] }) });
   const { ctx, page, errors } = await newPage({ priceApi: api });

@@ -256,7 +256,7 @@ function histBox23(name){const n=priceRows.filter(r=>r.product===name).length;
   return '<details class="phist23" data-ph="'+esc(name)+'"><summary>📜 '+T('כל המחירים הקודמים','All previous prices')+' <small>('+n+(n>=HIST23_PAGE?'+':'')+')</small></summary><div class="phbody23"><div class="empty" style="padding:8px">'+T('טוען...','Loading...')+'</div></div></details>';}
 function histRow23(r){const st=r.status==='pending'?' · ⏳ '+T('ממתין לאישור','pending'):r.status==='rejected'?' · 🚫 '+T('נדחה','rejected'):'';
   return '<div class="phrow23'+(isStale(r)?' stale':'')+'"><span class="phd">'+esc(dt(r.created_at))+'</span><span>'+(chainKind(r.chain)==='online'?'🌐 ':'')+esc(r.chain)+(prWhere(r)?' — '+esc(prWhere(r)):'')+'</span>'+
-    (r.is_deal?'<span class="dealbadge">🔥 '+esc(r.deal_text||T('מבצע','Deal'))+'</span>':'')+(r.verified?'<span class="verified">✔</span>':'')+
+    (r.is_deal?'<span class="dealbadge">🔥 '+esc(r.deal_text||T('מבצע','Deal'))+'</span>':'')+prSrcBadge(r,1)+
     '<span class="muted-note" style="margin:0">'+crSlot('prices',r.id,{p:T('דווח ע״י ','by ')})+(r.updated_at?' · ✏️ '+esc(dt(r.updated_at)):'')+st+'</span><span class="pha">'+fmtPrice(r.price,r.currency)+'</span></div>';}
 function drawHist23(name,box){const h=hist23[norm(name)];const body=box&&box.querySelector('.phbody23');if(!body||!h)return;
   const rows=h.rows.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));

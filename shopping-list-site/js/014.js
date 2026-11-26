@@ -24,8 +24,9 @@ function openAccountChooser(){
     if(p.dataset.acct==='business'){if(myStore){closeSheet();flash('🏪 '+T('ברוכים הבאים! ניהול העסק נמצא בתפריט ⚙️','Welcome!'));openShop();}else openBizJoin();}
     else{closeSheet();flash('🛒 '+T('מעולה! בהצלחה בקניות 💚','Great!'));}};
 }
-/* טופס הצטרפות עסק — חובה לבעל עסק שעוד לא אושר */
-openBizJoin=async function(){
+/* טופס הצטרפות עסק — חובה לבעל עסק שעוד לא אושר.
+   אישור תנאי העסקים (העסק אחראי למחירים שהוא מפרסם) — חובה; הסכמה לדיוור שיווקי — רשות, לא מסומנת מראש (חוק התקשורת, סעיף 30א) */
+async function openBizJoin(){
   const b=openSheet('🏪 '+T('פרטי העסק שלי','My business'),'<div class="empty">'+T('טוען...','Loading...')+'</div>');b.onchange=null;b.oninput=null;
   if(!sb||!authUser){b.innerHTML='<p class="muted-note">'+T('צריך להיות מחוברים 🙂','Sign in first 🙂')+'</p>';return;}
   if(myStore){b.innerHTML='<p class="muted-note">✅ '+T('העסק '+esc(myStore.chain)+' כבר מאושר.','Already approved.')+'</p><button id="bjGo" style="width:100%">🏪 '+T('לניהול העסק','Manage my business')+'</button>';b.onclick=e=>{if(e.target.closest('#bjGo'))openShop();};return;}
@@ -43,6 +44,8 @@ openBizJoin=async function(){
     '<label class="il" for="bjAud">'+T('קהל היעד שלכם (למשל: משפחות בשכונה, מוסדות, גנים, ישיבות, אירועים)','Target audience')+'</label><input id="bjAud" maxlength="300" value="'+esc(pend?pend.audience||'':'')+'">'+
     '<label class="il" for="bjMsg">'+T('ספרו קצת על העסק / קישור לאתר ההזמנות שלכם','About the business / ordering site link')+'</label><textarea id="bjMsg" maxlength="2000" style="min-height:70px">'+esc(pend?pend.message:'')+'</textarea>'+
     '<label class="il" for="bjName">'+T('השם שלי','My name')+'</label><input id="bjName" maxlength="60" value="'+esc((state.user&&state.user.name)||'')+'">'+
+    '<label class="dealchk bjchk"><input type="checkbox" id="bjTerms"'+(pend&&pend.terms_ok?' checked':'')+'> <span>'+T('קראתי ואני מסכים/ה ל<a href="/terms.html#biz" target="_blank" rel="noopener">תנאים לעסקים</a>: אני מוסמך/ת לפעול בשם העסק, והעסק אחראי לנכונות המחירים והמבצעים שהוא מפרסם *','I agree to the <a href="/terms.html#biz" target="_blank" rel="noopener">business terms</a>: I may act for the business, and it is responsible for the prices and deals it publishes *')+'</span></label>'+
+    '<label class="dealchk bjchk"><input type="checkbox" id="bjMkt"'+(pend&&pend.marketing_ok?' checked':'')+'> <span>'+T('אשמח לקבל עדכונים והצעות לבעלי עסקים במייל או ב-SMS (לא חובה, אפשר להפסיק בכל רגע)','Send me news and offers for businesses by email or SMS (optional, stop any time)')+'</span></label>'+
     '<button id="bjSend" style="width:100%;margin-top:10px">📨 '+T(pend?'עדכון ושליחה מחדש':'שליחה לאישור','Send for approval')+'</button>'+
     '<button class="btn sec" id="bjCust" style="width:100%;margin-top:6px">🛒 '+T('בינתיים להמשיך כלקוח','Continue as a customer for now')+'</button>';
   b.onclick=async e=>{
@@ -50,12 +53,15 @@ openBizJoin=async function(){
     if(e.target.closest('#bjCust')){if(!pend)await setAccountType('customer');closeSheet();return;}
     if(!e.target.closest('#bjSend'))return;const v=id=>$13(id).value.trim();
     if(!v('#bjBiz')||!v('#bjPhone')){flash(T('צריך שם עסק וטלפון','Business name and phone needed'));return;}
+    if(!$13('#bjTerms').checked){flash(T('צריך לאשר את התנאים לעסקים','Please accept the business terms'));$13('#bjTerms').focus();return;}
     if([v('#bjBiz'),v('#bjBranch'),v('#bjName'),v('#bjMsg'),v('#bjAud'),v('#bjAddr')].some(hasProfanity)){reportAbuse(v('#bjBiz')+' '+v('#bjMsg'),'bizreq');flash('🙏');return;}
-    const rec={business:v('#bjBiz').slice(0,40),branch:v('#bjBranch'),category:v('#bjCat'),role:v('#bjRole'),phone:v('#bjPhone'),name:v('#bjName'),message:v('#bjMsg'),audience:v('#bjAud'),address:v('#bjAddr'),user_id:authUser.id};
+    const rec={business:v('#bjBiz').slice(0,40),branch:v('#bjBranch'),category:v('#bjCat'),role:v('#bjRole'),phone:v('#bjPhone'),name:v('#bjName'),message:v('#bjMsg'),audience:v('#bjAud'),address:v('#bjAddr'),user_id:authUser.id,terms_ok:true,marketing_ok:$13('#bjMkt').checked};
     let error;if(pend)({error}=await sb.from('business_requests').delete().eq('id',pend.id).eq('user_id',authUser.id));
-    ({error}=await sb.from('business_requests').insert(rec));if(error){flash('⚠️ '+error.message);return;}
+    ({error}=await sb.from('business_requests').insert(rec));
+    if(error&&/terms_ok|marketing_ok/.test(error.message||'')){delete rec.terms_ok;delete rec.marketing_ok;({error}=await sb.from('business_requests').insert(rec));} // עד שמריצים את ה-SQL החדש
+    if(error){flash('⚠️ '+error.message);return;}
     await setAccountType('business');flash('📨 '+T('הבקשה נשלחה! נחזור אליך בהקדם','Request sent!'));openBizJoin();};
-};
+}
 async function entryCheck(){if(!sb||!authUser||isAdmin())return;const t=await myAccountType();
   if(!t){setTimeout(()=>{if(!$13('#v8Sheet').classList.contains('open'))openAccountChooser();},1200);return;}
   if(t==='business'&&!myStore){try{const {data}=await sb.from('business_requests').select('status').eq('user_id',authUser.id).eq('status','pending').limit(1);if(!data||!data.length)setTimeout(()=>{if(!$13('#v8Sheet').classList.contains('open'))openBizJoin();},1200);}catch(e){}}}
