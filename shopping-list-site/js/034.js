@@ -96,6 +96,12 @@ function salWeekly26(){const d=new Date();if(d.getDay()!==4&&d.getDay()!==5)retu
 /* "sal" בהתראה (גם מהטלפון: ?tab=sal) פותח את הדף ולא לשונית */
 const _salSetTab=setTab;setTab=function(t){if(t!=='sal')return _salSetTab.apply(this,arguments);openSal26();};
 try{if(new URLSearchParams(location.search).get('tab')==='sal')setTimeout(openSal26,300);}catch(e){}
+/* כרטיס בולט בראש "מחירים" ו"חנויות" — שכולם יראו שיש את זה */
+function salCard26(pane){if(!pane||pane.querySelector('[data-sal26]'))return;
+  pane.insertAdjacentHTML('afterbegin','<button type="button" class="sal26" data-sal26="1"><span class="sal26i" aria-hidden="true">📣</span><span class="sal26t"><b>'+esc(T('הסל הזול השבוע ב'+userCity(),'Cheapest basket this week in '+userCity()))+'</b><small>'+T('באיזו חנות הכי זול · תמונה לשיתוף · דף להדפסה','Which store is cheapest · image to share · page to print')+'</small></span><span class="sal26a" aria-hidden="true">‹</span></button>');}
+{const _salRP=renderPrices;renderPrices=function(){const r=_salRP.apply(this,arguments);try{salCard26($26('#panePrices'));}catch(e){}return r;};
+ const _salRS=renderStores;renderStores=function(){const r=_salRS.apply(this,arguments);try{salCard26($26('#paneStores'));}catch(e){}return r;};}
+document.addEventListener('click',e=>{if(e.target.closest('[data-sal26]'))openSal26();});
 
 /* ---------- 3. 🔔 התראת מחיר על מוצר ---------- */
 state.priceAlerts=Array.isArray(state.priceAlerts)?state.priceAlerts:[];
