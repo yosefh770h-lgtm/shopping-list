@@ -45,7 +45,7 @@ function card(){const t=today(),c=t.p.city,h=fromRd(t.hrd),sh=shabbatOf(t.hrd);
     '<span class="hcgo" aria-hidden="true">‹</span>';}
 function mount(){const pane=$h('#paneList');if(!pane)return;let b=pane.querySelector('.hcline');
   if(!b){const pill=pane.querySelector('.offpill');(pill||pane).insertAdjacentHTML(pill?'afterend':'afterbegin','<button class="hcline" type="button"></button>');b=pane.querySelector('.hcline');}
-  const s=card();if(b.innerHTML!==s){b.innerHTML=s;b.setAttribute('aria-label',b.textContent.replace(/‹/g,'').trim());}}
+  const s=card();if(b.innerHTML!==s)b.innerHTML=s;}
 
 /* ---------- המסך המלא: זמני היום, שבת הקרובה, מה בקרוב ---------- */
 function sheet(){const t=today(),p=t.p,c=p.city,h=fromRd(t.hrd),tz=c.tz;
