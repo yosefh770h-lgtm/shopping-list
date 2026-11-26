@@ -318,7 +318,8 @@ renderMe=function(){const r=_v26RenderMe.apply(this,arguments);try{if(meTab==='i
 /* ---------- תפריט ⚙️ ---------- */
 add26('miSave26','💰','כמה חסכתי','My savings','miFinish',openSavings26);
 add26('miWeek26','🛒','הסל השבועי — איפה הכי זול השבוע','Weekly basket','miSave26',openWeekly26);
-add26('miAlert26','🔔','התראות מחיר על מוצרים','Price alerts','miWeek26',()=>openAlerts26());
+add26('miSal26','📣','הסל הזול בעיר — תמונה לשיתוף ולהדפסה','Cheapest basket in your city','miWeek26',()=>{location.href='/sal-zol-hashavua.html?city='+encodeURIComponent(userCity());});
+add26('miAlert26','🔔','התראות מחיר על מוצרים','Price alerts','miSal26',()=>openAlerts26());
 add26('miShop26','🛍️','מצב קנייה בחנות','Shopping mode','miAlert26',()=>{setTab('list');openShop26();});
 add26('miCalc26','🧮','כמה לקנות לשבת / לאירוע','How much to buy','miReady',()=>openCalc26());
 add26('miTop26','🏆','המדווחים של החודש','Top reporters','miReviews',openTop26);
