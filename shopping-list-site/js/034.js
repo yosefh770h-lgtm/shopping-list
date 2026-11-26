@@ -332,20 +332,27 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
       try{const {data}=await sb.rpc('sal_top_searches');const terms=(data||[]).map(x=>x.q);
         const t=await SP.auto({terms,count:cnt,search:q=>fetch(PRICE_API+'/products?'+new URLSearchParams({q,limit:'6'})).then(r=>r.ok?r.json():[])});
         const e2=$26('#salAuto');if(!e2)return;
-        e2.innerHTML=t.length>=SP.MIN?'היום האתר בחר '+t.length+' מוצרים (מ-'+terms.length+' מילות חיפוש נפוצות'+(SP.holidayTerms().length?' + מוצרים לחג':'')+'): '+esc(t.map(i=>i[0]).join(' · '))
+        e2.innerHTML=t.length>=SP.MIN?'היום האתר בחר '+t.length+' מוצרים (מ-'+terms.length+' מילות חיפוש נפוצות): '+esc(t.map(i=>i[0]).join(' · '))
           :'⚠️ עוד אין מספיק חיפושים השבוע ('+terms.length+' מילים שלפחות 2 אנשים חיפשו) — בינתיים הדף מראה את הרשימה שלמטה.';}catch(err){el.textContent='⚠️ '+(err.message||err)+' — אם כתוב שהפונקציה לא קיימת, צריך להריץ שוב את supabase/schema.sql';}}
     const today=()=>{if(md==='auto')return '<p class="muted" id="salAuto">⏳ האתר בוחר...</p>';const t=SP.pick({items,mode:md,count:cnt});return '<p class="muted">'+(md==='daily'?'היום ('+esc(SP.today())+') בסל '+t.length+' מוצרים: ':'בסל '+t.length+' מוצרים: ')+esc(t.map(i=>i[0]).join(' · '))+'</p>';};
     const draw=()=>{m.innerHTML='<div class="card"><h2>📣 הסל הזול בעיר</h2><p class="muted">המוצרים שבודקים בדף "הסל הזול" (<a href="/sal-zol-hashavua.html" target="_blank" rel="noopener">לדף</a>). משווים רק חנויות שיש בהן את <b>כל</b> המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). מוצר שנמכר בפחות — ברוב החנויות יש מוצר אחר במקומו, והחיפוש כותב את זה. שם החברה נכנס לשם המוצר, ואפשר לתקן את השם בטבלה. משתמשים יכולים לשנות לעצמם את הסל — זה לא משנה את ההגדרה כאן.</p>'+
       '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="fixed"'+(md==='fixed'?' checked':'')+'> אותם מוצרים כל יום (כל הרשימה)</label></div>'+
       '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="daily"'+(md==='daily'?' checked':'')+'> כל יום מבחר אחר מתוך הרשימה</label></div>'+
-      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="auto"'+(md==='auto'?' checked':'')+'> 🤖 האתר בוחר לבד: המוצרים שהכי מחפשים השבוע, ושבועיים לפני חג גם מוצרים לחג (כשאין מספיק חיפושים — הרשימה שלמטה)</label></div>'+
+      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="auto"'+(md==='auto'?' checked':'')+'> 🤖 האתר בוחר לבד: המוצרים שהכי מחפשים השבוע (כשאין מספיק חיפושים — הרשימה שלמטה)</label></div>'+
       '<div class="row"'+(md==='fixed'?' hidden':'')+'><label>כמה מוצרים בכל יום: <input id="salCnt" type="number" min="'+SP.MIN+'" max="'+SP.MAX+'" value="'+cnt+'" style="width:80px"></label></div>'+
       today()+'</div>'+
       '<div class="card"><h2>🧺 הרשימה ('+items.length+')</h2><div class="tw" tabindex="0" role="region" aria-label="המוצרים בסל"><table><thead><tr><th>מוצר</th><th>ברקוד</th><th></th></tr></thead><tbody>'+
       items.map((i,n)=>'<tr><td><input data-nm="'+n+'" value="'+esc(i[0])+'" maxlength="60" aria-label="שם המוצר"></td><td dir="ltr">'+esc(i[1])+(counts[i[1]]?' <small class="muted">('+counts[i[1]]+' סניפים)</small>':'')+'</td><td><button class="btn sec" data-rm="'+n+'">🗑️</button></td></tr>').join('')+'</tbody></table></div>'+
       '<div class="row"><input id="salQ" type="search" placeholder="להוסיף מוצר: שם או ברקוד" maxlength="60" autocomplete="off"></div><div id="salRes"></div>'+
       '<div class="row"><button class="btn" id="salSave">💾 שמירה</button> <button class="btn sec" id="salDef">↩️ חזרה ל-12 המוצרים המקוריים</button></div></div>'+
-      '<div class="card" id="salStats">'+statsCard()+'</div>';if(md==='auto')autoPrev();};
+      '<div class="card"><h2>🕎 הסל לחג</h2><p class="muted" id="salHoli">'+(SP.holiday()?'⏳ בודק...':'שבועיים לפני כל חג (וגם בחג עצמו) יופיע בדף לבד עוד כפתור: הסל לחג. עכשיו אין חג קרוב.')+'</p></div>'+
+      '<div class="card" id="salStats">'+statsCard()+'</div>';if(md==='auto')autoPrev();holiPrev();};
+    /* 🕎 הסל לחג — אותו חישוב כמו בדף (SP.holidayBasket), כפתור נוסף בדף ליד הסל הרגיל */
+    async function holiPrev(){if(!SP.holiday())return;
+      const h=await SP.holidayBasket({base:SP.DEFAULT,search:q=>fetch(PRICE_API+'/products?'+new URLSearchParams({q,limit:'6'})).then(r=>r.ok?r.json():[])}).catch(()=>null);
+      const el=$26('#salHoli');if(!el)return;
+      el.innerHTML=h?'עכשיו יש בדף גם כפתור "'+esc(h.icon+' הסל ל'+h.name)+'", חוץ מהסל הרגיל, עם '+h.items.length+' מוצרים: '+esc(h.items.map(i=>i[0]).join(' · '))+'. מוצרים לחג שלא נמכרים כמעט בכל החנויות (כמו נרות) לא נכנסים, כדי שיהיה אפשר להשוות.'
+        :'⚠️ לא נמצאו עכשיו מוצרים לחג שנמכרים כמעט בכל החנויות — אז אין כפתור של סל לחג.';}
     draw();loadStats();
     m.oninput=e=>{const t=e.target;if(t.dataset.nm!=null){items[+t.dataset.nm][0]=t.value.slice(0,60);return;}
       if(t.id==='salCnt'){cnt=Math.max(SP.MIN,Math.min(SP.MAX,parseInt(t.value,10)||12));return;}

@@ -2868,15 +2868,17 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   const pk = await page.evaluate((pool) => { const c = { items: pool, mode: 'daily', count: 4 }, d = new Date('2026-11-26T10:00:00Z'), a = SalPick.pick(c, d), b = SalPick.pick(c, d);
     return { n: a.length, same: JSON.stringify(a) === JSON.stringify(b), fixed: SalPick.pick({ items: pool }).length, def: SalPick.pick({ items: [['x', '1']] }).length }; }, pool);
   assert(pk.n === 4 && pk.same && pk.fixed === 6 && pk.def === 12, 'בחירת המוצרים: ' + JSON.stringify(pk));
-  // 🤖 האתר בוחר: לכל מילת חיפוש המוצר שבהכי הרבה סניפים, בלי שני מאותו סוג, בלי מוצר שנמכר במעט סניפים, ולפני חנוכה גם שמן
+  // 🤖 האתר בוחר: לכל מילת חיפוש המוצר שבהכי הרבה סניפים, בלי שני מאותו סוג, בלי מוצר שנמכר במעט סניפים; ולפני חנוכה — סל לחג (שמן מהסל הרגיל, כי יש בו כבר שמן, ומשלימים מהסל הרגיל)
   const au = await page.evaluate(async () => { const P = { 'חלב': [{ code: '1', name: 'חלב תנובה 3%', manufacturer: 'תנובה', stores: 1500 }, { code: '2', name: 'חלב טרה 3%', manufacturer: 'טרה', stores: 1700 }],
       'חלב 1%': [{ code: '3', name: 'חלב יטבתה 1%', manufacturer: 'יטבתה', stores: 1600 }], 'במבה': [{ code: '4', name: 'במבה 80 גרם', manufacturer: 'אסם', stores: 1800 }],
       'רוטב': [{ code: '5', name: 'רוטב מיוחד', stores: 300 }], 'שמן קנולה': [{ code: '6', name: 'שמן קנולה 1 ליטר', manufacturer: 'שמן', stores: 1400 }] };
     const search = (q) => Promise.resolve(P[q] || []);
     const a = await SalPick.auto({ terms: ['חלב', 'חלב 1%', 'במבה', 'רוטב'], search, count: 12, date: new Date('2026-11-20T10:00:00Z') });
-    const b = await SalPick.auto({ terms: ['חלב', 'במבה'], search, count: 12, date: new Date('2026-12-04T10:00:00Z') });
-    return { a: a.map((i) => i[1]).join(','), b: b.map((i) => i[1]).join(',') }; });
-  assert(au.a === '2,4' && au.b === '6,2,4', 'האתר בוחר: ' + JSON.stringify(au));
+    const base = [['חלב תנובה 1 ליטר', '10'], ['שמן זית 750', '11'], ['במבה 80', '12']];
+    const h = await SalPick.holidayBasket({ search, base, date: new Date('2026-12-04T10:00:00Z') });
+    const none = await SalPick.holidayBasket({ search, base, date: new Date('2026-12-20T10:00:00Z') });
+    return { a: a.map((i) => i[1]).join(','), h: h && h.name + ':' + h.items.map((i) => i[1]).join(','), none }; });
+  assert(au.a === '2,4' && au.h === 'חנוכה:11,10,12' && au.none === null, 'האתר בוחר / הסל לחג: ' + JSON.stringify(au));
   await page.evaluate((pool) => { window.__up = []; sb = __stub({ 'site_config:one': { value: { items: pool, mode: 'daily', count: 4 } }, 'rpc:admin_sal_stats': { people: 3, users: 1, guests: 2, custom: 1, actions: { view: { n: 5, people: 3 }, share: { n: 2, people: 1 } }, days: [], cities: [{ city: 'בני ברק', n: 5, out: 2 }],
       sharers: [{ name: 'דוד', guest: false, n: 2, last: '2026-11-26T12:00:00Z' }], recent: [{ at: '2026-11-26T12:00:00Z', name: 'דוד', guest: false, staff: false, action: 'share', city: 'בני ברק', custom: false, n: 12 }] } }); const f = sb.from; sb.from = (n) => { const q = f(n); return new Proxy(q, { get(t, p) { if (p === 'upsert') return (v) => { window.__up.push(v); return q; }; return t[p]; } }); };
     authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('sal'); }, pool);
