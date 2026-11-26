@@ -1,13 +1,15 @@
 
 /* ================= v44: 📤 "שתפו אותי" — קישור אישי לכל שיתוף: מי שיתף, איפה (קבוצה / סטטוס...), כמה נכנסו ומי הצטרף ================= */
 const $44=s=>document.querySelector(s);
-const SH44_PLACES={wa:[['group','👥',T('קבוצה','Group')],['status','🟢',T('סטטוס','Status')],['private','👤',T('אדם אחד','One person')]],
-  copy:[['group','👥',T('קבוצת וואטסאפ','WhatsApp group')],['status','🟢',T('סטטוס','Status')],['facebook','📘',T('פייסבוק','Facebook')],['other','✏️',T('מקום אחר','Elsewhere')]]};
-/* בבועת השיתוף: לאן שולחים? (ושם הקבוצה / המקום, לא חובה) */
-function shareWhere44(pop,k){const r=pop.querySelector('.shr18');if(!r)return;
-  r.innerHTML=(SH44_PLACES[k]||[]).map(([p,ic,n])=>'<button class="shb18" data-net="'+k+'" data-place="'+p+'" aria-label="'+esc(n)+'"><span class="ic" style="background:'+(k==='wa'?'#25D366':'#0f766e')+'">'+ic+'</span><small>'+esc(n)+'</small></button>').join('');
-  r.insertAdjacentHTML('beforebegin','<p class="shq44">'+(k==='wa'?T('לאן שולחים בוואטסאפ?','Where in WhatsApp?'):T('איפה תדביקו את הקישור?','Where will you paste it?'))+'</p>');
-  r.insertAdjacentHTML('afterend','<input id="shPlace44" class="shin44" maxlength="60" aria-label="'+T('שם הקבוצה או המקום (לא חובה)','Group or place name (optional)')+'" placeholder="'+T('שם הקבוצה / המקום (לא חובה)','Group / place name (optional)')+'">');
+/* לאן משתפים — בכל דרך שיתוף חייבים לבחור לאן. ב"✏️ אחר" חובה לכתוב לאן (חבר מסוים, אתר שלא ברשימה...); בשאר — השם רשות */
+const SH44_P={group:['👥',T('קבוצה','Group')],status:['🟢',T('סטטוס','Status')],private:['👤',T('אדם אחד','One person')],facebook:['📘',T('פייסבוק','Facebook')],
+  site:['🌐',T('אתר / פורום','Website / forum')],other:['✏️',T('אחר','Other')]};
+const SH44_PLACES={wa:['group','status','private','other'],copy:['group','status','facebook','site','other'],gm:['private','group','other'],em:['private','group','other'],sms:['private','group','other'],more:['group','status','private','site','other']};
+/* בבועת השיתוף: לאן שולחים? (ושם הקבוצה / המקום — חובה רק ב"אחר") */
+function shareWhere44(pop,k){const r=pop.querySelector('.shr18');if(!r)return;const net=(SHARE_NETS18.find(x=>x[0]===k)||[])[2]||'#0f766e';
+  r.innerHTML=(SH44_PLACES[k]||SH44_PLACES.more).map(p=>{const [ic,n]=SH44_P[p];return '<button class="shb18" data-net="'+k+'" data-place="'+p+'" aria-label="'+esc(n)+'"><span class="ic" style="background:'+(k==='copy'?'#0f766e':k==='more'?'#8b5cf6':net)+'">'+ic+'</span><small>'+esc(n)+'</small></button>';}).join('');
+  r.insertAdjacentHTML('beforebegin','<p class="shq44">'+(k==='copy'?T('איפה תדביקו את הקישור?','Where will you paste it?'):T('לאן שולחים?','Where are you sending it?'))+'</p>');
+  r.insertAdjacentHTML('afterend','<input id="shPlace44" class="shin44" maxlength="60" aria-label="'+T('לאן משתפים: שם הקבוצה, החבר או האתר','Where: group, friend or site')+'" placeholder="'+T('שם הקבוצה / החבר / האתר (חובה ב"אחר")','Group / friend / site (required for Other)')+'">');
   const b=pop.getBoundingClientRect();if(b.right>innerWidth-8)pop.style.left=Math.max(8,innerWidth-b.width-8)+'px';if(b.bottom>innerHeight-8)pop.style.top=Math.max(8,innerHeight-b.height-8)+'px';
   const f=r.querySelector('[data-place]');if(f)f.focus({preventScroll:true});}
 /* יוצר קישור חדש (?s=) ורושם אותו בשרת — בלי לחכות, כדי שוואטסאפ ייפתח מיד */
@@ -28,7 +30,7 @@ async function shareJoin44(){let tk='';try{tk=localStorage.getItem('yam_share44'
 if(authUser)setTimeout(shareJoin44,3000);
 /* ---------- 📤 בבק אופיס: קישורי שיתוף — מי שיתף, איפה, כמה נכנסו ומי הצטרף ---------- */
 const SH44_NET={wa:'וואטסאפ',gm:'Gmail',em:'מייל',sms:'SMS',copy:'העתקת קישור',more:'שיתוף מהטלפון'};
-const SH44_PL={group:'קבוצה',status:'סטטוס',private:'אדם אחד',facebook:'פייסבוק',other:'מקום אחר'};
+const SH44_PL={group:'קבוצה',status:'סטטוס',private:'אדם אחד',facebook:'פייסבוק',site:'אתר / פורום',other:'מקום אחר'};
 function shPlace44(r){const s=String(r.place||''),i=s.indexOf(': '),key=i<0?s:s.slice(0,i),nm=i<0?'':s.slice(i+2);
   const base=r.channel==='copy'&&key?(key==='group'?'קבוצת וואטסאפ':key==='status'?'סטטוס':(SH44_PL[key]||key))+' (העתקה)':(SH44_NET[r.channel]||r.channel)+(key?' · '+(SH44_PL[key]||key):'');
   return {base,nm};}

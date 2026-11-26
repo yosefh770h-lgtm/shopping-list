@@ -764,6 +764,13 @@ await test('📢 פרסום עדכון: הודעה קצרה / מה חדש מהב
   // קישור אחר בכל שיתוף, והעתקה שואלת איפה מדביקים
   await page.click('#btnShareSite'); await page.waitForTimeout(300); await page.click('#shpop18 [data-net="copy"]');
   assert(await page.evaluate(() => !!document.querySelector('#shpop18 [data-place="other"]')), 'העתקה לא שואלת איפה');
+  // ✏️ "אחר": לא משתפים עד שכותבים לאן; ובכל דרך שיתוף (גם Gmail) שואלים לאן
+  await page.click('#btnShareSite'); await page.waitForTimeout(300); await page.click('#shpop18 [data-net="gm"]');
+  const ot = await page.evaluate(() => { window.__rpc = []; let opened = 0; const op = window.open; window.open = () => { opened++; return {}; };
+    document.querySelector('#shpop18 [data-place="other"]').click(); const blocked = { opened, rpc: window.__rpc.length, need: document.querySelector('#shPlace44').classList.contains('need44') };
+    document.querySelector('#shPlace44').value = 'פורום הורים'; document.querySelector('#shpop18 [data-place="other"]').click(); window.open = op;
+    return { blocked, opened, rpc: (window.__rpc.find((x) => x[0] === 'share_link_create') || [])[1] }; });
+  assert(ot.blocked.opened === 0 && ot.blocked.rpc === 0 && ot.blocked.need && ot.opened === 1 && ot.rpc && ot.rpc.p_channel === 'gm' && ot.rpc.p_place === 'other: פורום הורים', '"אחר" בשיתוף: ' + JSON.stringify(ot));
   await page.evaluate(() => { if (typeof closeShare18 === 'function') closeShare18(); });
   // בבק אופיס: מי שיתף, איפה, כמה נכנסו ומי הצטרף
   await page.evaluate(() => { sb = __stub({ 'rpc:admin_share_links': [{ token: 'abcdefghij', at: new Date().toISOString(), channel: 'wa', place: 'status', sharer: 'u1', name: 'משה', email: 'm@x.com', visits: 7, joins: [{ name: 'דוד', email: 'd@x.com', new: true, at: new Date().toISOString() }] },
