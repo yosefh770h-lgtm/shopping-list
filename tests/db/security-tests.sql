@@ -1484,6 +1484,30 @@ select tst.ok((select (x->>'n')::int = 2 and (x->>'people')::int = 2 from jsonb_
 select tst.ok((public.admin_price_search_stats(30, false)->>'guests')::int = 1 and (public.admin_price_search_stats(30, false)->>'users')::int = 1, '🔎 one guest and one signed-in user');
 reset role;
 delete from public.price_searches;
+-- 📣 הסל הזול: מי השתמש ושיתף
+reset role; set role anon; select tst.as_user('');
+select public.sal_log('11111111-1111-4111-8111-111111111111', 'view', 'בני <b>ברק</b>', false, 12);
+select public.sal_log('11111111-1111-4111-8111-111111111111', 'share', 'בני ברק', false, 99);
+select public.sal_log(null, 'view', 'x', false, 12);
+select public.sal_log('11111111-1111-4111-8111-111111111111', 'hack', 'x', false, 1);
+select tst.err($$select * from public.sal_events$$, '📣 anon cannot read basket events');
+select tst.err($$select public.admin_sal_stats(30, false)$$, '📣 anon cannot call the basket stats');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a');
+select public.sal_log('22222222-2222-4222-8222-222222222222', 'post', 'בני ברק', true, 5);
+select tst.err($$select * from public.sal_events$$, '📣 a regular user cannot read basket events');
+select tst.ok(public.admin_sal_stats(30, false) is null, '📣 a regular user gets no basket stats');
+select tst.as_user('00000000-0000-0000-0000-000000000001');
+select public.sal_log(null, 'print', 'בני ברק', false, 12);
+reset role;
+select tst.ok((select count(*) from public.sal_events) = 4, '📣 a guest without a device id and an unknown action are not logged');
+select tst.ok((select city = 'בני bברק/b' and n = 12 from public.sal_events where action = 'view'), '📣 the city is cleaned');
+select tst.ok((select n = 60 from public.sal_events where action = 'share'), '📣 the item count is capped');
+select tst.ok((select guest is null and custom from public.sal_events where user_id = '00000000-0000-0000-0000-00000000000a'), '📣 a signed-in user keeps no device id');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000001');
+select tst.ok((public.admin_sal_stats(30, false)->'actions'->'print') is null and (public.admin_sal_stats(30, true)->'actions'->'print'->>'n')::int = 1, '📣 team actions are left out by default');
+select tst.ok((public.admin_sal_stats(30, false)->>'people')::int = 2 and jsonb_array_length(public.admin_sal_stats(30, false)->'sharers') = 2, '📣 two people, both shared or downloaded');
+reset role;
+delete from public.sal_events;
 -- 📱/🌐 site or Android app: touch_presence remembers which one, only the owner/admin sees it
 insert into public.auth_events(kind, email, user_id, ua) values
   ('signup', 'b@x.com', '00000000-0000-0000-0000-00000000000b', 'Mozilla/5.0 (Linux; Android 14; wv) Chrome/120 Mobile YamShoppingApp/1.0'),
