@@ -147,11 +147,11 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
   /* כרטיס התוצאות */
   /* 🧺 רשימת המוצרים בקטן — רק למי שסימן "להראות בתמונה" */
   const withItems=$('#showItems').checked;let il=[];
-  if(withItems){x.font=F(400,tall?24:21);il=wrapLines(x,'בסל: '+BASKET.map(b=>b[0]).join(' · '),W-176).slice(0,tall?5:4);}
+  if(withItems){x.font=F(400,tall?24:21);const all=wrapLines(x,'בסל: '+BASKET.map(b=>b[0]).join(' · '),W-176),mx=tall?5:3;il=all.slice(0,mx);if(all.length>mx)il[mx-1]=clip(x,il[mx-1]+' …',W-176);}
   const ih=il.length?il.length*(tall?32:28)+18:0;
   /* הכרטיס צריך להיגמר לפני ה-QR: כשהרשימה ארוכה השורות מצטופפות קצת (לא פחות מ-84) */
   const qs=tall?260:200,qy=H-qs-(tall?300:150),extra=(c.gap>=1?96:24)+24+ih;
-  y+=tall?56:32;const rows=c.top.length,rh=Math.max(84,Math.min(tall?132:100,Math.floor((qy-40-y-extra)/rows))),cardH=rows*rh+extra;
+  y+=tall?56:32;const rows=c.top.length,rh=Math.max(76,Math.min(tall?132:100,Math.floor((qy-40-y-extra)/rows))),cardH=rows*rh+extra;
   x.fillStyle='#fffdf7';round(x,48,y,W-96,cardH,28);x.fill();
   let ry=y+24;const MED=['#c9a227','#9aa3ad','#b0743a'];
   c.top.forEach((s,i)=>{const cy=ry+rh/2;
@@ -165,23 +165,28 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
   if(c.gap>=1){x.fillStyle='rgba(47,107,58,.12)';round(x,80,ry+8,W-160,72,16);x.fill();x.fillStyle='#2f6b3a';x.font=F(700,32);x.textAlign='center';
     x.fillText(clip(x,'פער של עד '+money(c.gap)+' על אותו סל בדיוק',W-200),W/2,ry+56);x.textAlign='right';ry+=72;}
   if(il.length){x.fillStyle='#5f5f55';x.font=F(400,tall?24:21);il.forEach((l,i)=>x.fillText(l,R-24,ry+(tall?40:34)+i*(tall?32:28)));}
-  /* QR וקישור */
+  /* QR וקישור — הריבוע הלבן תמיד באותו גודל ובאותו מקום, וה-QR באמצע שלו (קישור עם סל שלי ארוך יותר, וה-QR יוצא צפוף יותר) */
   let m=null;try{m=await loadQr();}catch(e){m=null;}
-  if(m){const w=m.getWidth(),k=Math.floor(qs/w),sz=k*w;x.fillStyle='#fff';round(x,64,qy-12,sz+24,sz+24,16);x.fill();x.fillStyle='#000';
-    for(let a=0;a<w;a++)for(let b=0;b<w;b++)if(m.get(b,a))x.fillRect(76+b*k,qy+a*k,k,k);}
-  x.fillStyle='#fff';x.font=F(800,40);x.fillText('הסל של העיר שלכם?',R,qy+52);
-  x.fillStyle='#ffd166';x.font=F(700,34);x.fillText('סורקים או נכנסים:',R,qy+104);
-  x.fillStyle='#fff';x.font=F(700,36);x.direction='ltr';x.textAlign='right';x.fillText('yamshopping.com',R,qy+156);x.direction='rtl';
-  /* ✍️ נוצר ע״י ים שופינג + מי עשה את ההשוואה + פרו */
-  x.fillStyle='#ffd166';x.font=F(700,26);const cw=W-128-(qs+56),cl=tall?wrapLines(x,creditText(),cw).slice(0,2):[clip(x,creditText(),cw)];cl.forEach((l,i)=>x.fillText(l,R,qy+(tall?212:202)+i*32));
-  x.fillStyle='#fff';x.font=F(500,26);x.fillText(clip(x,'🕐 '+whenStr(c.at),W-128-(qs+56)),R,qy+(tall?212:202)+cl.length*34);
+  const bx=64,by=qy-12,bs=qs+24;
+  /* כל ה-QR ממלא את הריבוע (גם כשיש בו הרבה נקודות); כל נקודה מעוגלת לפיקסלים שלמים כדי שלא יהיו רווחים */
+  if(m){const w=m.getWidth(),k=qs/w,P=v=>Math.round(bx+12+v*k),Q=v=>Math.round(by+12+v*k);x.fillStyle='#fff';round(x,bx,by,bs,bs,16);x.fill();x.fillStyle='#000';
+    for(let a=0;a<w;a++)for(let b=0;b<w;b++)if(m.get(b,a))x.fillRect(P(b),Q(a),P(b+1)-P(b),Q(a+1)-Q(a));}
+  /* הטקסט ליד ה-QR: מימין, ברוחב שנשאר, מתחיל בגובה של הריבוע */
+  const cw=R-(bx+bs+32),L=tall?[46,58,58,52,36]:[42,50,50,46,34];let ty=by+L[0];
+  x.fillStyle='#fff';x.font=F(800,tall?40:36);x.fillText(clip(x,'הסל של העיר שלכם?',cw),R,ty);ty+=L[1];
+  x.fillStyle='#ffd166';x.font=F(700,tall?34:30);x.fillText('סורקים או נכנסים:',R,ty);ty+=L[2];
+  x.fillStyle='#fff';x.font=F(700,tall?36:34);x.direction='ltr';x.textAlign='right';x.fillText('yamshopping.com',R,ty);x.direction='rtl';ty+=L[3];
+  /* ✍️ נוצר ע״י ים שופינג + מי עשה את ההשוואה + פרו — שוברים שורה רק בין החלקים, לא באמצע שם */
+  x.fillStyle='#ffd166';x.font=F(700,tall?26:24);segLines(x,creditText().split(' · '),cw).slice(0,2).forEach(l=>{x.fillText(l,R,ty);ty+=L[4];});
+  x.fillStyle='#fff';x.font=F(500,tall?26:24);x.fillText(clip(x,'🕐 '+whenStr(c.at),cw),R,ty);
   /* הבהרה */
-  x.fillStyle='#9fb0c8';x.font=F(400,22);wrap(x,'מחירי '+dateStr(c.updated)+' מקבצי שקיפות המחירים של הרשתות, מחיר מדף רגיל בלי מבצעים. רק חנויות שיש בהן את כל הסל. המחיר בקופה קובע.',R,H-(tall?110:64),W-128,30);
+  x.fillStyle='#9fb0c8';x.font=F(400,22);wrap(x,'מחירי '+dateStr(c.updated)+' מקבצי שקיפות המחירים של הרשתות, מחיר מדף רגיל בלי מבצעים. רק חנויות שיש בהן את כל הסל. המחיר בקופה קובע.',R,H-(tall?110:58),W-128,30);
   return cv;}
 function round(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
 function clip(x,t,max){t=String(t||'');if(x.measureText(t).width<=max)return t;while(t.length>1&&x.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…';}
 function fit(x,t,max){let s=parseInt(x.font.match(/(\d+)px/)[1],10);while(s>24&&x.measureText(t).width>max){s-=2;x.font=x.font.replace(/\d+px/,s+'px');}}
 function wrapLines(x,t,max){const w=t.split(' ');let line='';const lines=[];for(const p of w){const tt=line?line+' '+p:p;if(x.measureText(tt).width>max&&line){lines.push(line);line=p;}else line=tt;}lines.push(line);return lines;}
+function segLines(x,segs,max){const out=[];let line='';for(const g of segs){const t=line?line+' · '+g:g;if(line&&x.measureText(t).width>max){out.push(line);line=g;}else line=t;}if(line)out.push(line);return out.map(l=>clip(x,l,max));}
 function wrap(x,t,r,y0,max,lh){wrapLines(x,t,max).forEach((l,i)=>x.fillText(l,r,y0+i*lh));}
 
 /* ---------- 📤 שיתוף והורדה ---------- */

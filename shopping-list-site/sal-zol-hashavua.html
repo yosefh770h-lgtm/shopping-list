@@ -94,8 +94,11 @@ footer{text-align:center;padding:4px 16px 32px}
   .gap{background:none;color:#000;border:1.5px dashed #000;text-align:center}
   .muted{color:#333}
   .credit,#when{color:#000;text-align:center}
-  .pqr{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8mm}
-  .pqr svg{width:34mm;height:34mm}
+  .pqr{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8mm;break-inside:avoid}
+  .pqr>span{flex:none;display:block;width:34mm;height:34mm}
+  .pqr svg{width:34mm;height:34mm;display:block}
+  .pqr>div{min-width:0;flex:0 1 auto}
+  #plink{word-break:break-all;font-size:12pt}
   .pqr b{font-size:16pt}
 }
 </style>
@@ -157,6 +160,6 @@ footer{text-align:center;padding:4px 16px 32px}
 <footer class="muted"><a href="/terms.html">תנאי שימוש</a> · <a href="/privacy.html">פרטיות</a></footer>
 <script src="/js/089-hcal.js?v=e2ea143fdb"></script>
 <script src="/js/sal-pick.js?v=c42b82e360"></script>
-<script src="/js/pages/sal.js?v=8bfa7923e5"></script>
+<script src="/js/pages/sal.js?v=b389bf41eb"></script>
 </body>
 </html>
