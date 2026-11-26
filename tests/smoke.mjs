@@ -2845,7 +2845,7 @@ await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מק
   await ctx.close();
 });
 
-await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), עריכה של המשתמש, ורשימת המוצרים בתמונה', async () => {
+await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), הסל של האתר או שלי, שם בתמונה, וצבע לפרו', async () => {
   const prods = [{ code: '7290000000011', name: 'טחינה 500 גרם', manufacturer: 'צבר', stores: 1200 }, { code: '7290000000028', name: 'במבה 80 גרם', manufacturer: 'אסם', stores: 1800 }];
   const api = (r) => { const u = new URL(r.request().url()); const j = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     if (u.pathname.endsWith('/products')) return j(prods);
@@ -2879,13 +2879,24 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   await p2.goto(BASE.replace('index.html', 'sal-zol-hashavua.html') + '?city=' + encodeURIComponent('בני ברק'));
   await p2.waitForSelector('#res li'); assert((await p2.textContent('#lead')).includes('12 מוצרים מוכרים'), 'ברירת המחדל: 12 מוצרים');
   assert((await p2.$$eval('#res li', (l) => l.length)) === 2, 'סניף "און ליין" לא אמור להיכנס');
-  await p2.click('#edit'); await p2.click('[data-del="0"]'); await p2.fill('#edQ', 'במבה'); await p2.waitForSelector('[data-add]'); await p2.click('[data-add="7290000000028"]');
+  await p2.click('#srcMine'); await p2.click('[data-del="0"]'); await p2.fill('#edQ', 'במבה'); await p2.waitForSelector('[data-add]'); await p2.click('[data-add="7290000000028"]');
   await p2.click('#edSave'); await p2.waitForFunction(() => document.querySelector('#h1').textContent.startsWith('הסל שלי'));
   const c = await p2.evaluate(() => ({ url: __sal.cur.url, n: __sal.basket.length, mine: JSON.parse(localStorage.getItem('yam_sal_mine') || '[]').length }));
   assert(c.n === 12 && c.mine === 12 && /&p=[\d,]+7290000000028/.test(c.url), 'עריכה: ' + JSON.stringify(c));
   // רשימת המוצרים בתמונה — רק כשמסמנים
   const h = await p2.evaluate(async () => { const px = async () => { const cv = await __sal.draw(1080, 1350); return cv.toDataURL().length; }; const a = await px(); document.querySelector('#showItems').click(); const b = await px(); return { a, b, saved: localStorage.getItem('yam_sal_showitems') }; });
   assert(h.b !== h.a && h.saved === '1', 'רשימת המוצרים בתמונה: ' + JSON.stringify(h));
+  // ✍️ השם בתמונה ובדף, ומי שלא פרו לא יכול לבחור צבע
+  await p2.fill('#who', 'משפחת כהן');
+  const cr = await p2.evaluate(() => ({ t: document.querySelector('#credit').textContent, saved: localStorage.getItem('yam_sal_who') }));
+  assert(cr.t === 'נוצר ע״י ים שופינג · המוצרים וההשוואה של משפחת כהן' && cr.saved === 'משפחת כהן', 'קרדיט: ' + JSON.stringify(cr));
+  await p2.click('[data-col="mint"]');
+  const lk = await p2.evaluate(() => ({ hint: !document.querySelector('#proHint').hidden, col: localStorage.getItem('yam_sal_color'), hdr: document.documentElement.style.getPropertyValue('--hdr') }));
+  assert(lk.hint && !lk.col && lk.hdr === '#1e3a5f', 'צבע בלי פרו: ' + JSON.stringify(lk));
+  // חזרה ל"הסל של האתר" — הסל שלי נשאר שמור
+  await p2.click('#srcSite'); await p2.waitForFunction(() => !document.querySelector('#h1').textContent.startsWith('הסל שלי'));
+  assert((await p2.evaluate(() => JSON.parse(localStorage.getItem('yam_sal_mine') || '[]').length)) === 12 && (await p2.textContent('#lead')).includes('12 מוצרים מוכרים'), 'חזרה לסל של האתר');
+  await p2.click('#srcMine'); await p2.click('#edSave'); await p2.waitForFunction(() => document.querySelector('#h1').textContent.startsWith('הסל שלי'));
   // מי שמקבל קישור עם ?p= רואה את אותו סל (בלי לשמור אצלו)
   const p3 = await ctx2.newPage(); await p3.addInitScript(() => localStorage.clear());
   await p3.goto(c.url.replace('https://www.yamshopping.com/', BASE.replace('index.html', '')).replace(/city=[^&]*/, 'city=' + encodeURIComponent('בני ברק')));
@@ -2894,6 +2905,22 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   assert(r3.h1.startsWith('הסל שלי') && r3.n === 12 && r3.named && !r3.mine, 'קישור עם סל: ' + JSON.stringify(r3));
   assert(!err2.length, err2.join(' | '));
   await ctx2.close();
+  // 3) ⭐ משתמש פרו (נבדק בשרת — pro_status): בוחר צבע, והדף והתמונה כותבים "משתמש פרו"
+  const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL' });
+  const rpc = [];
+  await ctx4.route(/supabase\.co/, (r) => { const u = r.request().url(); if (u.includes('/rpc/pro_status')) { rpc.push(r.request().headers().authorization); return r.fulfill({ contentType: 'application/json', body: '{"pro":true}' }); } return r.fulfill({ contentType: 'application/json', body: '[]' }); });
+  await ctx4.route(/\/api\/prices\//, api);
+  const p4 = await ctx4.newPage(); const err4 = []; p4.on('pageerror', (e) => err4.push(e.message));
+  await p4.addInitScript(() => { if (!sessionStorage.getItem('x')) { sessionStorage.setItem('x', '1'); localStorage.clear(); localStorage.setItem('sb-ygyfodxfbebnkwdcbjrp-auth-token', JSON.stringify({ access_token: 'tok', expires_at: Math.floor(Date.now() / 1000) + 3600, user: { id: 'u1', user_metadata: { name: 'יוסי' } } })); } });
+  await p4.goto(BASE.replace('index.html', 'sal-zol-hashavua.html') + '?city=' + encodeURIComponent('בני ברק'));
+  await p4.waitForSelector('#res li'); await p4.waitForFunction(() => document.querySelector('#credit').textContent.includes('פרו'));
+  await p4.click('[data-col="mint"]');
+  const pr = await p4.evaluate(() => ({ t: document.querySelector('#credit').textContent, col: localStorage.getItem('yam_sal_color'), hdr: document.documentElement.style.getPropertyValue('--hdr'), hint: document.querySelector('#proHint').hidden, who: document.querySelector('#who').value }));
+  assert(rpc[0] === 'Bearer tok' && pr.t === 'נוצר ע״י ים שופינג · ההשוואה של יוסי · ⭐ משתמש פרו' && pr.col === 'mint' && pr.hdr === '#1b7d65' && pr.hint && pr.who === 'יוסי', 'פרו: ' + JSON.stringify(pr));
+  const px4 = await p4.evaluate(async () => { const cv = await __sal.draw(1080, 1350); const d = cv.getContext('2d').getImageData(5, 5, 1, 1).data; return [d[0], d[1], d[2]]; });
+  assert(Math.abs(px4[0] - 0x1b) < 6 && Math.abs(px4[1] - 0x7d) < 6, 'צבע התמונה של פרו: ' + px4);
+  assert(!err4.length, err4.join(' | '));
+  await ctx4.close();
 });
 
 await test('🛡️ אף בדיקה לא נתקלה בקוד שנחסם (CSP)', async () => { assert(!cspHits.size, [...cspHits].join(' | ')); });

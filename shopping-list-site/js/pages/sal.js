@@ -1,14 +1,15 @@
 /* 📣 הסל הזול השבוע בעיר (sal-zol-hashavua.html) — נובמבר 2026.
    סל של מוצרים מוכרים לפי ברקוד — אותו מוצר בדיוק בכל חנות, כדי שההשוואה תהיה הוגנת. משווים רק חנויות שיש בהן את כל הסל.
    איזה מוצרים: המנהל קובע בבק אופיס (js/sal-pick.js — אותם מוצרים כל יום, או מבחר אחר כל יום).
-   כל משתמש יכול לשנות לעצמו את המוצרים (✏️) — נשמר אצלו, ועובר בקישור ובQR (?p=ברקודים) למי שמקבל את התמונה.
+   כל משתמש בוחר: "הסל של האתר" או "אני בוחר את המוצרים" (✏️) — הסל שלו נשמר אצלו, ועובר בקישור ובQR (?p=ברקודים) למי שמקבל את התמונה.
+   בתמונה ובהדפסה: "נוצר ע״י ים שופינג", השם של מי שעשה את ההשוואה (רק אם כתב), ו"משתמש פרו" — פרו נבדק בשרת (pro_status) ורק הוא יכול לבחור צבע.
    המחירים: שרת המחירים (/api/prices/compare), חנויות פיזיות בעיר בלבד, לפי מחיר המדף הרגיל — בלי מבצעים.
    מבצעים לא נכנסים כי רבים מהם מותנים ("קופון חלב ב-1 ₪", "למצטרפים", "4 ב-18") ואז הסל נראה זול ממה שבאמת משלמים.
    כל שבוע התמונה "מתחדשת" לבד — היא מחושבת מהמחירים של היום, עם הפרשה של השבת הקרובה.
    יוצא: תמונה לקבוצה (1080×1350), תמונה לסטטוס (1080×1920), ודף להדפסה (A4, עם QR). בתמונות אין דמויות — רק טקסט ולוגו. */
 (function(){
 'use strict';
-const API='/api/prices',SITE='https://www.yamshopping.com/sal-zol-hashavua.html',KEY='yam_sal_city',MINE='yam_sal_mine',SHOWI='yam_sal_showitems';
+const API='/api/prices',SITE='https://www.yamshopping.com/sal-zol-hashavua.html',KEY='yam_sal_city',MINE='yam_sal_mine',SHOWI='yam_sal_showitems',USE='yam_sal_use',WHO='yam_sal_who',COL='yam_sal_color';
 /* ההגדרה מהבק אופיס (site_config "sal") — קריאה ציבורית, כמו בשאר האתר */
 const SB_URL='https://ygyfodxfbebnkwdcbjrp.supabase.co',SB_KEY='sb_publishable_ePRvA2OrDbBN3tbjbD3p-w_8maEwTCK';
 const SP=window.SalPick;
@@ -21,6 +22,33 @@ const money=n=>'₪'+(Math.round(n*100)/100).toFixed(2).replace(/\.00$/,'');
 const ls={get(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}},set(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){}}};
 const store={get:()=>ls.get(KEY),set:v=>ls.set(KEY,v)};
 let cur=null; /* {city, top:[...], gap, week, updated, url} */
+
+/* ---------- ⭐ פרו, שם וצבע ---------- */
+/* אותם צבעים כמו ערכות הצבעים של האתר (js/043.js TH36); הראשון פתוח לכולם, השאר לפרו */
+const COLORS=[['sea','כחול כהה','#1e3a5f'],['sky','תכלת','#1f74ad'],['mint','מנטה','#1b7d65'],['lilac','לילך','#7462c9'],['night','לילה','#2a2f3a']];
+let pro=false;
+/* הכניסה של המשתמש באתר (supabase-js שומר אותה כאן). פג תוקף — לא פרו עד שנכנסים לאתר שוב */
+function session(){try{const s=JSON.parse(ls.get('sb-ygyfodxfbebnkwdcbjrp-auth-token')||'null');return s&&s.access_token&&s.expires_at*1000>Date.now()+30000?s:null;}catch(e){return null;}}
+$('#who').value=ls.get(WHO);
+const proReady=(async()=>{const s=session();if(!s)return;
+  const m=(s.user&&s.user.user_metadata)||{};if(!ls.get(WHO)&&(m.name||m.full_name))$('#who').value=String(m.name||m.full_name).slice(0,30);
+  try{const r=await fetch(SB_URL+'/rest/v1/rpc/pro_status',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:'{}'});
+    const d=r.ok?await r.json():null;pro=!!(d&&d.pro);}catch(e){}})();
+const colorId=()=>{const c=ls.get(COL);return pro&&COLORS.some(k=>k[0]===c)?c:'sea';};
+const hex=()=>COLORS.find(k=>k[0]===colorId())[2];
+const shade=(h,k)=>'#'+[1,3,5].map(i=>Math.round(parseInt(h.substr(i,2),16)*k).toString(16).padStart(2,'0')).join('');
+const who=()=>$('#who').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,30);
+const creditText=()=>'נוצר ע״י ים שופינג'+(who()?(custom?' · המוצרים וההשוואה של ':' · ההשוואה של ')+who():'')+(pro?' · ⭐ משתמש פרו':'');
+function applyColor(){const h=hex(),r=document.documentElement.style;r.setProperty('--hdr',h);
+  if(!matchMedia('(prefers-color-scheme:dark)').matches)r.setProperty('--accent',h);else r.removeProperty('--accent');
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=h;
+  $('#cols').innerHTML=COLORS.map(([id,n,c],i)=>{const lock=i&&!pro;return '<button type="button" data-col="'+id+'" style="background:'+c+'" aria-pressed="'+(id===colorId())+'" aria-label="'+n+(lock?' (לפרו)':'')+'">'+(lock?'🔒':'')+'</button>';}).join('');
+  $('#proHint').hidden=pro;}
+$('#cols').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;
+  if(b.dataset.col!=='sea'&&!pro){$('#proHint').hidden=false;$('#st').textContent='🔒 בחירת צבע פתוחה למשתמשי פרו';return;}
+  ls.set(COL,b.dataset.col==='sea'?null:b.dataset.col);applyColor();if(cur)preview();};
+let whoT=0;$('#who').oninput=()=>{ls.set(WHO,who()||null);if(!cur)return;$('#credit').textContent=creditText();clearTimeout(whoT);whoT=setTimeout(preview,400);};
+applyColor();proReady.then(()=>{applyColor();if(cur){$('#credit').textContent=creditText();preview();}});
 
 /* ---------- 📅 השבוע: פרשת השבת הקרובה (js/089-hcal.js) ---------- */
 function weekLabel(){try{const H=window.Hcal,rd=H.rdOf(new Date()),sat=rd+((6-H.dow(rd))+7)%7,p=H.parshaName(H.parshaNums(sat,true));
@@ -36,11 +64,12 @@ async function loadBasket(){
   const qp=new URLSearchParams(location.search).get('p');let mine=[];try{mine=SP.clean(JSON.parse(ls.get(MINE)||'[]'));}catch(e){mine=[];}
   if(qp){const codes=qp.split(',').filter(c=>/^\d{5,14}$/.test(c)).slice(0,SP.MAX);const known=new Map(mine.concat(SP.DEFAULT).map(i=>[i[1],i[0]]));
     if(codes.length>=SP.MIN){BASKET=codes.map(c=>[known.get(c)||c,c]);custom=true;return;}}
-  if(mine.length>=SP.MIN){BASKET=mine;custom=true;return;}
+  if(mine.length>=SP.MIN&&ls.get(USE)!=='site'){BASKET=mine;custom=true;return;}
   try{const r=await fetch(SB_URL+'/rest/v1/site_config?key=eq.sal&select=value',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
     const d=r.ok?await r.json():[];const cfg=d&&d[0]&&d[0].value;if(cfg){BASKET=SP.pick(cfg);mode=cfg.mode==='daily'?'daily':'fixed';}}catch(e){}
   custom=false;}
-const basketReady=loadBasket();
+const basketReady=loadBasket().then(drawSrc);
+function drawSrc(){$('#srcSite').setAttribute('aria-pressed',String(!custom));$('#srcMine').setAttribute('aria-pressed',String(custom));}
 const N=()=>BASKET.length;
 const title=()=>custom?'הסל שלי — איפה הכי זול':mode==='daily'?'הסל הזול היום':'הסל הזול השבוע';
 const sub=()=>N()+(custom?' מוצרים שבחרתי':' מוצרים מוכרים');
@@ -62,7 +91,7 @@ async function run(city){
     const seen=new Set(),top=[];for(const s of full){const k=s.chain_name||s.chain;if(seen.has(k))continue;seen.add(k);top.push(s);if(top.length===5)break;}
     /* שם המוצר שלא היה ידוע (סל מקישור) — מהקובץ של החנות הזולה */
     if(full[0])BASKET=BASKET.map(b=>{if(b[0]!==b[1])return b;const l=(full[0].lines||[]).find(l=>l.code===b[1].replace(/^0+/,''));return l&&l.name?[l.name,b[1]]:b;});
-    if(top.length<2){$('#st').innerHTML='😕 לא מצאנו ב'+esc(city)+' לפחות שתי רשתות שיש בהן את כל '+N()+' המוצרים של הסל.'+(custom?' אפשר להוריד מהסל מוצר שלא נמכר בכל מקום (✏️ שינוי המוצרים).':' אפשר לנסות עיר קרובה גדולה יותר.');$('#edit').hidden=false;return;}
+    if(top.length<2){$('#st').innerHTML='😕 לא מצאנו ב'+esc(city)+' לפחות שתי רשתות שיש בהן את כל '+N()+' המוצרים של הסל.'+(custom?' אפשר להוריד מהסל מוצר שלא נמכר בכל מקום (✏️ אני בוחר את המוצרים).':' אפשר לנסות עיר קרובה גדולה יותר.');return;}
     const hh=await h,updated=hh&&hh.updated?new Date(hh.updated*1000):new Date();
     cur={city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+(custom?'&p='+BASKET.map(b=>b[1]).join(','):'')};
     show();$('#st').textContent='';
@@ -71,11 +100,11 @@ async function run(city){
 
 function show(){const c=cur,MED=['🥇','🥈','🥉','4','5'];
   $('#h1').textContent=(custom?'הסל שלי':title())+' ב'+c.city;
-  $('#lead').textContent=c.week+' · '+sub()+', אותו מוצר בדיוק בכל חנות';$('#edit').hidden=false;
+  $('#lead').textContent=c.week+' · '+sub()+', אותו מוצר בדיוק בכל חנות';
   $('#res').innerHTML=c.top.map((s,i)=>'<li'+(i?'':' class="first"')+'><span class="n" aria-hidden="true">'+MED[i]+'</span><div class="w"><div class="c">'+esc(s.chain_name)+'</div><div class="a">'+esc([s.name,s.address].filter(Boolean).join(' · '))+'</div></div><span class="t">'+money(s.total)+'</span></li>').join('');
   const g=$('#gap');g.hidden=!(c.gap>=1);g.textContent='באותו סל בדיוק — פער של עד '+money(c.gap)+' בין החנויות ב'+c.city+' ('+c.branches+' סניפים נבדקו)';
   $('#items').innerHTML=BASKET.map(b=>'<li>'+esc(b[0])+'</li>').join('');
-  $('#note').textContent=noteText();$('#plink').textContent=decodeURIComponent(c.url.replace('https://','')).replace(/&p=.*/,'');
+  $('#credit').textContent=creditText();$('#note').textContent=noteText();$('#plink').textContent=decodeURIComponent(c.url.replace('https://','')).replace(/&p=.*/,'');
   $('#out').hidden=false;
   loadQr().then(m=>{$('#pqr').innerHTML=m?qrSvg(m):'';}).catch(()=>{});
   preview();}
@@ -101,7 +130,7 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
   const F=(w,s)=>w+' '+s+'px Rubik, Heebo, Arial, sans-serif',R=W-64,tall=H>1500;
   x.direction='rtl';x.textAlign='right';x.textBaseline='alphabetic';
   /* רקע */
-  const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#1e3a5f');bg.addColorStop(1,'#13203a');x.fillStyle=bg;x.fillRect(0,0,W,H);
+  const bg=x.createLinearGradient(0,0,0,H);const hc=hex();bg.addColorStop(0,hc);bg.addColorStop(1,shade(hc,.62));x.fillStyle=bg;x.fillRect(0,0,W,H);
   /* כותרת */
   const logo=await img('/logo.png');let y=tall?150:86;
   if(logo){x.save();x.beginPath();x.arc(R-36,y-22,36,0,Math.PI*2);x.clip();x.drawImage(logo,R-72,y-58,72,72);x.restore();}
@@ -125,7 +154,7 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
     x.fillStyle=i<3?'#fff':'#23231f';x.textAlign='center';x.font=F(800,32);x.fillText(String(i+1),R-44,cy+11);x.textAlign='right';
     x.fillStyle='#23231f';x.font=F(800,i?40:46);x.fillText(clip(x,s.chain_name,W-520),R-96,cy-(tall?6:4));
     x.fillStyle='#5f5f55';x.font=F(400,26);x.fillText(clip(x,[s.name,s.address].filter(Boolean).join(' · '),W-520),R-96,cy+34);
-    x.textAlign='left';x.fillStyle=i?'#1e3a5f':'#2f6b3a';x.font=F(800,i?46:54);x.fillText(money(s.total),96,cy+16);x.textAlign='right';
+    x.textAlign='left';x.fillStyle=i?hc:'#2f6b3a';x.font=F(800,i?46:54);x.fillText(money(s.total),96,cy+16);x.textAlign='right';
     ry+=rh;});
   if(c.gap>=1){x.fillStyle='rgba(47,107,58,.12)';round(x,80,ry+8,W-160,72,16);x.fill();x.fillStyle='#2f6b3a';x.font=F(700,32);x.textAlign='center';
     x.fillText(clip(x,'פער של עד '+money(c.gap)+' על אותו סל בדיוק',W-200),W/2,ry+56);x.textAlign='right';ry+=72;}
@@ -137,6 +166,8 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
   x.fillStyle='#fff';x.font=F(800,40);x.fillText('הסל של העיר שלכם?',R,qy+52);
   x.fillStyle='#ffd166';x.font=F(700,34);x.fillText('סורקים או נכנסים:',R,qy+104);
   x.fillStyle='#fff';x.font=F(700,36);x.direction='ltr';x.textAlign='right';x.fillText('yamshopping.com',R,qy+156);x.direction='rtl';
+  /* ✍️ נוצר ע״י ים שופינג + מי עשה את ההשוואה + פרו */
+  x.fillStyle='#ffd166';x.font=F(700,26);wrapLines(x,creditText(),W-128-(qs+56)).slice(0,2).forEach((l,i)=>x.fillText(l,R,qy+(tall?212:202)+i*32));
   /* הבהרה */
   x.fillStyle='#9fb0c8';x.font=F(400,22);wrap(x,'מחירי '+dateStr(c.updated)+' מקבצי שקיפות המחירים של הרשתות, מחיר מדף רגיל בלי מבצעים. רק חנויות שיש בהן את כל הסל. המחיר בקופה קובע.',R,H-(tall?110:64),W-128,30);
   return cv;}
@@ -164,15 +195,19 @@ async function share(){const b=await blobOf(await draw(1080,1350));const f=b&&ne
 let draft=[];
 function drawEd(){$('#edList').innerHTML=draft.map((b,i)=>'<li><span>'+esc(b[0])+'</span><button type="button" class="x" data-del="'+i+'" aria-label="להוריד את '+esc(b[0])+'">✕</button></li>').join('');
   $('#edN').textContent=draft.length+' מוצרים'+(draft.length<SP.MIN?' — צריך לפחות '+SP.MIN:draft.length>=SP.MAX?' (המקסימום)':'');$('#edSave').disabled=draft.length<SP.MIN;}
-$('#edit').onclick=()=>{draft=BASKET.slice();$('#ed').hidden=false;$('#edReset').hidden=!custom;drawEd();$('#edQ').focus();};
+function savedMine(){try{return SP.clean(JSON.parse(ls.get(MINE)||'[]'));}catch(e){return [];}}
+/* "אני בוחר את המוצרים": מתחילים מהסל שלי אם שמרתי, אחרת מהסל של האתר */
+$('#srcMine').onclick=()=>{const m=savedMine();draft=(custom?BASKET:m.length>=SP.MIN?m:BASKET).slice();$('#ed').hidden=false;
+  $('#srcMine').setAttribute('aria-pressed','true');$('#srcSite').setAttribute('aria-pressed','false');drawEd();$('#edQ').focus();};
+/* "הסל של האתר": הסל שלי נשאר שמור לפעם הבאה */
+$('#srcSite').onclick=async()=>{$('#ed').hidden=true;if(!custom){drawSrc();return;}ls.set(USE,'site');dropP();await loadBasket();drawSrc();if($('#city').value.trim())run($('#city').value);};
 $('#edList').onclick=e=>{const b=e.target.closest('[data-del]');if(!b)return;draft.splice(+b.dataset.del,1);drawEd();};
 let edT=0;$('#edQ').oninput=()=>{clearTimeout(edT);const q=$('#edQ').value.trim();if(q.length<2){$('#edRes').innerHTML='';return;}
   edT=setTimeout(async()=>{try{const r=await fetch(API+'/products?'+new URLSearchParams({q,limit:'8'}));const d=r.ok?await r.json():[];if($('#edQ').value.trim()!==q)return;
     $('#edRes').innerHTML=d.length?d.map(p=>'<li><button type="button" data-add="'+esc(p.code)+'" data-n="'+esc(p.name)+'"'+(draft.some(b=>b[1]===p.code)?' disabled':'')+'>➕ '+esc(p.name)+(p.manufacturer&&p.manufacturer!=='לא ידוע'?' · '+esc(p.manufacturer):'')+' <small>('+(p.stores||0)+' סניפים)</small></button></li>').join(''):'<li class="muted">לא נמצא מוצר</li>';}catch(e){$('#edRes').innerHTML='<li class="muted">החיפוש לא זמין כרגע</li>';}},300);};
 $('#edRes').onclick=e=>{const b=e.target.closest('[data-add]');if(!b||draft.length>=SP.MAX)return;draft.push([b.dataset.n.slice(0,60),b.dataset.add]);b.disabled=true;drawEd();};
-$('#edSave').onclick=()=>{BASKET=draft.slice();custom=true;ls.set(MINE,JSON.stringify(BASKET));dropP();$('#ed').hidden=true;run($('#city').value);};
-$('#edReset').onclick=async()=>{ls.set(MINE,null);dropP();$('#ed').hidden=true;await loadBasket();run($('#city').value);};
-$('#edCancel').onclick=()=>{$('#ed').hidden=true;};
+$('#edSave').onclick=()=>{BASKET=draft.slice();custom=true;ls.set(MINE,JSON.stringify(BASKET));ls.set(USE,null);dropP();$('#ed').hidden=true;drawSrc();run($('#city').value);};
+$('#edCancel').onclick=()=>{$('#ed').hidden=true;drawSrc();};
 function dropP(){const u=new URL(location.href);u.searchParams.delete('p');history.replaceState(null,'',u.pathname+u.search);}
 /* 🧺 להראות בתמונה את רשימת המוצרים — נזכר אצל המשתמש */
 $('#showItems').checked=ls.get(SHOWI)==='1';$('#showItems').onchange=()=>{ls.set(SHOWI,$('#showItems').checked?'1':null);if(cur)preview();};
@@ -186,5 +221,5 @@ $('#print').onclick=()=>window.print();
 addEventListener('beforeprint',()=>{$('#det').open=true;});
 const first=new URLSearchParams(location.search).get('city')||store.get();
 if(first){$('#city').value=first;run(first);}
-window.__sal={draw,get basket(){return BASKET;},get cur(){return cur;}}; /* לבדיקות (tests/smoke.mjs) */
+window.__sal={draw,get basket(){return BASKET;},get cur(){return cur;},get pro(){return pro;},proReady,creditText}; /* לבדיקות (tests/smoke.mjs) */
 })();
