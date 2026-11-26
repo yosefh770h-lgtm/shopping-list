@@ -971,7 +971,7 @@ body.dark .lcard .guest40{color:#bfeee2;border-color:#4fb3a0}
 /* ================= עיצוב 2: שקט ואחיד — אייקוני קו במקום אימוג'י, שני עיגולי פינות, בלי צללים ומעברי צבע, רקע חלק =================
    הכל תחת body.d2 — מורידים את המחלקה וחוזרים לעיצוב הקודם */
 body.d2{--r-sm:6px;--r-md:10px}
-body.d2 #paneList .row.bot .bub{background:color-mix(in srgb,var(--recv) 88%,transparent)!important}
+body.d2 #paneList .row.bot .bub{background:var(--recv)!important;background:color-mix(in srgb,var(--recv) 88%,transparent)!important}
 body.d2 #paneList .row.bot .bub:hover{background:var(--recv)!important}
 /* הודעה קופצת: מופיעה בתנועה קטנה ולא בהדרגת שקיפות — כך הטקסט קריא תמיד (גם באמצע ההופעה) */
 body.d2 .flash{opacity:1;visibility:hidden;transform:translate(-50%,8px);transition:transform .2s,visibility 0s .2s;border-radius:var(--r-md)}
@@ -1251,7 +1251,7 @@ body.dark .errstrip17 .eh17{color:#f3e3b0}
 .ideas17{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px}.ideas17 .chip{font-size:13px;padding:5px 10px}
 .err17 .edrag17,.form .err17 .edrag17{position:relative;flex:0 0 14px;width:14px;min-width:0;min-height:30px;padding:0;margin:0 -4px 0 -2px;border:0;background:none;box-shadow:none;color:var(--muted);font-size:18px;font-weight:700;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:6px}
 .err17 .edrag17::after{content:'';position:absolute;inset:-6px -8px -6px -8px}
-.err17 .edrag17:focus-visible{background:color-mix(in srgb,var(--hdr2) 14%,transparent);outline:2px solid var(--hdr2)}
+.err17 .edrag17:focus-visible{background:rgba(30,58,95,.14);background:color-mix(in srgb,var(--hdr2) 14%,transparent);outline:2px solid var(--hdr2)}
 .err17 .epr17,.form .err17 .epr17{position:relative;flex:0 0 16px;width:16px;height:16px;min-width:0;min-height:0;padding:0;margin:0;border-radius:50%;border:2px dashed #b9b2a0;background:transparent;box-shadow:none;cursor:pointer}
 .err17 button.epr17::after{content:'';position:absolute;inset:-10px}
 .err17 .epr17.p1{background:#2e9d57;border:2px solid #2e9d57}
@@ -1460,14 +1460,14 @@ body.dark [style*="color:var(--hdr2)"]{color:#5ec4b6!important}
 #paneList .ixdrag{position:relative;flex-shrink:0;width:12px;min-height:32px;padding:0;margin:0 -2px 0 -4px;border:0;background:none;color:var(--muted);font-size:18px;font-weight:700;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:6px;opacity:.7}
 /* הידית צרה כדי לא לגזול מקום משם המוצר, אבל שטח הלחיצה רחב יותר (עד קצה השורה) */
 #paneList .ixdrag::after{content:'';position:absolute;inset:-6px -10px -6px -6px}
-#paneList .ixdrag:hover,#paneList .ixdrag:focus-visible{opacity:1;background:color-mix(in srgb,var(--hdr2) 12%,transparent)}
+#paneList .ixdrag:hover,#paneList .ixdrag:focus-visible{opacity:1;background:rgba(30,58,95,.12);background:color-mix(in srgb,var(--hdr2) 12%,transparent)}
 #paneList .ixdrag:active{cursor:grabbing}
 #paneList .ixdragging{position:relative;z-index:5;box-shadow:0 8px 22px rgba(0,0,0,.18);transition:none}
 #paneList .ixdragging .bub,#paneList .it.ixdragging{background:var(--recv)!important}
 #paneList .ixbefore{box-shadow:inset 0 3px 0 var(--hdr2)}
 #paneList .ixafter{box-shadow:inset 0 -3px 0 var(--hdr2)}
 #paneList .ixdropped .bub,#paneList .it.ixdropped{animation:ixflash .7s ease-out}
-@keyframes ixflash{0%{background:color-mix(in srgb,var(--hdr2) 22%,var(--recv))}}
+@keyframes ixflash{0%{background:var(--sent);background:color-mix(in srgb,var(--hdr2) 22%,var(--recv))}}
 body.ixbusy,body.ixbusy *{cursor:grabbing!important;user-select:none!important}
 #paneList .ixth{flex-shrink:0;width:32px;height:32px;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;cursor:zoom-in}
 #paneList .ixth img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1493,7 +1493,7 @@ body.ixbusy,body.ixbusy *{cursor:grabbing!important;user-select:none!important}
 .mysttab{border-collapse:collapse;width:100%;font-size:13px}
 .mysttab th,.mysttab td{padding:6px 7px;border-bottom:1px solid var(--line);text-align:start;white-space:nowrap}
 .mysttab th small{display:block;font-weight:400;color:var(--muted)}
-.mysttab td.low{font-weight:700;color:var(--hdr2);background:color-mix(in srgb,var(--hdr2) 10%,transparent)}
+.mysttab td.low{font-weight:700;color:var(--hdr2);background:rgba(30,58,95,.1);background:color-mix(in srgb,var(--hdr2) 10%,transparent)}
 .mysttab tr.tot td{font-weight:700;border-bottom:0}
 #hMenu #miNotif[hidden]{display:none!important}
 /* רשימת השיחות של המנהל: כרטיס בהיר וקריא (כפתור ירוק כללי דרס את העיצוב) */
@@ -1506,7 +1506,7 @@ body.ixbusy,body.ixbusy *{cursor:grabbing!important;user-select:none!important}
 #favs.fquick .fav{opacity:.85;cursor:default}
 #favs .favx{color:#b23b3b;font-size:13px;min-width:26px;min-height:26px;margin-inline-start:-2px}
 #favs .favmore{background:none;border:0;cursor:pointer;font-size:15px;padding:2px 6px}
-.favfocus{background:color-mix(in srgb,var(--hdr2) 10%,transparent);border-radius:8px}
+.favfocus{background:rgba(30,58,95,.1);background:color-mix(in srgb,var(--hdr2) 10%,transparent);border-radius:8px}
 /* כפתורים בלשונית "איפה הכי זול" (היו בלי עיצוב) */
 #paneStores .row18 button,#myStBox #myStList,#myStBox .mystadd,#srvCmp #srvMine{background:var(--hdr2);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
 #paneStores .row18 button.sec,#myStBox #myStList,#myStBox .mystadd,#srvCmp #srvMine{background:var(--chipbg,var(--chat));color:var(--hdr2);border:1px solid var(--hdr2)}
@@ -1796,7 +1796,7 @@ body.sel88 #paneList .del,body.sel88 #paneList .qty,body.sel88 #paneList .ixdrag
 body.sel88 #paneList .s88row{cursor:pointer;-webkit-user-select:none;user-select:none}
 .s88k{flex-shrink:0;width:24px;height:24px;border-radius:7px;border:2px solid var(--hdr2);background:var(--inputbg);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;line-height:1}
 .s88on .s88k{background:var(--hdr2)}
-body.sel88 #paneList .row.s88on .bub,body.sel88 #paneList .it.s88on{outline:2px solid var(--hdr2);outline-offset:1px;background:color-mix(in srgb,var(--hdr2) 14%,var(--recv))!important}
+body.sel88 #paneList .row.s88on .bub,body.sel88 #paneList .it.s88on{outline:2px solid var(--hdr2);outline-offset:1px;background:var(--sent)!important;background:color-mix(in srgb,var(--hdr2) 14%,var(--recv))!important}
 body.sel88 #paneList .row.s88anc .bub,body.sel88 #paneList .it.s88anc{outline-style:dashed}
 @media (hover:none){#paneList .row .bub,#paneList .it{-webkit-touch-callout:none}}
 .s88list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
@@ -1862,7 +1862,7 @@ body.sel88 #paneList .row.s88anc .bub,body.sel88 #paneList .it.s88anc{outline-st
 .h72r input{width:20px;height:20px;margin:0;flex:0 0 auto;accent-color:#d93025}
 .h72r .em{font-size:22px;width:28px;text-align:center}
 .h72r .nm{flex:1;min-width:0;font-weight:600;font-size:15px;overflow-wrap:anywhere}
-.h72r:has(input:checked){border-color:#d93025;background:color-mix(in srgb,#d93025 7%,var(--panel))}
+.h72r:has(input:checked){border-color:#d93025;background:rgba(217,48,37,.07);background:color-mix(in srgb,#d93025 7%,var(--panel))}
 .h72go{position:sticky;bottom:8px;z-index:3;margin-top:-64px}
 .h72go button{width:100%;background:#c5221f;color:#fff;border:0;border-radius:12px;padding:13px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .h72go button:disabled{background:#9a9a9a;cursor:default;box-shadow:none}
@@ -2245,7 +2245,7 @@ body.r2 #shop26 .srow.done :is(.nm,.q){color:var(--muted)!important;text-decorat
 body.r2 #shop26 footer{justify-content:center}
 #shop26 .srow .nmw{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
 #shop26 .srow .nmw .nm{overflow-wrap:break-word;max-width:100%}
-#shop26 .srow .snote{display:block;max-width:100%;font-size:14px;line-height:1.35;font-weight:500;color:var(--text);background:color-mix(in srgb,var(--pink,#d4628a) 13%,transparent);border-radius:8px;padding:4px 9px;text-decoration:none!important;overflow-wrap:break-word}
+#shop26 .srow .snote{display:block;max-width:100%;font-size:14px;line-height:1.35;font-weight:500;color:var(--text);background:rgba(212,98,138,.13);background:color-mix(in srgb,var(--pink,#d4628a) 13%,transparent);border-radius:8px;padding:4px 9px;text-decoration:none!important;overflow-wrap:break-word}
 #shop26 .srow.done .snote{opacity:.55}
 #shop26 header .s26n.off{opacity:.45}
 #shop26 header .s26n[hidden]{display:none!important}
@@ -2517,7 +2517,7 @@ body.nobd21 .bd50tile,body.nobd21 .bd50strip,body.nobd21 [data-bdgo],body.nobd21
 .sh21 h4{margin:14px 0 6px;font-size:15px}
 .sh21o{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line,#dfe6ee);border-radius:12px;margin:6px 0;cursor:pointer}
 .sh21o span{display:flex;flex-direction:column;gap:2px}.sh21o small{color:var(--muted,#6b7785);font-size:12.5px}
-.sh21o:has(input:checked){border-color:var(--accent,#0a84ff);background:color-mix(in srgb,var(--accent,#0a84ff) 8%,transparent)}
+.sh21o:has(input:checked){border-color:var(--accent,#0a84ff);background:rgba(10,132,255,.08);background:color-mix(in srgb,var(--accent,#0a84ff) 8%,transparent)}
 .sh21l{display:flex;flex-direction:column;gap:6px;padding:4px 10px 0}
 .sh21l label,.sh21c{display:flex;gap:8px;align-items:center;padding:6px 2px;min-height:36px}
 .sh21l small{color:var(--muted,#6b7785)}
@@ -2569,7 +2569,7 @@ body.dark .tr90warn{background:#3a3115!important;color:#f6e7bd!important;border-
 .hv73 li .em{font-size:20px;width:26px;text-align:center;flex:0 0 auto}
 .hv73 li .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .hv73 li .tx b{font-weight:600;font-size:15px;overflow-wrap:break-word}
-.hv73 li .tx small{font-size:13px;background:color-mix(in srgb,var(--pink,#d4628a) 13%,transparent);border-radius:7px;padding:3px 8px;align-self:flex-start;max-width:100%;overflow-wrap:break-word}
+.hv73 li .tx small{font-size:13px;background:rgba(212,98,138,.13);background:color-mix(in srgb,var(--pink,#d4628a) 13%,transparent);border-radius:7px;padding:3px 8px;align-self:flex-start;max-width:100%;overflow-wrap:break-word}
 .hv73 li .qq{font-weight:700;color:var(--muted);font-size:14px;white-space:nowrap}
 .hv73 li .pr{font-size:14px;white-space:nowrap}
 .hv73 .row2{margin-top:14px}
