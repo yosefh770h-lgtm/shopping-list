@@ -88,6 +88,15 @@ function openWeekly26(){if(needLogin26())return;const items=weeklyItems26();
   if(items.length<2){flash(T('🙂 עוד אין מספיק קניות קבועות — אחרי כמה קניות (או "🔁 פריטים קבועים") הסל השבועי יתמלא לבד','Not enough regular items yet'));return;}
   openBasket(items.map(i=>({n:i.n,q:i.q,done:false})),T('הסל השבועי שלי','My weekly basket'));weeklyCheck26(true);}
 
+/* ---------- 📣 הסל הזול בעיר (sal-zol-hashavua.html): תזכורת פעם בשבוע, ביום חמישי, עם קישור לתמונה לשיתוף ---------- */
+const openSal26=()=>{location.href='/sal-zol-hashavua.html?city='+encodeURIComponent(userCity());};
+function salWeekly26(){const d=new Date();if(d.getDay()!==4&&d.getDay()!==5)return; /* חמישי ושישי — לפני שבת */
+  const c=userCity();notify('sal-'+weekKey26(d),'deal','📣 '+T('הסל הזול השבוע ב'+c,'Cheapest basket this week in '+c),
+    T('תמונה מוכנה לשיתוף בקבוצה ובסטטוס, לפי המחירים של היום','A ready image to share, with today\'s prices'),'sal');}
+/* "sal" בהתראה (גם מהטלפון: ?tab=sal) פותח את הדף ולא לשונית */
+const _salSetTab=setTab;setTab=function(t){if(t!=='sal')return _salSetTab.apply(this,arguments);openSal26();};
+try{if(new URLSearchParams(location.search).get('tab')==='sal')setTimeout(openSal26,300);}catch(e){}
+
 /* ---------- 3. 🔔 התראת מחיר על מוצר ---------- */
 state.priceAlerts=Array.isArray(state.priceAlerts)?state.priceAlerts:[];
 function alertAdd26(n,max){if(!Array.isArray(state.priceAlerts))state.priceAlerts=[];n=String(n||'').trim().slice(0,60);max=Number(String(max).replace(',','.'));if(!n||!(max>0)){flash(T('⚠️ חסר מוצר או מחיר','Missing product or price'));return false;}
@@ -318,7 +327,7 @@ renderMe=function(){const r=_v26RenderMe.apply(this,arguments);try{if(meTab==='i
 /* ---------- תפריט ⚙️ ---------- */
 add26('miSave26','💰','כמה חסכתי','My savings','miFinish',openSavings26);
 add26('miWeek26','🛒','הסל השבועי — איפה הכי זול השבוע','Weekly basket','miSave26',openWeekly26);
-add26('miSal26','📣','הסל הזול בעיר — תמונה לשיתוף ולהדפסה','Cheapest basket in your city','miWeek26',()=>{location.href='/sal-zol-hashavua.html?city='+encodeURIComponent(userCity());});
+add26('miSal26','📣','הסל הזול בעיר — תמונה לשיתוף ולהדפסה','Cheapest basket in your city','miWeek26',()=>openSal26());
 add26('miAlert26','🔔','התראות מחיר על מוצרים','Price alerts','miSal26',()=>openAlerts26());
 add26('miShop26','🛍️','מצב קנייה בחנות','Shopping mode','miAlert26',()=>{setTab('list');openShop26();});
 add26('miCalc26','🧮','כמה לקנות לשבת / לאירוע','How much to buy','miReady',()=>openCalc26());
@@ -340,6 +349,7 @@ yamiStep(async raw=>{const t=String(raw||'').trim();let m;
   return false;});
 
 /* בדיקות רקע — פעם בכמה שעות כשהאתר פתוח */
-setInterval(()=>{if(!document.hidden&&authUser){weeklyCheck26();alertsCheck26();}},3*3600000);
+setInterval(()=>{if(!document.hidden){salWeekly26();if(authUser){weeklyCheck26();alertsCheck26();}}},3*3600000);
+setTimeout(salWeekly26,4000);
 if(authUser)setTimeout(()=>{weeklyCheck26();alertsCheck26();savMonthly26();refClaim26();},3000);
 guestBar26();
