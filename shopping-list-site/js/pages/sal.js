@@ -54,6 +54,12 @@ applyColor();proReady.then(()=>{applyColor();if(cur){$('#credit').textContent=cr
 function weekLabel(){try{const H=window.Hcal,rd=H.rdOf(new Date()),sat=rd+((6-H.dow(rd))+7)%7,p=H.parshaName(H.parshaNums(sat,true));
   if(p)return 'שבוע פרשת '+p;const ev=(H.events(sat,true)||[]).find(e=>e.k==='chag'||e.k==='cm');return ev?'שבוע '+ev.base:'השבוע';}catch(e){return 'השבוע';}}
 const dateStr=d=>d.getDate()+'.'+(d.getMonth()+1)+'.'+d.getFullYear();
+/* 🕐 מתי עשו את ההשוואה — יום בשבוע, תאריך ושעה בשעון ישראל (המחירים משתנים מיום ליום) */
+const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+function whenStr(d){let p={};try{new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Jerusalem',weekday:'short',day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).forEach(x=>p[x.type]=x.value);}catch(e){}
+  const wd=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday);
+  return p.day?'ההשוואה נעשתה ביום '+DAYS[wd]+' '+p.day+'.'+p.month+'.'+p.year+' בשעה '+p.hour+':'+p.minute
+    :'ההשוואה נעשתה ביום '+DAYS[d.getDay()]+' '+dateStr(d)+' בשעה '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 /* ---------- 🏙️ ערים ---------- */
 fetch('/cities-il.json').then(r=>r.json()).then(list=>{const dl=$('#cities');dl.innerHTML=list.map(c=>'<option value="'+esc(c)+'">').join('');}).catch(()=>{});
@@ -93,7 +99,7 @@ async function run(city){
     if(full[0])BASKET=BASKET.map(b=>{if(b[0]!==b[1])return b;const l=(full[0].lines||[]).find(l=>l.code===b[1].replace(/^0+/,''));return l&&l.name?[l.name,b[1]]:b;});
     if(top.length<2){$('#st').innerHTML='😕 לא מצאנו ב'+esc(city)+' לפחות שתי רשתות שיש בהן את כל '+N()+' המוצרים של הסל.'+(custom?' אפשר להוריד מהסל מוצר שלא נמכר בכל מקום (✏️ אני בוחר את המוצרים).':' אפשר לנסות עיר קרובה גדולה יותר.');return;}
     const hh=await h,updated=hh&&hh.updated?new Date(hh.updated*1000):new Date();
-    cur={city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+(custom?'&p='+BASKET.map(b=>b[1]).join(','):'')};
+    cur={at:new Date(),city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+(custom?'&p='+BASKET.map(b=>b[1]).join(','):'')};
     show();$('#st').textContent='';
   }catch(e){console.warn('sal',e);$('#st').textContent='⚠️ שרת המחירים לא ענה כרגע. נסו שוב בעוד כמה דקות.';}
   finally{$('#go').disabled=false;}}
@@ -104,7 +110,7 @@ function show(){const c=cur,MED=['🥇','🥈','🥉','4','5'];
   $('#res').innerHTML=c.top.map((s,i)=>'<li'+(i?'':' class="first"')+'><span class="n" aria-hidden="true">'+MED[i]+'</span><div class="w"><div class="c">'+esc(s.chain_name)+'</div><div class="a">'+esc([s.name,s.address].filter(Boolean).join(' · '))+'</div></div><span class="t">'+money(s.total)+'</span></li>').join('');
   const g=$('#gap');g.hidden=!(c.gap>=1);g.textContent='באותו סל בדיוק — פער של עד '+money(c.gap)+' בין החנויות ב'+c.city+' ('+c.branches+' סניפים נבדקו)';
   $('#items').innerHTML=BASKET.map(b=>'<li>'+esc(b[0])+'</li>').join('');
-  $('#credit').textContent=creditText();$('#note').textContent=noteText();$('#plink').textContent=decodeURIComponent(c.url.replace('https://','')).replace(/&p=.*/,'');
+  $('#credit').textContent=creditText();$('#when').textContent=whenStr(c.at);$('#note').textContent=noteText();$('#plink').textContent=decodeURIComponent(c.url.replace('https://','')).replace(/&p=.*/,'');
   $('#out').hidden=false;
   loadQr().then(m=>{$('#pqr').innerHTML=m?qrSvg(m):'';}).catch(()=>{});
   preview();}
@@ -144,7 +150,7 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
   if(withItems){x.font=F(400,tall?24:21);il=wrapLines(x,'בסל: '+BASKET.map(b=>b[0]).join(' · '),W-176).slice(0,tall?5:4);}
   const ih=il.length?il.length*(tall?32:28)+18:0;
   /* הכרטיס צריך להיגמר לפני ה-QR: כשהרשימה ארוכה השורות מצטופפות קצת (לא פחות מ-84) */
-  const qs=tall?260:200,qy=H-qs-(tall?300:120),extra=(c.gap>=1?96:24)+24+ih;
+  const qs=tall?260:200,qy=H-qs-(tall?300:150),extra=(c.gap>=1?96:24)+24+ih;
   y+=tall?56:32;const rows=c.top.length,rh=Math.max(84,Math.min(tall?132:100,Math.floor((qy-40-y-extra)/rows))),cardH=rows*rh+extra;
   x.fillStyle='#fffdf7';round(x,48,y,W-96,cardH,28);x.fill();
   let ry=y+24;const MED=['#c9a227','#9aa3ad','#b0743a'];
@@ -167,7 +173,8 @@ async function draw(W,H){const c=cur,cv=document.createElement('canvas');cv.widt
   x.fillStyle='#ffd166';x.font=F(700,34);x.fillText('סורקים או נכנסים:',R,qy+104);
   x.fillStyle='#fff';x.font=F(700,36);x.direction='ltr';x.textAlign='right';x.fillText('yamshopping.com',R,qy+156);x.direction='rtl';
   /* ✍️ נוצר ע״י ים שופינג + מי עשה את ההשוואה + פרו */
-  x.fillStyle='#ffd166';x.font=F(700,26);wrapLines(x,creditText(),W-128-(qs+56)).slice(0,2).forEach((l,i)=>x.fillText(l,R,qy+(tall?212:202)+i*32));
+  x.fillStyle='#ffd166';x.font=F(700,26);const cw=W-128-(qs+56),cl=tall?wrapLines(x,creditText(),cw).slice(0,2):[clip(x,creditText(),cw)];cl.forEach((l,i)=>x.fillText(l,R,qy+(tall?212:202)+i*32));
+  x.fillStyle='#fff';x.font=F(500,26);x.fillText(clip(x,'🕐 '+whenStr(c.at),W-128-(qs+56)),R,qy+(tall?212:202)+cl.length*34);
   /* הבהרה */
   x.fillStyle='#9fb0c8';x.font=F(400,22);wrap(x,'מחירי '+dateStr(c.updated)+' מקבצי שקיפות המחירים של הרשתות, מחיר מדף רגיל בלי מבצעים. רק חנויות שיש בהן את כל הסל. המחיר בקופה קובע.',R,H-(tall?110:64),W-128,30);
   return cv;}

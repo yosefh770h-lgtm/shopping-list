@@ -2845,7 +2845,7 @@ await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מק
   await ctx.close();
 });
 
-await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), הסל של האתר או שלי, שם בתמונה, וצבע לפרו', async () => {
+await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), הסל של האתר או שלי, שם ויום ההשוואה בתמונה, וצבע לפרו', async () => {
   const prods = [{ code: '7290000000011', name: 'טחינה 500 גרם', manufacturer: 'צבר', stores: 1200 }, { code: '7290000000028', name: 'במבה 80 גרם', manufacturer: 'אסם', stores: 1800 }];
   const api = (r) => { const u = new URL(r.request().url()); const j = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     if (u.pathname.endsWith('/products')) return j(prods);
@@ -2890,6 +2890,7 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   await p2.fill('#who', 'משפחת כהן');
   const cr = await p2.evaluate(() => ({ t: document.querySelector('#credit').textContent, saved: localStorage.getItem('yam_sal_who') }));
   assert(cr.t === 'נוצר ע״י ים שופינג · המוצרים וההשוואה של משפחת כהן' && cr.saved === 'משפחת כהן', 'קרדיט: ' + JSON.stringify(cr));
+  assert(/^ההשוואה נעשתה ביום (ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת) \d+\.\d+\.\d{4} בשעה \d\d:\d\d$/.test(await p2.textContent('#when')), 'מתי נעשתה ההשוואה: ' + (await p2.textContent('#when')));
   await p2.click('[data-col="mint"]');
   const lk = await p2.evaluate(() => ({ hint: !document.querySelector('#proHint').hidden, col: localStorage.getItem('yam_sal_color'), hdr: document.documentElement.style.getPropertyValue('--hdr') }));
   assert(lk.hint && !lk.col && lk.hdr === '#1e3a5f', 'צבע בלי פרו: ' + JSON.stringify(lk));
