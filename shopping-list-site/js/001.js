@@ -36,9 +36,11 @@ if(OFF_APP){try{const off=Number(localStorage.getItem('yam_off_clock'))||0;if(of
     function go(code){var old=r._id;try{A.speechAbort(old);}catch(e){}diag(code,Date.now()-r._t0);cloudRemember(code);var f=!r._got;r._id=++seq;cloud(r,f);}}
   /* כל תקלה של זיהוי הדיבור בטלפון נרשמת ביומן התקלות (עד 5 ביום מכל טלפון), כדי שנדע מה קרה בדגם הזה */
   function diag(code,ms){try{var k='yam_sr_diag',d=new Date().toDateString(),o=JSON.parse(localStorage.getItem(k)||'{}');if(o.d!==d)o={d:d,n:0};if(o.n>=5)return;o.n++;localStorage.setItem(k,JSON.stringify(o));
-    if(window.sb)sb.rpc('log_client_error',Object.assign({p_msg:'🎤 זיהוי דיבור בטלפון: '+code+' אחרי '+Math.round(ms/100)/10+' שניות',p_src:'speech',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')},window.errCtx?errCtx():{})).then(function(){},function(){});}catch(e){}}
+    var c=SB();if(c)c.rpc('log_client_error',Object.assign({p_msg:'🎤 זיהוי דיבור בטלפון: '+code+' אחרי '+Math.round(ms/100)/10+' שניות',p_src:'speech',p_ua:navigator.userAgent.slice(0,200),p_ver:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'')},window.errCtx?errCtx():{})).then(function(){},function(){});}catch(e){}}
   function cloudOn(){try{return Number(localStorage.getItem('yam_sr_cloud'))>Date.now();}catch(e){return false;}}
   function cloudRemember(code){try{localStorage.setItem('yam_sr_cloud',String(Date.now()+7*864e5));}catch(e){}}
+  /* sb (חיבור ל-Supabase) מוגדר ב-js/006.js עם let — הוא לא נמצא על window, אז ניגשים אליו בשם */
+  function SB(){try{return typeof sb!=='undefined'&&sb?sb:null;}catch(e){return null;}}
   function say(he,en){try{if(window.flash)flash(window.T?T(he,en):he);}catch(e){}}
   function cloud(r,fresh){var id=r._id,dead=false,stream=null,ctx=null,chunks=[],rate=16000,heard=false,quiet=0,total=0,floor=1,blocks=0,ended=false;
     var c=r._c={done:function(){if(!dead&&!ended)finish();},kill:function(){dead=true;cleanup();}};
@@ -47,7 +49,7 @@ if(OFF_APP){try{const off=Number(localStorage.getItem('yam_off_clock'))||0;if(of
     function fail(code){cleanup();if(!live())return;cur=null;fire(r,'error',{error:code});fire(r,'end',{});}
     if(fresh){fire(r,'start',{});fire(r,'audiostart',{});}
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!(window.AudioContext||window.webkitAudioContext)){setTimeout(function(){fail('service-not-allowed');},0);return;}
-    if(!window.sb||typeof authUser==='undefined'||!authUser){say('🎤 כדי להקליט בטלפון הזה צריך להתחבר לחשבון','🎤 Please sign in to use voice on this phone');setTimeout(function(){fail('service-not-allowed');},0);return;}
+    if(!SB()||typeof authUser==='undefined'||!authUser){say('🎤 כדי להקליט בטלפון הזה צריך להתחבר לחשבון','🎤 Please sign in to use voice on this phone');setTimeout(function(){fail('network');},0);return;}
     try{if(!localStorage.getItem('yam_sr_cloud_tip')){localStorage.setItem('yam_sr_cloud_tip','1');say('🎤 בטלפון הזה ההקלטה נשלחת לפענוח בבינה המלאכותית ולא נשמרת','🎤 On this phone the recording is sent to AI for transcription and is not stored');}}catch(e){}
     navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}).then(function(s){
       stream=s;if(!live()){cleanup();return;}
@@ -59,7 +61,7 @@ if(OFF_APP){try{const off=Number(localStorage.getItem('yam_off_clock'))||0;if(of
         /* נעצרים: 2.5 שניות שקט אחרי דיבור, 7 שניות בלי דיבור בכלל, או חצי דקה */
         if(heard&&quiet>2.5||total>30)finish();else if(!heard&&total>7){ended=true;fail('no-speech');}};
       src.connect(pr);pr.connect(ctx.destination);
-    }).catch(function(e){fail(e&&(e.name==='NotAllowedError'||e.name==='SecurityError')?'not-allowed':'audio-capture');if(e&&e.name==='NotAllowedError')say('צריך לאשר גישה למיקרופון 🎤','Please allow microphone access 🎤');});
+    }).catch(function(e){fail(e&&(e.name==='NotAllowedError'||e.name==='SecurityError')?'not-allowed':'audio-capture');});
     function finish(){ended=true;var pcm=chunks;chunks=[];cleanup();if(!live())return;if(!heard){fail('no-speech');return;}
       var len=0;pcm.forEach(function(a){len+=a.length;});var buf=new DataView(new ArrayBuffer(44+len*2)),p=44;
       function w(o,str){for(var i=0;i<str.length;i++)buf.setUint8(o+i,str.charCodeAt(i));}
@@ -67,7 +69,7 @@ if(OFF_APP){try{const off=Number(localStorage.getItem('yam_off_clock'))||0;if(of
       buf.setUint32(24,rate,true);buf.setUint32(28,rate*2,true);buf.setUint16(32,2,true);buf.setUint16(34,16,true);w(36,'data');buf.setUint32(40,len*2,true);
       pcm.forEach(function(a){for(var i=0;i<a.length;i++,p+=2){var v=Math.max(-1,Math.min(1,a[i]));buf.setInt16(p,v<0?v*32768:v*32767,true);}});
       var fr=new FileReader();fr.onload=function(){if(!live())return;
-        sb.functions.invoke('ai-chat',{body:{transcribe:{audio:fr.result,lang:String(r.lang||'he-IL')}}}).then(function(res){var d=res&&res.data;
+        SB().functions.invoke('ai-chat',{body:{transcribe:{audio:fr.result,lang:String(r.lang||'he-IL')}}}).then(function(res){var d=res&&res.data;
           if(!live())return;
           if(d&&d.transcript){r._heard=true;var alt={transcript:d.transcript,confidence:0.9},rs=[alt];rs.isFinal=true;rs.item=function(i){return this[i];};var l=[rs];l.item=function(i){return this[i];};
             cur=null;fire(r,'result',{resultIndex:0,results:l});fire(r,'end',{});return;}
