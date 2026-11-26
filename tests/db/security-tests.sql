@@ -1483,6 +1483,11 @@ select tst.ok((public.admin_price_search_stats(30, true)->>'total')::int = 3, '�
 select tst.ok((select (x->>'n')::int = 2 and (x->>'people')::int = 2 from jsonb_array_elements(public.admin_price_search_stats(30, false)->'top') x where x->>'q' = 'חלב'), '🔎 milk is the top search, by 2 people');
 select tst.ok((public.admin_price_search_stats(30, false)->>'guests')::int = 1 and (public.admin_price_search_stats(30, false)->>'users')::int = 1, '🔎 one guest and one signed-in user');
 reset role;
+-- 🤖 האתר בוחר: רק מילים שלפחות 2 אנשים חיפשו, בלי הצוות
+select tst.ok((select count(*) from public.sal_top_searches()) = 1 and (select q from public.sal_top_searches()) = 'חלב', '🤖 only words searched by 2+ people (not staff) are public');
+set role anon; select tst.as_user('');
+select tst.ok((select people from public.sal_top_searches() where q = 'חלב') = 2, '🤖 anon can read the top searches summary');
+reset role;
 delete from public.price_searches;
 -- 📣 הסל הזול: מי השתמש ושיתף
 reset role; set role anon; select tst.as_user('');

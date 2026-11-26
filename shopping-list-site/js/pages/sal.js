@@ -9,7 +9,7 @@
    יוצא: תמונה לקבוצה (1080×1350), תמונה לסטטוס (1080×1920), ודף להדפסה (A4, עם QR). בתמונות אין דמויות — רק טקסט ולוגו. */
 (function(){
 'use strict';
-const API='/api/prices',SITE='https://www.yamshopping.com/sal-zol-hashavua.html',KEY='yam_sal_city',MINE='yam_sal_mine',SHOWI='yam_sal_showitems',USE='yam_sal_use',WHO='yam_sal_who',COL='yam_sal_color';
+const API='/api/prices',SITE='https://www.yamshopping.com/sal-zol-hashavua.html',KEY='yam_sal_city',MINE='yam_sal_mine',SHOWI='yam_sal_showitems',USE='yam_sal_use',WHO='yam_sal_who',COL='yam_sal_color',AUTO='yam_sal_auto';
 /* ההגדרה מהבק אופיס (site_config "sal") — קריאה ציבורית, כמו בשאר האתר */
 const SB_URL='https://ygyfodxfbebnkwdcbjrp.supabase.co',SB_KEY='sb_publishable_ePRvA2OrDbBN3tbjbD3p-w_8maEwTCK';
 const SP=window.SalPick;
@@ -81,13 +81,21 @@ async function loadBasket(){
     if(codes.length>=SP.MIN){BASKET=codes.map(c=>[known.get(c)||c,c]);custom=true;return;}}
   if(mine.length>=SP.MIN&&ls.get(USE)!=='site'){BASKET=mine;custom=true;return;}
   try{const r=await fetch(SB_URL+'/rest/v1/site_config?key=eq.sal&select=value',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-    const d=r.ok?await r.json():[];const cfg=d&&d[0]&&d[0].value;if(cfg){BASKET=SP.pick(cfg);mode=cfg.mode==='daily'?'daily':'fixed';}}catch(e){}
+    const d=r.ok?await r.json():[];const cfg=d&&d[0]&&d[0].value;if(cfg){BASKET=SP.pick(cfg);mode=cfg.mode==='daily'?'daily':'fixed';
+      if(cfg.mode==='auto'){const a=await autoBasket(cfg);if(a){BASKET=a;mode='auto';}}}}catch(e){}
   custom=false;}
+/* 🤖 האתר בוחר — פעם ביום במכשיר (נשמר ליום הזה), מהחיפושים הכי נפוצים השבוע; כשאין מספיק — הרשימה מהבק אופיס */
+async function autoBasket(cfg){const day=SP.today(),n=parseInt(cfg.count,10)||12;
+  try{const c=JSON.parse(ls.get(AUTO)||'null');if(c&&c.day===day&&c.n===n&&SP.clean(c.items).length>=SP.MIN)return SP.clean(c.items);}catch(e){}
+  try{const r=await fetch(SB_URL+'/rest/v1/rpc/sal_top_searches',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:'{}'});
+    const terms=(r.ok?await r.json():[]).map(x=>x.q);
+    const items=await SP.auto({terms,count:n,search:q=>fetch(API+'/products?'+new URLSearchParams({q,limit:'6'})).then(x=>x.ok?x.json():[])});
+    if(items.length<SP.MIN)return null;ls.set(AUTO,JSON.stringify({day,n,items}));return items;}catch(e){return null;}}
 const basketReady=loadBasket().then(drawSrc);
 function drawSrc(){$('#srcSite').setAttribute('aria-pressed',String(!custom));$('#srcMine').setAttribute('aria-pressed',String(custom));}
 const N=()=>BASKET.length;
-const title=()=>custom?'הסל שלי — איפה הכי זול':mode==='daily'?'הסל הזול היום':'הסל הזול השבוע';
-const sub=()=>N()+(custom?' מוצרים שבחרתי':' מוצרים מוכרים');
+const title=()=>custom?'הסל שלי — איפה הכי זול':mode==='daily'||mode==='auto'?'הסל הזול היום':'הסל הזול השבוע';
+const sub=()=>N()+(custom?' מוצרים שבחרתי':mode==='auto'?' מוצרים שהכי מחפשים השבוע':' מוצרים מוכרים');
 
 /* ---------- 🛒 החישוב ---------- */
 async function run(city){

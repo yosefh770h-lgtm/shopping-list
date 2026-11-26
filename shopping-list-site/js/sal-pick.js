@@ -3,6 +3,8 @@
      {items:[[שם, ברקוד], ...], mode:'fixed'|'daily', count:12}
    fixed — אותם מוצרים כל יום (כל הרשימה).
    daily — כל יום מבחר אחר של count מוצרים מתוך הרשימה. הבחירה לפי התאריך בישראל, אז כל מי שנכנס באותו יום רואה אותו סל.
+   auto  — האתר בוחר לבד (auto()): count מוצרים שהכי מחפשים השבוע ב"איפה הכי זול", ושבועיים לפני חג גם מוצרים לחג.
+           כשאין מספיק חיפושים — הרשימה (כמו fixed).
    כשאין הגדרה — סל ברירת המחדל: 12 מוצרים שכ-72% מהסניפים מוכרים את כולם (נבדק מול השרת, נובמבר 2026).
    מוסיפים לסל (בבק אופיס ובדף) רק מוצר שנמכר בהרבה סניפים — אחרת ברוב החנויות יש מוצר אחר במקומו ואי אפשר להשוות.
    שם המוצר כולל את שם החברה ("חלב תנובה 3%"), כי אנשים רוצים לדעת איזה מוצר בדיוק. */
@@ -44,5 +46,21 @@ const fmt=n=>Number(n||0).toLocaleString('he-IL');
 /* מה כותבים ליד מוצר בתוצאות החיפוש */
 const badge=p=>ok(p)?'✅ אותו מוצר בדיוק ב-'+fmt(p.stores)+' סניפים'+(p.chains?' ('+p.chains+' רשתות)':'')
   :'⚠️ רק ב-'+fmt(p.stores)+' סניפים — בשאר החנויות יש מוצר אחר, אז אי אפשר להשוות';
-window.SalPick={DEFAULT,MIN,MAX,MIN_STORES,clean,pick,today,brand,label,ok,badge};
+/* 🕯️ שבועיים לפני חג — מוצרים לחג (לפי לוח השנה העברי של האתר, js/089-hcal.js) */
+const HOLI=[['חנוכה',['שמן קנולה','שמן זית']],['פורים',['יין אדום מתוק','במבה']],['פסח',['מצות','יין אדום מתוק']],['שבועות',['שמנת מתוקה','גבינה צהובה']],
+  ['ראש השנה',['דבש','יין אדום מתוק']],['סוכות',['יין אדום מתוק','חומוס']],['ט"ו בשבט',['תמרים','צימוקים']]];
+function holidayTerms(date){try{const H=window.Hcal;if(!H)return [];const rd=H.rdOf(date||new Date()),seen=new Set(),out=[];
+  for(let i=0;i<14;i++)for(const e of H.events(rd+i,true)||[]){const h=HOLI.find(([k])=>String(e.base||'').includes(k));if(h&&!seen.has(h[0])){seen.add(h[0]);out.push(...h[1]);}}
+  return out;}catch(e){return [];}}
+/* 🤖 האתר בוחר: terms = מילות החיפוש הכי נפוצות השבוע (sal_top_searches), search(q) = חיפוש מוצרים בשרת המחירים.
+   לכל מילה — המוצר שנמכר בהכי הרבה סניפים (רק מעל MIN_STORES, ורק אם המילה כתובה בשם שלו: "סוכר" לא יביא סוכריות מנטה), ולא שני מוצרים מאותו סוג (לפי המילה הראשונה בשם: לא שני "חלב") */
+const kindOf=n=>String(n||'').replace(/["'׳״]/g,'').trim().split(/\s+/)[0];
+async function auto({terms,search,count,date}){const n=Math.max(MIN,Math.min(MAX,parseInt(count,10)||12));
+  const qs=[...new Set([...holidayTerms(date),...(terms||[])].map(q=>String(q||'').trim()).filter(q=>q.length>1))].slice(0,n*2+6);
+  const res=await Promise.all(qs.map(q=>Promise.resolve().then(()=>search(q)).catch(()=>[])));
+  const out=[],kinds=new Set();
+  for(let i=0;i<qs.length&&out.length<n;i++){const w=kindOf(qs[i]),best=(res[i]||[]).filter(p=>ok(p)&&String(p.name||'').replace(/["'׳״]/g,'').includes(w)).sort((a,b)=>b.stores-a.stores)[0];if(!best)continue;
+    const k=kindOf(best.name);if(kinds.has(k)||out.some(o=>o[1]===best.code))continue;kinds.add(k);out.push([label(best),best.code]);}
+  return out;}
+window.SalPick={DEFAULT,MIN,MAX,MIN_STORES,clean,pick,today,brand,label,ok,badge,auto,holidayTerms};
 })();

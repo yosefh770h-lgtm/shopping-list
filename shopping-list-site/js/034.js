@@ -308,7 +308,7 @@ window.boReady(()=>{
 try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data-s="sal"]')){const after=nav.querySelector('[data-s="prices"]');const b=document.createElement('button');b.dataset.s='sal';b.textContent='📣 הסל הזול';if(after)after.after(b);else nav.appendChild(b);}
   window.boView&&window.boView('sal',async function(){const m=document.querySelector('#boMain'),SP=window.SalPick;
     const {data}=await sb.from('site_config').select('value').eq('key','sal').maybeSingle();const v=(data&&data.value)||{};
-    let items=SP.clean(v.items);if(items.length<SP.MIN)items=SP.DEFAULT.slice();let md=v.mode==='daily'?'daily':'fixed',cnt=Math.max(SP.MIN,parseInt(v.count,10)||12);const counts={};
+    let items=SP.clean(v.items);if(items.length<SP.MIN)items=SP.DEFAULT.slice();let md=v.mode==='daily'||v.mode==='auto'?v.mode:'fixed',cnt=Math.max(SP.MIN,parseInt(v.count,10)||12);const counts={};
     /* 📊 מי השתמש בדף, מי הוריד, שיתף והדפיס (admin_sal_stats) */
     let stH='<p class="muted">⏳ טוען...</p>',stDays=30,stStaff=false;
     const ACT={view:'👀 עשו השוואה',share:'📤 שיתפו (תפריט השיתוף של הטלפון)',wa:'💬 שלחו בוואטסאפ (דרך הקישור)',app:'📱 שיתפו מהאפליקציה',post:'⬇️ הורידו תמונה לקבוצה',status:'⬇️ הורידו תמונה לסטטוס',print:'🖨️ הדפיסו',arrive:'🔗 נכנסו מתמונה או QR ששותפו'};
@@ -327,16 +327,25 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
           (d.recent.map(r=>'<tr><td>'+when(r.at)+'</td><td>'+who(r)+'</td><td>'+(ACT[r.action]||esc(r.action))+(r.custom?' <small class="muted">(סל שלו)</small>':'')+'</td><td>'+esc(r.city)+'</td></tr>').join('')||'<tr><td colspan="4" class="muted">עוד אין</td></tr>')+'</tbody></table></div>';}
       const el=$26('#salStats');if(el)el.innerHTML=statsCard();}
     const statsCard=()=>'<h2>📊 מי השתמש</h2><div class="row"><label>תקופה: <select id="salDays" style="width:auto">'+[7,30,90,365].map(n=>'<option value="'+n+'"'+(n===stDays?' selected':'')+'>'+n+' ימים</option>').join('')+'</select></label> <label><input type="checkbox" id="salStf" style="width:auto"'+(stStaff?' checked':'')+'> כולל הצוות</label></div>'+stH;
-    const today=()=>{const t=SP.pick({items,mode:md,count:cnt});return '<p class="muted">'+(md==='daily'?'היום ('+esc(SP.today())+') בסל '+t.length+' מוצרים: ':'בסל '+t.length+' מוצרים: ')+esc(t.map(i=>i[0]).join(' · '))+'</p>';};
+    /* 🤖 "האתר בוחר": מה ייצא היום (אותו חישוב כמו בדף) */
+    async function autoPrev(){const el=$26('#salAuto');if(!el)return;
+      try{const {data}=await sb.rpc('sal_top_searches');const terms=(data||[]).map(x=>x.q);
+        const t=await SP.auto({terms,count:cnt,search:q=>fetch(PRICE_API+'/products?'+new URLSearchParams({q,limit:'6'})).then(r=>r.ok?r.json():[])});
+        const e2=$26('#salAuto');if(!e2)return;
+        e2.innerHTML=t.length>=SP.MIN?'היום האתר בחר '+t.length+' מוצרים (מ-'+terms.length+' מילות חיפוש נפוצות'+(SP.holidayTerms().length?' + מוצרים לחג':'')+'): '+esc(t.map(i=>i[0]).join(' · '))
+          :'⚠️ עוד אין מספיק חיפושים השבוע ('+terms.length+' מילים שלפחות 2 אנשים חיפשו) — בינתיים הדף מראה את הרשימה שלמטה.';}catch(err){el.textContent='⚠️ '+(err.message||err)+' — אם כתוב שהפונקציה לא קיימת, צריך להריץ שוב את supabase/schema.sql';}}
+    const today=()=>{if(md==='auto')return '<p class="muted" id="salAuto">⏳ האתר בוחר...</p>';const t=SP.pick({items,mode:md,count:cnt});return '<p class="muted">'+(md==='daily'?'היום ('+esc(SP.today())+') בסל '+t.length+' מוצרים: ':'בסל '+t.length+' מוצרים: ')+esc(t.map(i=>i[0]).join(' · '))+'</p>';};
     const draw=()=>{m.innerHTML='<div class="card"><h2>📣 הסל הזול בעיר</h2><p class="muted">המוצרים שבודקים בדף "הסל הזול" (<a href="/sal-zol-hashavua.html" target="_blank" rel="noopener">לדף</a>). משווים רק חנויות שיש בהן את <b>כל</b> המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). מוצר שנמכר בפחות — ברוב החנויות יש מוצר אחר במקומו, והחיפוש כותב את זה. שם החברה נכנס לשם המוצר, ואפשר לתקן את השם בטבלה. משתמשים יכולים לשנות לעצמם את הסל — זה לא משנה את ההגדרה כאן.</p>'+
       '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="fixed"'+(md==='fixed'?' checked':'')+'> אותם מוצרים כל יום (כל הרשימה)</label></div>'+
-      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="daily"'+(md==='daily'?' checked':'')+'> כל יום מבחר אחר מתוך הרשימה</label> <label'+(md==='daily'?'':' hidden')+'>— כמה מוצרים בכל יום: <input id="salCnt" type="number" min="'+SP.MIN+'" max="'+SP.MAX+'" value="'+cnt+'" style="width:80px"></label></div>'+
+      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="daily"'+(md==='daily'?' checked':'')+'> כל יום מבחר אחר מתוך הרשימה</label></div>'+
+      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="auto"'+(md==='auto'?' checked':'')+'> 🤖 האתר בוחר לבד: המוצרים שהכי מחפשים השבוע, ושבועיים לפני חג גם מוצרים לחג (כשאין מספיק חיפושים — הרשימה שלמטה)</label></div>'+
+      '<div class="row"'+(md==='fixed'?' hidden':'')+'><label>כמה מוצרים בכל יום: <input id="salCnt" type="number" min="'+SP.MIN+'" max="'+SP.MAX+'" value="'+cnt+'" style="width:80px"></label></div>'+
       today()+'</div>'+
       '<div class="card"><h2>🧺 הרשימה ('+items.length+')</h2><div class="tw" tabindex="0" role="region" aria-label="המוצרים בסל"><table><thead><tr><th>מוצר</th><th>ברקוד</th><th></th></tr></thead><tbody>'+
       items.map((i,n)=>'<tr><td><input data-nm="'+n+'" value="'+esc(i[0])+'" maxlength="60" aria-label="שם המוצר"></td><td dir="ltr">'+esc(i[1])+(counts[i[1]]?' <small class="muted">('+counts[i[1]]+' סניפים)</small>':'')+'</td><td><button class="btn sec" data-rm="'+n+'">🗑️</button></td></tr>').join('')+'</tbody></table></div>'+
       '<div class="row"><input id="salQ" type="search" placeholder="להוסיף מוצר: שם או ברקוד" maxlength="60" autocomplete="off"></div><div id="salRes"></div>'+
       '<div class="row"><button class="btn" id="salSave">💾 שמירה</button> <button class="btn sec" id="salDef">↩️ חזרה ל-12 המוצרים המקוריים</button></div></div>'+
-      '<div class="card" id="salStats">'+statsCard()+'</div>';};
+      '<div class="card" id="salStats">'+statsCard()+'</div>';if(md==='auto')autoPrev();};
     draw();loadStats();
     m.oninput=e=>{const t=e.target;if(t.dataset.nm!=null){items[+t.dataset.nm][0]=t.value.slice(0,60);return;}
       if(t.id==='salCnt'){cnt=Math.max(SP.MIN,Math.min(SP.MAX,parseInt(t.value,10)||12));return;}
@@ -345,6 +354,7 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
           d.forEach(p=>counts[p.code]=p.stores);
           $26('#salRes').innerHTML=d.length?d.map(p=>'<div class="row"><button class="chip" data-addp="'+esc(p.code)+'" data-n="'+esc(SP.label(p))+'"'+(items.some(i=>i[1]===p.code)||!SP.ok(p)?' disabled':'')+'>➕ '+esc(SP.label(p))+'</button> <small class="muted">'+esc(SP.badge(p))+'</small></div>').join(''):'<p class="muted">לא נמצא</p>';}catch(err){$26('#salRes').innerHTML='<p class="muted">שרת המחירים לא ענה</p>';}},300);}};
     m.onchange=e=>{if(e.target.name==='salMd'){md=e.target.value;draw();}
+      if(e.target.id==='salCnt'&&md==='auto')draw();
       if(e.target.id==='salDays'||e.target.id==='salStf'){stDays=+$26('#salDays').value||30;stStaff=$26('#salStf').checked;stH='<p class="muted">⏳ טוען...</p>';$26('#salStats').innerHTML=statsCard();loadStats();}};
     m.onclick=async e=>{const t=e.target;
       if(t.closest('[data-rm]')){items.splice(+t.closest('[data-rm]').dataset.rm,1);draw();return;}
