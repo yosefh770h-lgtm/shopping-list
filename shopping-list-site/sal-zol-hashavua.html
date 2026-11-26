@@ -20,11 +20,11 @@
 <link href="/vendor/fonts/fonts-1.css" rel="stylesheet">
 <link href="/vendor/fonts/fonts-2.css" rel="stylesheet">
 <style>
-:root{--bg:#f6f3ec;--card:#fffdf7;--text:#23231f;--muted:#5f5f55;--accent:#1e3a5f;--line:#e3ddcf;--gold:#b8892a;--ok:#2f6b3a}
+:root{--hdr:#1e3a5f;--bg:#f6f3ec;--card:#fffdf7;--text:#23231f;--muted:#5f5f55;--accent:#1e3a5f;--line:#e3ddcf;--gold:#b8892a;--ok:#2f6b3a}
 @media (prefers-color-scheme:dark){:root{--bg:#0d1118;--card:#161a22;--text:#e6e6da;--muted:#a3abb8;--accent:#9db8e0;--line:#2a303b;--gold:#e0b65a;--ok:#7fc58b}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Rubik,Heebo,Arial,sans-serif;line-height:1.6}
-header{background:#1e3a5f;color:#fff;padding:10px 16px}
+header{background:var(--hdr);color:#fff;padding:10px 16px}
 header a{color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
 header img{border-radius:50%}
 main{max-width:760px;margin:18px 16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 18px}
@@ -35,7 +35,7 @@ h2{font-size:18px;margin:20px 0 6px;color:var(--accent)}
 .muted{color:var(--muted);font-size:14px}
 .pick{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .pick input{flex:1 1 180px;min-width:0;font:inherit;font-size:17px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
-button,.btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:10px;padding:10px 14px;background:#1e3a5f;color:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+button,.btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:10px;padding:10px 14px;background:var(--hdr);color:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 button.sec,.btn.sec{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
 button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #ffd166;outline-offset:2px}
 button[disabled]{opacity:.55;cursor:default}
@@ -57,11 +57,32 @@ a{color:var(--accent)}
 details summary{cursor:pointer;color:var(--accent);font-weight:700}
 .pqr{display:none}
 footer{text-align:center;padding:4px 16px 32px}
+[hidden]{display:none!important}
+.src{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.src button{flex:1 1 160px;justify-content:center;background:transparent;color:var(--accent);border:1.5px solid var(--line)}
+.src button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--card)}
+.look{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
+.look h2{margin:0 0 6px;font-size:16px}
+.look input[type=text]{width:100%;font:inherit;font-size:16px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.cols{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}
+.cols button{width:44px;height:44px;padding:0;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1.5px var(--line);justify-content:center;font-size:16px}
+.cols button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--gold)}
+.credit{font-weight:700;color:var(--accent);margin:10px 0 0}
+.ed{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0 14px}
+.ed h2{margin-top:0}
+.edl,.edr{list-style:none;padding:0;margin:6px 0}
+.edl li{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:4px 0}
+.edl .x{background:transparent;color:var(--muted);border:1px solid var(--line);padding:2px 10px;font-size:15px}
+.edr button{width:100%;justify-content:flex-start;background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500;margin:3px 0;text-align:start;flex-direction:column;align-items:flex-start;gap:2px}
+.edr small{color:var(--muted)}
+#edQ{width:100%;font:inherit;font-size:16px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.chk{display:flex;gap:8px;align-items:center;font-size:15px;margin:4px 0;cursor:pointer}
+.chk input{width:20px;height:20px}
 /* 🖨️ דף להדפסה: ללוח המודעות בבית הכנסת או לעלון שבת — שחור לבן, גדול וברור, עם QR */
 @media print{
   @page{size:A4;margin:14mm}
   body{background:#fff;color:#000;font-size:15pt}
-  header,.pick,.acts,.prev,#st,footer,.noprint,details summary{display:none!important}
+  header,.pick,.acts,.prev,#st,footer,.noprint,details summary,.src,.look,.ed{display:none!important}
   details{display:block}details>*{display:block}
   main{border:3px solid #000;border-radius:0;margin:0;max-width:none;padding:10mm;background:#fff}
   h1{color:#000;font-size:30pt;text-align:center}
@@ -72,8 +93,12 @@ footer{text-align:center;padding:4px 16px 32px}
   .res .a{color:#333;white-space:normal}
   .gap{background:none;color:#000;border:1.5px dashed #000;text-align:center}
   .muted{color:#333}
-  .pqr{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8mm}
-  .pqr svg{width:34mm;height:34mm}
+  .credit,#when{color:#000;text-align:center}
+  .pqr{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8mm;break-inside:avoid}
+  .pqr>span{flex:none;display:block;width:34mm;height:34mm}
+  .pqr svg{width:34mm;height:34mm;display:block}
+  .pqr>div{min-width:0;flex:0 1 auto}
+  #plink{word-break:break-all;font-size:12pt}
   .pqr b{font-size:16pt}
 }
 </style>
@@ -90,6 +115,19 @@ footer{text-align:center;padding:4px 16px 32px}
   <button type="submit" id="go">הצגה</button>
 </form>
 <div id="st" role="status" aria-live="polite"></div>
+<div class="src" role="group" aria-label="איזה מוצרים להשוות">
+  <button type="button" id="srcSite" aria-pressed="true">🧺 הסל של האתר</button>
+  <button type="button" id="srcMine" aria-pressed="false">✏️ אני בוחר את המוצרים</button>
+</div>
+<section id="ed" class="ed" hidden aria-label="שינוי המוצרים בסל">
+  <h2>✏️ המוצרים בסל שלי</h2>
+  <p class="muted">משווים רק חנויות שיש בהן את כל המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). השינוי נשמר רק אצלכם, ומי שמקבל מכם את התמונה רואה את אותו סל.</p>
+  <ul class="edl" id="edList"></ul>
+  <p class="muted" id="edN"></p>
+  <input id="edQ" type="search" placeholder="להוסיף מוצר: למשל טחינה, במבה, ביצים" autocomplete="off" maxlength="60" aria-label="חיפוש מוצר להוספה">
+  <ul class="edr" id="edRes"></ul>
+  <div class="acts"><button type="button" id="edSave">💾 שמירה והשוואה</button><button type="button" class="sec" id="edCancel">ביטול</button></div>
+</section>
 <div id="out" hidden>
   <ol class="res" id="res"></ol>
   <p class="gap" id="gap" hidden></p>
@@ -99,10 +137,21 @@ footer{text-align:center;padding:4px 16px 32px}
     <button type="button" class="sec" id="dlStatus">⬇️ תמונה לסטטוס</button>
     <button type="button" class="sec" id="print">🖨️ הדפסה ללוח המודעות</button>
   </div>
+  <section class="look noprint" aria-label="איך התמונה תיראה">
+    <h2>🎨 איך התמונה תיראה</h2>
+    <label class="chk"><input type="checkbox" id="showItems"> להראות בתמונה גם את רשימת המוצרים (בקטן)</label>
+    <label for="who" class="muted">השם שלכם, יופיע בתמונה ובדף להדפסה (רשות):</label>
+    <input type="text" id="who" maxlength="30" autocomplete="name" placeholder="למשל משפחת כהן">
+    <p class="muted" style="margin:8px 0 0">צבע התמונה והדף:</p>
+    <div class="cols" id="cols" role="group" aria-label="צבע"></div>
+    <p class="muted" id="proHint" hidden>🔒 צבעים נוספים פתוחים למשתמשי פרו. <a href="/#pro">איך מגיעים לפרו</a></p>
+  </section>
   <img class="prev" id="prev" alt="התמונה לשיתוף">
   <details id="det"><summary>מה יש בסל</summary>
     <ul class="items" id="items"></ul>
   </details>
+  <p class="credit" id="credit"></p>
+  <p class="muted" id="when" style="margin:2px 0 0"></p>
   <p class="muted" id="note"></p>
   <div class="pqr"><span id="pqr"></span><div><b>לרשימה המלאה ולעיר שלכם:</b><br><bdi id="plink" dir="ltr"></bdi></div></div>
 </div>
@@ -110,6 +159,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </main>
 <footer class="muted"><a href="/terms.html">תנאי שימוש</a> · <a href="/privacy.html">פרטיות</a></footer>
 <script src="/js/089-hcal.js?v=e2ea143fdb"></script>
-<script src="/js/pages/sal.js?v=ec2f71bd1a"></script>
+<script src="/js/sal-pick.js?v=c42b82e360"></script>
+<script src="/js/pages/sal.js?v=b389bf41eb"></script>
 </body>
 </html>
