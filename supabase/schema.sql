@@ -4418,6 +4418,8 @@ begin
   if random() < 0.01 then delete from public.client_errors where created_at < now() - interval '30 days'; end if;
   -- נטפרי מזריק סקריפט (netfree.link) וה-CSP חוסם אותו כמו שצריך — זו לא תקלה באתר (גם מדפדפנים עם גרסה ישנה של האתר)
   if coalesce(p_msg, '') ~* 'CSP[^:]*: script-src.*netfree\.[a-z]+' then return; end if;
+  -- וגם קוד שמסנן מדביק בתוך הדף (inline). בדפים שלנו אין קוד כזה, אז אם הוא לא נוצר מקובץ js שלנו — הוא מבחוץ
+  if coalesce(p_msg, '') ~* 'CSP[^:]*: script-src[a-z-]* inline$' and coalesce(p_src, '') !~* '\.m?js([?#:]|$)' then return; end if;
   insert into public.client_errors(user_id, msg, src, ua, ver, app_ver, device, dev)
   values (auth.uid(), left(coalesce(p_msg, ''), 500), left(coalesce(p_src, ''), 300), left(coalesce(p_ua, ''), 200), left(coalesce(p_ver, ''), 12),
           left(regexp_replace(coalesce(p_app, ''), '[^0-9.]', '', 'g'), 12),
@@ -9464,3 +9466,4 @@ revoke insert, update, delete on public.feedback_replies from anon, authenticate
 -- ================= 🛡️ יומן התקלות בלי חסימות של נטפרי (נובמבר 2026) =================
 -- מוחק דיווחי CSP ישנים על הסקריפט שנטפרי מזריק (netfree.link). מעכשיו הם לא נרשמים בכלל (באתר וב-log_client_error)
 delete from public.client_errors where msg ~* 'CSP[^:]*: script-src.*netfree\.[a-z]+';
+delete from public.client_errors where msg ~* 'CSP[^:]*: script-src[a-z-]* inline$' and src !~* '\.m?js([?#:]|$)';
