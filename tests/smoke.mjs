@@ -2877,8 +2877,8 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
     const base = [['חלב תנובה 1 ליטר', '10'], ['שמן זית 750', '11'], ['במבה 80', '12']];
     const h = await SalPick.holidayBasket({ search, base, date: new Date('2026-12-04T10:00:00Z') });
     const none = await SalPick.holidayBasket({ search, base, date: new Date('2026-12-20T10:00:00Z') });
-    return { a: a.map((i) => i[1]).join(','), h: h && h.name + ':' + h.items.map((i) => i[1]).join(','), none }; });
-  assert(au.a === '2,4' && au.h === 'חנוכה:11,10,12' && au.none === null, 'האתר בוחר / הסל לחג: ' + JSON.stringify(au));
+    return { a: a.map((i) => i[1]).join(','), h: h && h.name + ':' + h.items.map((i) => i[1]).join(',') + '/' + h.only.map((i) => i[1]).join(','), none }; });
+  assert(au.a === '2,4' && au.h === 'חנוכה:11,10,12/11' && au.none === null, 'האתר בוחר / הסל לחג: ' + JSON.stringify(au));
   await page.evaluate((pool) => { window.__up = []; sb = __stub({ 'site_config:one': { value: { items: pool, mode: 'daily', count: 4 } }, 'rpc:admin_sal_stats': { people: 3, users: 1, guests: 2, custom: 1, actions: { view: { n: 5, people: 3 }, share: { n: 2, people: 1 } }, days: [], cities: [{ city: 'בני ברק', n: 5, out: 2 }],
       sharers: [{ name: 'דוד', guest: false, n: 2, last: '2026-11-26T12:00:00Z' }], recent: [{ at: '2026-11-26T12:00:00Z', name: 'דוד', guest: false, staff: false, action: 'share', city: 'בני ברק', custom: false, n: 12 }] } }); const f = sb.from; sb.from = (n) => { const q = f(n); return new Proxy(q, { get(t, p) { if (p === 'upsert') return (v) => { window.__up.push(v); return q; }; return t[p]; } }); };
     authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('sal'); }, pool);

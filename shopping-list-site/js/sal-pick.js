@@ -48,7 +48,7 @@ const badge=p=>ok(p)?'✅ אותו מוצר בדיוק ב-'+fmt(p.stores)+' סנ
   :'⚠️ רק ב-'+fmt(p.stores)+' סניפים — בשאר החנויות יש מוצר אחר, אז אי אפשר להשוות';
 /* 🕎 הסל לחג — שבועיים לפני חג ובחג עצמו יש בדף עוד כפתור, חוץ מהסל הרגיל (לפי לוח השנה העברי של האתר, js/089-hcal.js).
    רק מוצרים שנמכרים ב-MIN_STORES סניפים לפחות; נרות חנוכה, למשל, נמכרים רק ב-326, אז הם לא בסל */
-const HOLI=[['חנוכה','🕎',['שמן קנולה','שמן חמניות','סוכר לבן','קמח','שמרים','ממרח שוקולד','שוקולד חלב','קקאו','אבקת סוכר']],
+const HOLI=[['חנוכה','🕎',['שמן קנולה','שמן חמניות','סוכר לבן','קמח','שמרים','ממרח שוקולד','שוקולד חלב','קקאו','אבקת סוכר'],'סופגניות ונרות'],
   ['פורים','🎭',['יין אדום מתוק','מיץ ענבים','במבה','ביסלי','שוקולד חלב','ופלים','ממרח שוקולד']],
   ['פסח','🍷',['מצות','יין אדום מתוק','מיץ ענבים','שמן קנולה','סוכר לבן','קפה','ביצים']],
   ['שבועות','🧀',['שמנת מתוקה','גבינה צהובה','גבינה לבנה','קוטג','חמאה','סוכר לבן','שמנת חמוצה']],
@@ -56,17 +56,17 @@ const HOLI=[['חנוכה','🕎',['שמן קנולה','שמן חמניות','ס�
   ['סוכות','🌿',['יין אדום מתוק','מיץ ענבים','חומוס','טחינה','שמן קנולה','קפה']],
   ['ט"ו בשבט','🌳',['תמרים','צימוקים','שקדים','אגוזים','משמשים']]];
 function holiday(date){try{const H=window.Hcal;if(!H)return null;const rd=H.rdOf(date||new Date());
-  for(let i=0;i<14;i++)for(const e of H.events(rd+i,true)||[]){const h=HOLI.find(([k])=>String(e.base||'').includes(k));if(h)return {name:h[0],icon:h[1],terms:h[2]};}
+  for(let i=0;i<14;i++)for(const e of H.events(rd+i,true)||[]){const h=HOLI.find(([k])=>String(e.base||'').includes(k));if(h)return {name:h[0],icon:h[1],terms:h[2],miss:h[3]||''};}
   return null;}catch(e){return null;}}
 /* הסל לחג: עד 5 מוצרים לחג, רק כאלה שנמכרים ב-HOLI_STORES סניפים לפחות (בסל קטן כל מוצר שחסר בחנות מוציא אותה מההשוואה —
    נבדק מול השרת: עם קמח, שמרים וקקאו רק כחמישית מהחנויות מוכרות את כולם). כשיש בסל הרגיל (base) מוצר מאותו סוג — לוקחים אותו,
-   כי הוא כבר נבדק. ואז משלימים מהסל הרגיל עד 8 מוצרים */
+   כי הוא כבר נבדק. only = רק המוצרים לחג, items = לחג ולבית (משלימים מהסל הרגיל עד 8 מוצרים) — המשתמש בוחר בדף */
 const HOLI_STORES=1300;
 async function holidayBasket({search,base,date}){const h=holiday(date);if(!h)return null;base=base||[];
   const got=(await auto({terms:h.terms,search,count:MAX,min:HOLI_STORES})).slice(0,5);
-  const items=got.map(g=>base.find(b=>kindOf(b[0])===kindOf(g[0]))||g);
+  const only=got.map(g=>base.find(b=>kindOf(b[0])===kindOf(g[0]))||g),items=only.slice();
   for(const b of base){if(items.length>=8)break;if(!items.some(o=>o[1]===b[1]||kindOf(o[0])===kindOf(b[0])))items.push(b);}
-  return got.length&&items.length>=MIN?{name:h.name,icon:h.icon,items}:null;}
+  return got.length&&items.length>=MIN?{name:h.name,icon:h.icon,miss:h.miss,only,items}:null;}
 /* 🤖 האתר בוחר: terms = מילות החיפוש הכי נפוצות השבוע (sal_top_searches), search(q) = חיפוש מוצרים בשרת המחירים.
    לכל מילה — המוצר שנמכר בהכי הרבה סניפים (רק מעל MIN_STORES, ורק אם המילה כתובה בשם שלו: "סוכר" לא יביא סוכריות מנטה), ולא שני מוצרים מאותו סוג (לפי המילה הראשונה בשם: לא שני "חלב") */
 const kindOf=n=>String(n||'').replace(/["'׳״]/g,'').trim().split(/\s+/)[0];

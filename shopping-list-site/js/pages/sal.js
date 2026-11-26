@@ -9,11 +9,11 @@
    יוצא: תמונה לקבוצה (1080×1350), תמונה לסטטוס (1080×1920), ודף להדפסה (A4, עם QR). בתמונות אין דמויות — רק טקסט ולוגו. */
 (function(){
 'use strict';
-const API='/api/prices',SITE='https://www.yamshopping.com/sal-zol-hashavua.html',KEY='yam_sal_city',MINE='yam_sal_mine',SHOWI='yam_sal_showitems',USE='yam_sal_use',WHO='yam_sal_who',COL='yam_sal_color',AUTO='yam_sal_auto',HOLB='yam_sal_holi';
+const API='/api/prices',SITE='https://www.yamshopping.com/sal-zol-hashavua.html',KEY='yam_sal_city',MINE='yam_sal_mine',SHOWI='yam_sal_showitems',USE='yam_sal_use',WHO='yam_sal_who',COL='yam_sal_color',AUTO='yam_sal_auto',HOLB='yam_sal_holi',HMIX='yam_sal_holimix';
 /* ההגדרה מהבק אופיס (site_config "sal") — קריאה ציבורית, כמו בשאר האתר */
 const SB_URL='https://ygyfodxfbebnkwdcbjrp.supabase.co',SB_KEY='sb_publishable_ePRvA2OrDbBN3tbjbD3p-w_8maEwTCK';
 const SP=window.SalPick;
-let BASKET=SP.DEFAULT.slice(),custom=false,mode='fixed',holi=null;
+let BASKET=SP.DEFAULT.slice(),custom=false,mode='fixed',holi=null,holiOnly=false;
 /* סניפי משלוחים בלבד ("מרלוג אינטרנט", "און ליין") — לא חנות שנכנסים אליה */
 const ONLINE=/אינטרנט|אונליין|און ליין|משלוח|online|וולט/i;
 const $=s=>document.querySelector(s);
@@ -80,8 +80,9 @@ async function loadBasket(){holi=null;
   const qp=new URLSearchParams(location.search).get('p');let mine=[];try{mine=SP.clean(JSON.parse(ls.get(MINE)||'[]'));}catch(e){mine=[];}
   if(qp){const codes=qp.split(',').filter(c=>/^\d{5,14}$/.test(c)).slice(0,SP.MAX);const known=new Map(mine.concat(SP.DEFAULT).map(i=>[i[1],i[0]]));
     if(codes.length>=SP.MIN){BASKET=codes.map(c=>[known.get(c)||c,c]);custom=true;return;}}
-  const wantH=new URLSearchParams(location.search).get('h')==='1'||ls.get(USE)==='holi';
-  if(wantH){const h=await hb;if(h){BASKET=h.items;holi=h;custom=false;return;}}
+  /* h=1 לחג ולבית, h=2 רק לחג (בקישור ששיתפו); אחרת מה שבחרו בפעם הקודמת */
+  const hq=new URLSearchParams(location.search).get('h'),wantH=hq==='1'||hq==='2'||ls.get(USE)==='holi';
+  if(wantH){const h=await hb;if(h){holiOnly=(hq==='2'||(hq!=='1'&&ls.get(HMIX)==='only'))&&h.only.length>=SP.MIN;BASKET=holiOnly?h.only:h.items;holi=h;custom=false;return;}}
   if(mine.length>=SP.MIN&&ls.get(USE)!=='site'){BASKET=mine;custom=true;return;}
   try{const r=await fetch(SB_URL+'/rest/v1/site_config?key=eq.sal&select=value',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
     const d=r.ok?await r.json():[];const cfg=d&&d[0]&&d[0].value;if(cfg){BASKET=SP.pick(cfg);mode=cfg.mode==='daily'?'daily':'fixed';
@@ -91,7 +92,7 @@ async function loadBasket(){holi=null;
 let HB=null;
 function holidayBasket(){return HB||(HB=holidayFetch());}
 async function holidayFetch(){if(!SP.holiday())return null;const day=SP.today();
-  try{const c=JSON.parse(ls.get(HOLB)||'null');if(c&&c.day===day&&SP.clean(c.items).length>=SP.MIN)return {...c,items:SP.clean(c.items)};}catch(e){}
+  try{const c=JSON.parse(ls.get(HOLB)||'null');if(c&&c.day===day&&SP.clean(c.items).length>=SP.MIN)return {...c,items:SP.clean(c.items),only:SP.clean(c.only)};}catch(e){}
   try{const h=await SP.holidayBasket({base:SP.DEFAULT,search:q=>fetch(API+'/products?'+new URLSearchParams({q,limit:'6'})).then(x=>x.ok?x.json():[])});
     if(h)ls.set(HOLB,JSON.stringify({day,...h}));return h;}catch(e){return null;}}
 /* 🤖 האתר בוחר — פעם ביום במכשיר (נשמר ליום הזה), מהחיפושים הכי נפוצים השבוע; כשאין מספיק — הרשימה מהבק אופיס */
@@ -105,10 +106,12 @@ const basketReady=loadBasket().then(drawSrc);
 /* → חזרה: למקום באפליקציה שממנו באו (אותו אתר), ואם נכנסו ישר לדף (קישור ששיתפו) — לדף הבית */
 $('#back').onclick=e=>{let same=false;try{same=!!document.referrer&&new URL(document.referrer).origin===location.origin&&!/sal-zol-hashavua/.test(document.referrer);}catch(x){}
   if(same&&history.length>1){e.preventDefault();history.back();}};
-function drawSrc(){$('#srcSite').setAttribute('aria-pressed',String(!custom&&!holi));$('#srcHoli').setAttribute('aria-pressed',String(!!holi));$('#srcMine').setAttribute('aria-pressed',String(custom));}
+function drawSrc(){$('#srcSite').setAttribute('aria-pressed',String(!custom&&!holi));$('#srcHoli').setAttribute('aria-pressed',String(!!holi));$('#srcMine').setAttribute('aria-pressed',String(custom));
+  $('#hMix').hidden=!holi;if(holi){$('#hmOnly').hidden=holi.only.length<SP.MIN;$('#hmOnly').setAttribute('aria-pressed',String(holiOnly));$('#hmBoth').setAttribute('aria-pressed',String(!holiOnly));
+    $('#hmMiss').textContent=holi.miss?'לא בסל: '+holi.miss+' — הם נמכרים רק בחלק מהחנויות (סופגניות בעיקר טריות, בלי ברקוד), ומשווים רק חנויות שיש בהן הכול. אפשר להוסיף ב"✏️ אני בוחר".':'';}}
 const N=()=>BASKET.length;
 const title=()=>custom?'הסל שלי — איפה הכי זול':holi?'הסל הזול ל'+holi.name:mode==='daily'||mode==='auto'?'הסל הזול היום':'הסל הזול השבוע';
-const sub=()=>N()+(custom?' מוצרים שבחרתי':holi?' מוצרים לחג ולבית':mode==='auto'?' מוצרים שהכי מחפשים השבוע':' מוצרים מוכרים');
+const sub=()=>N()+(custom?' מוצרים שבחרתי':holi?(holiOnly?' מוצרים לחג':' מוצרים לחג ולבית'):mode==='auto'?' מוצרים שהכי מחפשים השבוע':' מוצרים מוכרים');
 
 /* ---------- 🛒 החישוב ---------- */
 async function run(city){
@@ -129,7 +132,7 @@ async function run(city){
     if(full[0])BASKET=BASKET.map(b=>{if(b[0]!==b[1])return b;const l=(full[0].lines||[]).find(l=>l.code===b[1].replace(/^0+/,''));return l&&l.name?[l.name,b[1]]:b;});
     if(top.length<2){$('#st').innerHTML='😕 לא מצאנו ב'+esc(city)+' לפחות שתי רשתות שיש בהן את כל '+N()+' המוצרים של הסל.'+(custom?' אפשר להוריד מהסל מוצר שלא נמכר בכל מקום (✏️ אני בוחר את המוצרים).':' אפשר לנסות עיר קרובה גדולה יותר.');return;}
     const hh=await h,updated=hh&&hh.updated?new Date(hh.updated*1000):new Date();
-    cur={at:new Date(),city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+'&r=1'+(custom?'&p='+BASKET.map(b=>b[1]).join(','):holi?'&h=1':'')};
+    cur={at:new Date(),city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+'&r=1'+(custom?'&p='+BASKET.map(b=>b[1]).join(','):holi?'&h='+(holiOnly?2:1):'')};
     show();$('#st').textContent='';log('view');if(arrived){arrived=false;log('arrive');}
   }catch(e){console.warn('sal',e);$('#st').textContent='⚠️ שרת המחירים לא ענה כרגע. נסו שוב בעוד כמה דקות.';}
   finally{$('#go').disabled=false;}}
@@ -244,6 +247,9 @@ $('#srcMine').onclick=()=>{const m=savedMine();draft=(custom?BASKET:m.length>=SP
 /* "הסל של האתר": הסל שלי נשאר שמור לפעם הבאה */
 $('#srcSite').onclick=()=>pickSrc('site');
 $('#srcHoli').onclick=()=>pickSrc('holi');
+/* בסל לחג: רק מוצרים לחג, או לחג ולבית */
+$('#hmOnly').onclick=()=>pickMix('only');$('#hmBoth').onclick=()=>pickMix(null);
+async function pickMix(v){if(holiOnly===(v==='only'))return;ls.set(HMIX,v);const u=new URL(location.href);u.searchParams.delete('p');u.searchParams.set('h',v?'2':'1');history.replaceState(null,'',u.pathname+u.search);await loadBasket();drawSrc();if($('#city').value.trim())run($('#city').value);}
 async function pickSrc(w){$('#ed').hidden=true;if(!custom&&(w==='holi')===!!holi){drawSrc();return;}ls.set(USE,w);dropP();await loadBasket();drawSrc();if($('#city').value.trim())run($('#city').value);}
 $('#edList').onclick=e=>{const b=e.target.closest('[data-del]');if(!b)return;draft.splice(+b.dataset.del,1);drawEd();};
 let edT=0;$('#edQ').oninput=()=>{clearTimeout(edT);const q=$('#edQ').value.trim();if(q.length<2){$('#edRes').innerHTML='';return;}

@@ -62,7 +62,8 @@ footer{text-align:center;padding:4px 16px 32px}
 [hidden]{display:none!important}
 .src{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
 .src button{flex:1 1 160px;justify-content:center;background:transparent;color:var(--accent);border:1.5px solid var(--line)}
-.src button[hidden]{display:none}
+.src button[hidden],.src[hidden]{display:none}
+.src.mix{margin-top:0}.src.mix button{flex:1 1 120px;padding:8px 10px;font-size:15px}.src.mix p{flex:1 1 100%;margin:2px 0 0;font-size:14px}
 .src button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--card)}
 .look{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
 .look h2{margin:0 0 6px;font-size:16px}
@@ -123,6 +124,11 @@ footer{text-align:center;padding:4px 16px 32px}
   <button type="button" id="srcHoli" aria-pressed="false" hidden>🕎 הסל לחג</button>
   <button type="button" id="srcMine" aria-pressed="false">✏️ אני בוחר את המוצרים</button>
 </div>
+<div class="src mix" id="hMix" role="group" aria-label="מה בסל לחג" hidden>
+  <button type="button" id="hmOnly" aria-pressed="false">רק מוצרים לחג</button>
+  <button type="button" id="hmBoth" aria-pressed="true">לחג ולבית</button>
+  <p class="muted" id="hmMiss"></p>
+</div>
 <section id="ed" class="ed" hidden aria-label="שינוי המוצרים בסל">
   <h2>✏️ המוצרים בסל שלי</h2>
   <p class="muted">משווים רק חנויות שיש בהן את כל המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). השינוי נשמר רק אצלכם, ומי שמקבל מכם את התמונה רואה את אותו סל.</p>
@@ -163,7 +169,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </main>
 <footer class="muted"><a href="/terms.html">תנאי שימוש</a> · <a href="/privacy.html">פרטיות</a></footer>
 <script src="/js/089-hcal.js?v=e2ea143fdb"></script>
-<script src="/js/sal-pick.js?v=0d722dc3bb"></script>
-<script src="/js/pages/sal.js?v=3717bbcbee"></script>
+<script src="/js/sal-pick.js?v=e20e352d8f"></script>
+<script src="/js/pages/sal.js?v=2841f4f988"></script>
 </body>
 </html>
