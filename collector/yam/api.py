@@ -9,6 +9,7 @@
     GET /products?q=חלב תנובה        המוצרים שמתאימים לטקסט, לבחירת מוצר מדויק לפני ההשוואה
     GET /deals?stores=k1,k2&per=12   המבצעים הפעילים בסניפים (לכל הלקוחות, לא רק מועדון), הכי משתלמים קודם
     GET /history?code=7290004131074  איך המחיר של מוצר השתנה בימים האחרונים (הכי זול וחציון בכל יום), לגרף מחיר
+    GET /mechir/...                  דפי מחיר פתוחים לגוגל (HTML, ב-seo.py)
 
 items: מוצרים מופרדים ב-| (או בשורה חדשה). כמות: "חלב*2". ברקוד: מספר של 7 ספרות ומעלה.
 מוצר שנבחר מדויק: "חלב תנובה#7290004131074" — משווים רק את הברקוד, והשם שלפני ה-# הוא מה שמוצג.
@@ -28,11 +29,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import chains as C
-from . import db, receipts, watch, xmlparse
+from . import db, receipts, seo, watch, xmlparse
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.environ.get("DATA_DIR", "/var/lib/yamshopping"), "prices.db"))
 ORIGINS = os.environ.get("ALLOWED_ORIGINS_REGEX", r"^https://(www\.)?yamshopping\.com$")
 RATE = int(os.environ.get("RATE_PER_MIN", "120"))
+SEO_RATE = int(os.environ.get("SEO_RATE_PER_MIN", "120"))  # דפי המחיר לגוגל (seo.py): מוגשים מהזיכרון, אז מכסה נפרדת
 MAX_ITEMS, MAX_STORES = 60, 60
 
 app = FastAPI(title="Yam Shopping prices", docs_url=None, redoc_url=None, openapi_url=None)
@@ -177,6 +179,13 @@ SEC_HEADERS = {
 }
 
 
+# דפי HTML לגוגל: עיצוב בתוך הדף ותמונות מהאתר, בלי שום סקריפט
+SEO_HEADERS = dict(SEC_HEADERS, **{
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+})
+
+
 @app.middleware("http")
 async def limits(req: Request, call_next):
     ip, peer, via = who(req)
@@ -193,6 +202,19 @@ async def limits(req: Request, call_next):
             shield_note("direct", ip, path, ua)
             _note(req, ip, peer, False, 403)
             return JSONResponse({"error": "הגישה לשרת מותרת רק דרך האתר www.yamshopping.com"}, status_code=403)
+    if path == "/mechir" or path.startswith("/mechir/"):
+        # דף לגוגל ולמבקרים (בלי Referer של האתר): לא נספר במכסה של ה-API ולא בניטור ההעתקה, רק תקרה לכל כתובת
+        if blocklist.blocked(ip, peer):
+            return JSONResponse({"error": "הגישה נחסמה"}, status_code=403)
+        with _lock:
+            ok = _take("seo:" + ip, SEO_RATE, time.monotonic())
+        if not ok:
+            return JSONResponse({"error": "יותר מדי בקשות, נסו שוב בעוד דקה"}, status_code=429, headers={"Retry-After": "60"})
+        res = await call_next(req)
+        if res.status_code == 200:
+            res.headers["Cache-Control"] = "public, max-age=1800"
+        res.headers.update(SEO_HEADERS)
+        return res
     bad = _check(ip, peer, via)
     if bad:
         _note(req, ip, peer, site, bad[0])
@@ -209,6 +231,8 @@ async def limits(req: Request, call_next):
 
 # אחרי הגבלת הקצב, כדי שגם תשובת 429 תגיע לדפדפן עם כותרות CORS
 app.add_middleware(CORSMiddleware, allow_origin_regex=ORIGINS, allow_methods=["GET"], allow_headers=["X-Yam-Who"], max_age=86400)
+
+app.include_router(seo.router)
 
 _local = threading.local()
 

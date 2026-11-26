@@ -3,7 +3,7 @@
 try{
 const $41=s=>document.querySelector(s);
 const when41=t=>{if(!t)return '';const d=new Date(t);return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});};
-const SRC41={direct:'ישירות / קישור בלי מקור',google:'גוגל',bing:'בינג',facebook:'פייסבוק',instagram:'אינסטגרם',messenger:'מסנג׳ר',whatsapp:'וואטסאפ',telegram:'טלגרם',gmail:'ג׳ימייל',line:'Line',app:'האפליקציה שלנו',shared:'רשימה משותפת',shabbat:'דף "רשימת קניות לשבת"',pesach:'דף "רשימת קניות לפסח"',chanukah:'דף "רשימת קניות לחנוכה"',prices:'דף "השוואת מחירים"',qr:'מודעת QR'};
+const SRC41={direct:'ישירות / קישור בלי מקור',google:'גוגל',bing:'בינג',facebook:'פייסבוק',instagram:'אינסטגרם',messenger:'מסנג׳ר',whatsapp:'וואטסאפ',telegram:'טלגרם',gmail:'ג׳ימייל',line:'Line',app:'האפליקציה שלנו',shared:'רשימה משותפת',shabbat:'דף "רשימת קניות לשבת"',pesach:'דף "רשימת קניות לפסח"',chanukah:'דף "רשימת קניות לחנוכה"',purim:'דף "רשימת קניות לפורים"',roshhashana:'דף "רשימת קניות לראש השנה"',sukkot:'דף "רשימת קניות לסוכות"',mechir:'דפי המחיר לפי מוצר ועיר',prices:'דף "השוואת מחירים"',qr:'מודעת QR'};
 const ICON41={whatsapp:'💬',google:'🔎',facebook:'📘',instagram:'📸',telegram:'✈️',gmail:'✉️',direct:'🔗',app:'📱'};
 function srcName41(s){s=s||'direct';if(SRC41[s])return (ICON41[s]||'📣')+' '+SRC41[s];if(/^site-/.test(s))return '🌐 '+s.slice(5);if(/^app-/.test(s))return '📱 '+s.slice(4);return '📣 '+s;}
 window.srcName41=srcName41;
