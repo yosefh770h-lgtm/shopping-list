@@ -6159,6 +6159,11 @@ begin
     perform public.push_enqueue(o, 'staff', '🔐 כניסה ממכשיר חדש',
       who || ' נכנס/ה עכשיו מדפדפן או ממקום שלא נראו קודם. אם זה לא את/ה — להחליף סיסמה מיד.', '/#admin-staff', 'newdev:' || new.id);
   end loop;
+  -- 🔌 קודם כל מנתקים את מי שנכנס: איש צוות / מנהל (לא הבעלים) ממכשיר חדש — מנותק מיד והחשבון מוקפא עד שהבעלים מאשר
+  if not exists (select 1 from auth.users u where u.id = new.user_id and public.yam_owner_match(u.email, u.raw_app_meta_data))
+     and coalesce((select l.auto_kick_staff from public.site_lock l where l.id = 1), true) then
+    perform public.security_kick_do(new.user_id, null, 'כניסה ממכשיר חדש — מוקפא עד שהבעלים יאשר', null, true);
+  end if;
   -- 🚧 אם הבעלים ביקש (בק אופיס ← 🚧 מצב שיפוצים): מנהל שנכנס ממכשיר חדש סוגר את האתר מיד ומנתק את כולם
   if exists (select 1 from public.admin_ids() a where a = new.user_id)
      and coalesce((select l.auto_new_device from public.site_lock l where l.id = 1), false) then
@@ -9229,6 +9234,13 @@ begin
     if public.site_locked() and coalesce(current_setting('request.path', true), '') !~ '/rpc/site_lock_status$' and not public.is_owner() then
       raise sqlstate 'PT503' using message = 'האתר בשיפוצים. נתראה בקרוב', detail = 'maintenance';
     end if;
+    -- 🔌 חשבון שנותק ע"י הבעלים: כל חיבור שנפתח לפני הניתוק נחסם מיד (ולא רק כשהוא פג אחרי שעה)
+    if coalesce(claims->>'sub', '') <> '' and exists (
+         select 1 from public.kicked_users k
+          where k.user_id::text = claims->>'sub'
+            and to_timestamp(coalesce(nullif(claims->>'iat', '')::bigint, 0)) <= k.at) then
+      raise sqlstate 'PT401' using message = 'החיבור נותק. צריך להיכנס מחדש', detail = 'kicked';
+    end if;
     c := coalesce((select value from public.site_config where key = 'shield'), '{}'::jsonb);
     if coalesce(c->>'db_off', '') = 'true' then return; end if;
     if coalesce(claims->>'sub', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then uid := claims->>'sub'; end if;
@@ -9258,8 +9270,8 @@ begin
         if random() < 0.002 then delete from public.rate_hits where rate_hits.w < v_w - 3; end if;
       end if;
     end if;
-  exception when sqlstate 'PT503' then
-    raise;  -- מצב שיפוצים — עוצרים
+  exception when sqlstate 'PT503' or sqlstate 'PT401' then
+    raise;  -- מצב שיפוצים / חשבון שנותק — עוצרים
   when others then
     return;  -- ההגנה לעולם לא מפילה את האתר
   end;
@@ -9278,9 +9290,9 @@ begin
   s := coalesce((select value from public.site_config where key = 'security'), '{}'::jsonb);
   if coalesce(s->>'alerts_off', '') = 'true' then return null; end if;
   c := coalesce((select value from public.site_config where key = 'shield'), '{}'::jsonb);
-  if coalesce(c->'alerts'->>new.kind, case when new.kind in ('flood', 'ddos', 'probe', 'load', 'down', 'up', 'db_rate', 'lock', 'unlock', 'tamper', 'perm', 'sys_change') then 'true' else 'false' end) <> 'true' then return null; end if;
+  if coalesce(c->'alerts'->>new.kind, case when new.kind in ('flood', 'ddos', 'probe', 'load', 'down', 'up', 'db_rate', 'lock', 'unlock', 'tamper', 'perm', 'sys_change', 'kick') then 'true' else 'false' end) <> 'true' then return null; end if;
   kk := 'sh:' || new.kind || ':' || coalesce(new.ip, '');
-  if new.kind not in ('down', 'up', 'lock', 'unlock', 'tamper', 'perm') then
+  if new.kind not in ('down', 'up', 'lock', 'unlock', 'tamper', 'perm', 'kick') then
     if exists (select 1 from public.admin_alerts_sent where kind = kk and sent_at > now() - interval '30 minutes') then return null; end if;
     if exists (select 1 from public.admin_alerts_sent where kind = 'sh:' || new.kind and sent_at > now() - interval '3 minutes') then return null; end if;
   end if;
@@ -9297,6 +9309,7 @@ begin
          when 'up'      then '🟢 האתר חזר לעבוד'
          when 'db_rate' then '🛡️ הצפת בקשות למסד נחסמה' || case when new.ip <> '' then ': ' || new.ip else '' end
          when 'ssh'     then '🚨 ניסיונות כניסה לשרת: ' || new.ip
+         when 'kick'    then '🔌 חשבון נותק ונחסם: ' || coalesce(new.detail->>'email', '')
          when 'lock'    then '🚧 האתר נסגר (מצב שיפוצים)'
          when 'unlock'  then '✅ האתר נפתח מחדש'
          when 'tamper'  then '🚨 חשד לפריצה: קבצים בשרת השתנו'
@@ -9313,6 +9326,7 @@ begin
          when 'up'      then 'האתר עונה שוב.'
          when 'db_rate' then new.n || ' בקשות כתיבה בדקה. חסום ל-' || coalesce(new.detail->>'min', '10') || ' דקות.'
          when 'ssh'     then new.n || ' ניסיונות כושלים.'
+         when 'kick'    then left(coalesce(new.detail->>'reason', ''), 120) || case when new.detail->>'auto' = 'true' then ' (אוטומטי — לאשר או להשאיר חסום בבק אופיס)' else '' end
          when 'lock'    then left(coalesce(nullif(new.detail->>'reason', ''), 'נסגר מהבק אופיס'), 120) || '. ' || new.n || ' חיבורים נותקו.'
          when 'unlock'  then case when new.detail->>'force' = 'true' then 'נפתח בלי בדיקת קבצים.' else 'הקבצים בשרת זהים ל-GitHub.' end
          when 'tamper'  then left(coalesce(new.detail->>'why', ''), 140) || case when new.detail->>'closed' = 'true' then ' — האתר נסגר אוטומטית.' else '' end
@@ -9320,7 +9334,7 @@ begin
          when 'sys_change' then left(coalesce(new.detail->>'what', ''), 140)
          else '' end || case when more > 0 then ' (ועוד ' || more || ' ב-10 הדקות האחרונות)' else '' end;
   for a in select distinct id from public.admin_ids() id loop
-    perform public.push_enqueue(a.id, 'staff', t, b, case when new.kind in ('lock', 'unlock', 'tamper', 'perm', 'sys_change') then '/#admin-lockdown' else '/#admin-shield' end, 'shield:' || new.kind);
+    perform public.push_enqueue(a.id, 'staff', t, b, case when new.kind in ('lock', 'unlock', 'tamper', 'perm', 'sys_change', 'kick') then '/#admin-lockdown' else '/#admin-shield' end, 'shield:' || new.kind);
   end loop;
   return null;
 exception when others then return null;  -- התראה שנכשלה לא מבטלת את הרישום
@@ -9507,8 +9521,12 @@ create table if not exists public.site_lock (
   server_seen timestamptz,        -- השומר בשרת דיווח (כל 30 שניות)
   auto_tamper boolean not null default true,
   auto_new_device boolean not null default false,
+  auto_kick_staff boolean not null default true,  -- איש צוות ממכשיר חדש: לנתק מיד ולהקפיא עד אישור
+  auto_escalate boolean not null default true,    -- אחרי ניתוק, עוד תקיפה תוך שעה → סוגרים את כל האתר
   updated_at timestamptz not null default now()
 );
+alter table public.site_lock add column if not exists auto_kick_staff boolean not null default true;
+alter table public.site_lock add column if not exists auto_escalate boolean not null default true;
 insert into public.site_lock (id) values (1) on conflict (id) do nothing;
 alter table public.site_lock enable row level security;
 drop policy if exists "site lock admin read" on public.site_lock;
@@ -9595,15 +9613,18 @@ end $$;
 revoke all on function public.site_lock_open(boolean) from public, anon;
 grant execute on function public.site_lock_open(boolean) to authenticated;
 
-create or replace function public.site_lock_settings(p_auto_tamper boolean, p_auto_new_device boolean) returns void
+drop function if exists public.site_lock_settings(boolean, boolean);
+drop function if exists public.site_lock_settings(boolean, boolean, boolean);
+create or replace function public.site_lock_settings(p_auto_tamper boolean, p_auto_new_device boolean, p_auto_kick_staff boolean default null, p_auto_escalate boolean default null) returns void
 language plpgsql security definer set search_path = public, auth as $$
 begin
   if not public.is_owner() then raise exception 'forbidden' using errcode = '42501'; end if;
-  update public.site_lock set auto_tamper = coalesce(p_auto_tamper, auto_tamper), auto_new_device = coalesce(p_auto_new_device, auto_new_device), updated_at = now()
+  update public.site_lock set auto_tamper = coalesce(p_auto_tamper, auto_tamper), auto_new_device = coalesce(p_auto_new_device, auto_new_device),
+         auto_kick_staff = coalesce(p_auto_kick_staff, auto_kick_staff), auto_escalate = coalesce(p_auto_escalate, auto_escalate), updated_at = now()
    where id = 1;
 end $$;
-revoke all on function public.site_lock_settings(boolean, boolean) from public, anon;
-grant execute on function public.site_lock_settings(boolean, boolean) to authenticated;
+revoke all on function public.site_lock_settings(boolean, boolean, boolean, boolean) from public, anon;
+grant execute on function public.site_lock_settings(boolean, boolean, boolean, boolean) to authenticated;
 
 -- 👤 שינוי בהרשאות: מישהו נוסף לצוות / הוסר / קיבל תפקיד אחר, או סימון "בעלים" השתנה → התראה מיידית למנהלים
 create or replace function public.perm_change_alert() returns trigger
@@ -9631,3 +9652,86 @@ drop trigger if exists perm_change_alert on public.staff;
 create trigger perm_change_alert after insert or update or delete on public.staff for each row execute function public.perm_change_alert();
 drop trigger if exists perm_change_alert on auth.users;
 create trigger perm_change_alert after update of raw_app_meta_data on auth.users for each row execute function public.perm_change_alert();
+
+-- ================= 🔌 לנתק את הפורץ — חשבון אחד, מיד (נובמבר 2026) =================
+-- בלי לסגור את האתר לכולם: כל החיבורים של החשבון נמחקים, כל חיבור שכבר פתוח אצלו נחסם מיד (yam_pre_request לפי זמן החיבור),
+-- והחשבון נחסם לכניסה (banned_until של Supabase) לזמן שנבחר, או עד שהבעלים משחרר. הבעלים לא ניתן לניתוק כך — לזה יש מצב שיפוצים.
+create table if not exists public.kicked_users (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  at timestamptz not null default now(),
+  until timestamptz,                -- null = עד שהבעלים משחרר
+  reason text not null default '' check (char_length(reason) <= 300),
+  by_id uuid,
+  auto boolean not null default false
+);
+alter table public.kicked_users enable row level security;
+drop policy if exists "kicked admin read" on public.kicked_users;
+create policy "kicked admin read" on public.kicked_users for select using (public.is_admin());
+revoke insert, update, delete on public.kicked_users from anon, authenticated;
+
+create or replace function public.security_kick_do(p_user uuid, p_hours int, p_reason text, p_by uuid, p_auto boolean) returns int
+language plpgsql security definer set search_path = public, auth as $$
+declare n int; em text; u timestamptz;
+begin
+  select email into em from auth.users where id = p_user;
+  if em is null then raise exception 'no_user'; end if;
+  u := case when p_hours is null then null when p_hours <= 0 then now() else now() + make_interval(hours => least(p_hours, 24 * 365)) end;
+  insert into public.kicked_users as k (user_id, at, until, reason, by_id, auto)
+  values (p_user, now(), u, left(coalesce(p_reason, ''), 300), p_by, coalesce(p_auto, false))
+  on conflict (user_id) do update set at = now(), until = excluded.until, reason = excluded.reason, by_id = excluded.by_id, auto = excluded.auto;
+  update auth.users set banned_until = coalesce(u, 'infinity'::timestamptz) where id = p_user and (p_hours is null or p_hours > 0);
+  delete from auth.sessions where user_id = p_user;
+  get diagnostics n = row_count;
+  insert into public.security_events (src, kind, n, detail)
+  values ('db', 'kick', n, jsonb_build_object('email', em, 'user', p_user, 'reason', left(coalesce(p_reason, ''), 200), 'hours', p_hours, 'auto', coalesce(p_auto, false)));
+  return n;
+end $$;
+revoke all on function public.security_kick_do(uuid, int, text, uuid, boolean) from public, anon, authenticated;
+
+-- ניתוק מהבק אופיס: לפי מזהה או מייל. p_hours: 0 = רק לנתק (יכול להיכנס שוב), מספר = חסום לשעות האלה, null = עד שחרור
+create or replace function public.security_kick(p_user uuid, p_email text, p_hours int, p_reason text) returns int
+language plpgsql security definer set search_path = public, auth as $$
+declare t uuid := p_user;
+begin
+  if not public.is_admin() then raise exception 'forbidden' using errcode = '42501'; end if;
+  if t is null then select id into t from auth.users where lower(email) = lower(trim(coalesce(p_email, ''))) limit 1; end if;
+  if t is null then raise exception 'no_user'; end if;
+  if t = auth.uid() then raise exception 'not_self'; end if;
+  if exists (select 1 from auth.users u where u.id = t and public.yam_owner_match(u.email, u.raw_app_meta_data)) then raise exception 'owner_use_lockdown'; end if;
+  -- איש צוות — רק הבעלים מנתק
+  if exists (select 1 from public.staff s where s.user_id = t) and not public.is_owner() then raise exception 'forbidden' using errcode = '42501'; end if;
+  return public.security_kick_do(t, p_hours, p_reason, auth.uid(), false);
+end $$;
+revoke all on function public.security_kick(uuid, text, int, text) from public, anon;
+grant execute on function public.security_kick(uuid, text, int, text) to authenticated;
+
+create or replace function public.security_unkick(p_user uuid) returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'forbidden' using errcode = '42501'; end if;
+  if exists (select 1 from public.staff s where s.user_id = p_user) and not public.is_owner() then raise exception 'forbidden' using errcode = '42501'; end if;
+  update auth.users set banned_until = null where id = p_user;
+  -- החיבורים הישנים נשארים חסומים (k.at), חיבור חדש עובד. השורה נשארת לתיעוד, עם until = עכשיו
+  update public.kicked_users set until = now() where user_id = p_user;
+end $$;
+revoke all on function public.security_unkick(uuid) from public, anon;
+grant execute on function public.security_unkick(uuid) to authenticated;
+
+-- 🚨 הסלמה: קודם מנתקים את הפורץ. אם תוך שעה מגיעה עוד תקיפה (עוד חשבון שנותק, שינוי בהרשאות, שינוי בהגדרות השרת
+-- או קבצים שהשתנו) — סוגרים את כל האתר אוטומטית (מצב שיפוצים) ומנתקים את כולם
+create or replace function public.security_escalate() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.kind not in ('kick', 'perm', 'sys_change', 'tamper') then return null; end if;
+  if not coalesce((select l.auto_escalate and not l.locked from public.site_lock l where l.id = 1), false) then return null; end if;
+  if exists (select 1 from public.security_events e where e.kind = 'kick' and e.id <> new.id and e.at > now() - interval '1 hour') then
+    perform public.site_lock_auto('תקיפה נמשכת אחרי ניתוק: ' || case new.kind when 'kick' then 'עוד חשבון נותק' when 'perm' then 'שינוי בהרשאות'
+                                   when 'sys_change' then 'שינוי בהגדרות השרת' else 'קבצים בשרת השתנו' end,
+                                  jsonb_build_object('escalated', true));
+  end if;
+  return null;
+exception when others then return null;
+end $$;
+revoke all on function public.security_escalate() from public, anon, authenticated;
+drop trigger if exists security_escalate on public.security_events;
+create trigger security_escalate after insert on public.security_events for each row execute function public.security_escalate();

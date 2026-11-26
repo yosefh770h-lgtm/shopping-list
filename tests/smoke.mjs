@@ -2901,6 +2901,40 @@ await test('🚧 מצב שיפוצים: סגירה בלחיצה, בדיקה לפ
   await ctx.close();
 });
 
+await test('🔌 לנתק את הפורץ: ניתוק חשבון אחד, שחרור, תהליך צעד-צעד, והמנותק נזרק מהאתר', async () => {
+  const { page, errors } = await newPage();
+  const now = new Date().toISOString();
+  const D = { 'site_lock:one': { id: 1, locked: false, server_seen: now, auto_tamper: true, auto_kick_staff: true, auto_escalate: true },
+    security_events: [{ at: now, kind: 'kick', n: 0, detail: { reason: 'כניסה ממכשיר חדש — מוקפא עד שהבעלים יאשר' } }],
+    kicked_users: [{ user_id: 'u-mod', at: now, until: null, reason: 'כניסה ממכשיר חדש — מוקפא עד שהבעלים יאשר', auto: true }],
+    staff: [{ user_id: 'u-mod', role: 'moderator' }],
+    auth_events: [{ user_id: 'u-mod', email: 'mod@x.com', ip: '203.0.113.9', ua: 'Mozilla/5.0 (Windows NT 10.0)', kind: 'login', created_at: now }] };
+  await page.evaluate((D) => { sb = __stub(D); window.__rc = []; sb.rpc = (n, a) => { window.__rc.push([n, a]); return Promise.resolve({ data: 'ok', error: null }); };
+    authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; window.uiConfirm = async () => true; openBO('lockdown'); }, D);
+  await page.waitForTimeout(800);
+  let r = await page.evaluate(() => ({ txt: document.querySelector('#boMain').textContent, k: document.querySelectorAll('[data-ldk]').length, u: document.querySelectorAll('[data-ldu]').length, st: document.querySelectorAll('ol.ldsteps li').length, now: document.querySelectorAll('ol.ldsteps li.now').length }));
+  assert(r.k === 1 && r.u === 1 && r.st === 5 && r.now === 1 && r.txt.includes('חשבונות מוקפאים: 1') && r.txt.includes('mod@x.com'), 'כרטיס הניתוק/התהליך: ' + JSON.stringify(r).slice(0, 300));
+  if (process.env.SHOTS) {
+    await page.setViewportSize({ width: 412, height: 3000 }); await page.waitForTimeout(300);
+    await page.locator('#ldMain').screenshot({ path: process.env.SHOTS + '/9-טלפון-ניתוק-הפורץ-ותהליך.png' });
+    await page.setViewportSize({ width: 1366, height: 2400 }); await page.waitForTimeout(300);
+    await page.locator('#ldMain').screenshot({ path: process.env.SHOTS + '/10-מחשב-ניתוק-הפורץ-ותהליך.png' });
+  }
+  await page.evaluate(() => { document.querySelector('#ldKickEm').value = 'bad@x.com'; document.querySelector('#ldDur').value = '24'; document.querySelector('#ldKick').click(); });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.querySelector('[data-ldu]').click()); await page.waitForTimeout(400);
+  r = await page.evaluate(() => window.__rc);
+  assert(r.some((c) => c[0] === 'security_kick' && c[1].p_email === 'bad@x.com' && c[1].p_hours === 24) && r.some((c) => c[0] === 'security_unkick' && c[1].p_user === 'u-mod'), 'ניתוק/שחרור לא נשלחו: ' + JSON.stringify(r));
+  // מי שנותק ועדיין פתוח אצלו האתר: המסד עונה 401 kicked → נזרק החוצה
+  await page.route(/\/rest\/v1\/test-kick$/, (rt) => rt.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'PT401', details: 'kicked', message: 'kicked' }) }));
+  await page.evaluate(() => { window.__kicked = 0; window.yamKicked = function () { window.__kicked++; }; return yamFetch('https://ygyfodxfbebnkwdcbjrp.supabase.co/rest/v1/test-kick').then(() => 1); });
+  await page.waitForTimeout(300);
+  r = await page.evaluate(() => window.__kicked);
+  assert(r === 1, 'המנותק לא נזרק מהאתר (yamKicked לא נקרא)');
+  assert(!errors.length, errors.join(' | '));
+  await page.context().close();
+});
+
 await test('🛡️ אף בדיקה לא נתקלה בקוד שנחסם (CSP)', async () => { assert(!cspHits.size, [...cspHits].join(' | ')); });
 
 await browser.close(); server.close();

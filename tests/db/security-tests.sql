@@ -2173,6 +2173,43 @@ update auth.users set raw_app_meta_data = raw_app_meta_data || '{"yam_owner":tru
 update auth.users set raw_app_meta_data = raw_app_meta_data - 'yam_owner' where id = '00000000-0000-0000-0000-00000000000e';
 delete from public.staff where user_id = '00000000-0000-0000-0000-00000000000e';
 select tst.ok((select count(*) from public.security_events where kind = 'perm') = 4, 'perm: staff add, owner flag on/off and staff removal each raise an alert');
+
+-- 🔌 ניתוק חשבון אחד: מיידי, חסימת כניסה, ורק למי שמותר
+reset role; select set_config('request.jwt.claims', '', false); select set_config('request.path', '', false); select tst.as_user('');
+insert into auth.sessions(id, user_id) values ('30000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b'),
+  ('30000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002') on conflict do nothing;
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000a'); select set_config('request.jwt.claims', '{}', false);
+select tst.err($$select public.security_kick(null, 'b@x.com', 24, 'x')$$, 'kick: a regular user cannot disconnect anyone');
+select tst.err($$select public.security_kick_do('00000000-0000-0000-0000-00000000000b', 1, 'x', null, false)$$, 'kick: the internal function is not callable');
+select tst.as_user('00000000-0000-0000-0000-000000000001'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select tst.err($$select public.security_kick(null, 'owner@x.com', 1, 'x')$$, 'kick: the owner account cannot be kicked this way (use maintenance mode)');
+select tst.ok(public.security_kick(null, 'B@x.com ', 24, 'חשד') = 1, 'kick: the owner disconnects a user by email (1 session cut)');
+reset role;
+select tst.ok((select banned_until > now() + interval '23 hours' from auth.users where id = '00000000-0000-0000-0000-00000000000b'), 'kick: the account is banned from signing in for 24h');
+select tst.ok((select count(*) from public.security_events where kind = 'kick') >= 1, 'kick: an alert event is logged');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000b');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","iat":' || (extract(epoch from now()) - 60)::bigint || '}', false);
+select tst.err($$select public.yam_pre_request()$$, 'kick: an already-open session of the kicked user is blocked at once');
+reset role; select set_config('request.jwt.claims', '', false);
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-000000000003'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select tst.err($$select public.security_kick('00000000-0000-0000-0000-000000000002', null, 1, 'x')$$, 'kick: an admin who is not the owner cannot kick staff');
+select tst.as_user('00000000-0000-0000-0000-000000000001'); select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select public.security_unkick('00000000-0000-0000-0000-00000000000b');
+reset role;
+select tst.ok((select banned_until is null from auth.users where id = '00000000-0000-0000-0000-00000000000b'), 'kick: release lets the user sign in again');
+set role authenticated; select tst.as_user('00000000-0000-0000-0000-00000000000b');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","iat":' || (extract(epoch from now()) + 5)::bigint || '}', false);
+select tst.ok((select true from (select public.yam_pre_request()) x), 'kick: a new sign-in after release works');
+reset role; select set_config('request.jwt.claims', '', false); select tst.as_user('');
+
+-- 🚨 הסלמה: ניתוק, ואז עוד תקיפה תוך שעה → האתר נסגר
+reset role; select set_config('request.jwt.claims', '', false); select tst.as_user('');
+select tst.ok(not public.site_locked(), 'escalate: the site is open after the single kick above');
+insert into public.staff(user_id, role) values ('00000000-0000-0000-0000-00000000000d', 'moderator') on conflict (user_id) do update set role = 'moderator';
+select tst.ok(public.site_locked(), 'escalate: another attack (permission change) within an hour of a kick closes the whole site');
+update public.site_lock set locked = false where id = 1;
+delete from public.staff where user_id = '00000000-0000-0000-0000-00000000000d';
+update public.site_lock set locked = false where id = 1;
 select tst.ok(true, 'ALL DONE');
 -- auth_user_state: only the server may call it
 do $$ begin

@@ -7,7 +7,7 @@ if(!window.boView)return;
 const $s=s=>document.querySelector(s);
 const when=d=>{try{return new Date(d).toLocaleString('he-IL',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return '';}};
 const ago=d=>{const m=Math.floor((Date.now()-new Date(d).getTime())/60000);return m<1?'עכשיו':m<60?'לפני '+m+' דק׳':m<1440?'לפני '+Math.floor(m/60)+' שע׳':'לפני '+Math.floor(m/1440)+' ימים';};
-const KIND={lock:['🚧','האתר נסגר'],unlock:['✅','האתר נפתח'],tamper:['🚨','חשד לפריצה'],perm:['👤','שינוי בהרשאות'],sys_change:['⚠️','שינוי בהגדרות השרת']};
+const KIND={kick:['🔌','חשבון נותק'],lock:['🚧','האתר נסגר'],unlock:['✅','האתר נפתח'],tamper:['🚨','חשד לפריצה'],perm:['👤','שינוי בהרשאות'],sys_change:['⚠️','שינוי בהגדרות השרת']};
 const CMD='sudo env PYTHONPATH=/opt/yamshopping/repo/collector /opt/yamshopping/venv/bin/python -m yam.lockdown';
 let poll=null;
 
@@ -18,6 +18,7 @@ if(!document.getElementById('ldCss')){const st=document.createElement('style');s
   '#ldMain .ldbtn.red{background:#c0392b;border-color:#c0392b;color:#fff}#ldMain .ldbtn.green{background:#2e7d5b;border-color:#2e7d5b;color:#fff}'+
   '#ldMain .ldpill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600}'+
   '#ldMain .ldpill.on{background:#d8f0e3;color:#0b5a3c}#ldMain .ldpill.off{background:#fbe3e3;color:#8a1c1c}#ldMain .ldpill.wait{background:#fff3cd;color:#7a5600}'+
+  '#ldMain ol.ldsteps{margin:4px 0;padding-inline-start:4px;list-style:none;line-height:1.5}#ldMain ol.ldsteps li{padding:8px 10px;border-inline-start:4px solid #bbb;margin:6px 0;border-radius:6px}#ldMain ol.ldsteps li.done{border-color:#2e9d6a}#ldMain ol.ldsteps li.now{border-color:#e08a00;background:rgba(224,138,0,.08)}#ldMain ol.ldsteps li.bad{border-color:#d64545;background:rgba(214,69,69,.08)}#ldMain .ldst{font-size:13px;font-weight:600}'+
   '#ldMain ul.ldl{margin:4px 0;padding-inline-start:18px;line-height:1.7}#ldMain .ldfiles{direction:ltr;text-align:left;font-size:12px;max-height:180px;overflow:auto;background:var(--bg2,rgba(0,0,0,.05));padding:8px;border-radius:8px}'+
   '#ldMain pre{direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;background:var(--bg2,rgba(0,0,0,.05));padding:8px;border-radius:8px;font-size:12px;user-select:all}'+
   '#ldMain label.ldsw{display:flex;gap:10px;align-items:flex-start;margin:8px 0;font-size:15px}#ldMain label.ldsw input{width:auto;margin-top:4px;flex:0 0 auto}#ldMain td{overflow-wrap:anywhere}'+
@@ -28,8 +29,11 @@ if(!document.getElementById('ldCss')){const st=document.createElement('style');s
 window.boView('lockdown',async function(){const m=$s('#boMain');if(!m)return;clearInterval(poll);poll=null;
   if(!(typeof isAdmin==='function'&&isAdmin())){m.innerHTML='<div class="card">⛔ רק למנהל</div>';return;}
   const owner=typeof isOwner==='function'&&isOwner();
-  const [lk,ev]=await Promise.all([sb.from('site_lock').select('*').eq('id',1).maybeSingle(),
-    sb.from('security_events').select('*').in('kind',Object.keys(KIND)).order('at',{ascending:false}).limit(30)]);
+  const [lk,ev,ku,st,lg]=await Promise.all([sb.from('site_lock').select('*').eq('id',1).maybeSingle(),
+    sb.from('security_events').select('*').in('kind',Object.keys(KIND)).order('at',{ascending:false}).limit(30),
+    sb.from('kicked_users').select('*').order('at',{ascending:false}).limit(50),
+    sb.from('staff').select('user_id,role'),
+    sb.from('auth_events').select('user_id,email,ip,ua,kind,created_at').in('kind',['login','google_login']).gte('created_at',new Date(Date.now()-48*3600e3).toISOString()).order('created_at',{ascending:false}).limit(300)]);
   if(lk.error||!lk.data){m.innerHTML='<div class="card"><h2>🚧 מצב שיפוצים</h2><p>⚠️ צריך להריץ את קוד ה-SQL המעודכן (⚙️ הגדרה ראשונית ← שלב 1).</p><p class="muted">'+esc((lk.error&&lk.error.message)||'')+'</p></div>';return;}
   const L=lk.data,closed=!!L.locked,srv=L.server_seen&&Date.now()-new Date(L.server_seen).getTime()<3*60e3,cd=L.check_detail||{};
   let h='<div id="ldMain">';
@@ -39,6 +43,28 @@ window.boView('lockdown',async function(){const m=$s('#boMain');if(!m)return;cle
     (closed?'<p style="margin:4px 0">מאז '+when(L.locked_at)+' ('+ago(L.locked_at)+') · '+(L.src==='auto'?'🤖 נסגר אוטומטית':L.src==='server'?'🖥️ נסגר מהשרת':'👤 נסגר מכאן')+'</p>'+(L.reason?'<p class="muted" style="margin:0">'+esc(L.reason)+'</p>':''):'<p class="muted" style="margin:4px 0">כולם יכולים להיכנס ולהשתמש כרגיל.</p>')+
     '</div></div><p style="margin:10px 0 0">'+(srv?'<span class="ldpill on">🖥️ השומר בשרת פעיל</span> <small class="muted">דיווח '+ago(L.server_seen)+'</small>':
       L.server_seen?'<span class="ldpill off">⚠️ השומר בשרת לא מדווח מאז '+ago(L.server_seen)+'</span>':'<span class="ldpill wait">⏳ השומר בשרת עוד לא הותקן</span> <small class="muted">— הסגירה במסד והניתוק עובדים גם בלעדיו</small>')+'</p></div>';
+  /* --- 🔌 לנתק את הפורץ (חשבון אחד, בלי לסגור את האתר) --- */
+  const kicked=(ku.data||[]).filter(k=>!k.until||new Date(k.until)>new Date());
+  const staffIds=new Set((st.data||[]).map(x=>x.user_id));const seen=new Set();
+  const logins=(lg.data||[]).filter(e=>e.user_id&&staffIds.has(e.user_id)&&!seen.has(e.user_id+'|'+e.ip+'|'+e.ua)&&seen.add(e.user_id+'|'+e.ip+'|'+e.ua)).slice(0,15);
+  const durSel='<select id="ldDur" aria-label="לכמה זמן"><option value="">עד שאשחרר</option><option value="24">ל-24 שעות</option><option value="168">לשבוע</option><option value="0">רק לנתק (יכול להיכנס שוב)</option></select>';
+  /* --- 🧭 התהליך צעד אחרי צעד --- */
+  const after=L.check_at&&(!L.locked_at||new Date(L.check_at)>=new Date(L.locked_at));
+  const stp=[[srv?'done':'wait','👀 שמירה','השומר בשרת בודק כל 30 שניות שהקבצים זהים ל-GitHub, ושכל כניסה של הצוות היא ממכשיר מוכר.',srv?'פעיל':'השומר בשרת לא פעיל עכשיו'],
+    [kicked.length?'now':'done','🔌 ניתוק הפורץ','כניסה של איש צוות ממכשיר חדש ← רק החשבון הזה מוקפא עד שתאשר. משתמשים רגילים והבעלים לא מנותקים אוטומטית.',kicked.length?'חשבונות מוקפאים: '+kicked.length+' — לבדוק למטה':'אין חשבונות מוקפאים'],
+    [closed?'now':'done','🚧 סגירת האתר','קבצים שהשתנו בלי GitHub (שתי בדיקות ברצף), או תקיפה נוספת תוך שעה מניתוק ← האתר נסגר לכולם.',closed?'האתר סגור':'האתר פתוח'],
+    [!closed?'done':L.open_req?'now':after?(L.check_ok?'done':'bad'):'wait','🔍 בדיקה מול GitHub','לפני פתיחה השרת משווה את כל הקבצים. אם משהו שונה — רואים בדיוק מה, ומתקנים.',!closed?'—':L.open_req?'בודק עכשיו…':after?(L.check_ok?'נקי':'נמצאו שינויים — ראה "הבדיקה האחרונה"'):'עוד לא נבדק'],
+    [closed?'wait':'done','🟢 פתיחה','רק אחרי בדיקה נקייה האתר נפתח לכולם.',closed?'מחכה לבדיקה':'פתוח']];
+  const SI={done:'✅',now:'🔶',bad:'⛔',wait:'⏳'};
+  h+='<div class="card"><h2>🧭 התהליך — איפה זה עומד</h2><ol class="ldsteps">'+stp.map(x=>'<li class="'+x[0]+'"><b>'+SI[x[0]]+' '+x[1]+'</b> <span class="ldst">'+esc(x[3])+'</span><br><small class="muted">'+esc(x[2])+'</small></li>').join('')+'</ol>'+
+    '<p class="muted" style="font-size:13px;margin:6px 0 0">טעות? חשבון שהוקפא: "✅ זה בסדר — לשחרר". אתר שנסגר: "לפתוח". קובץ בשרת שהוא שלך ותקין:</p><pre>'+esc(CMD)+' baseline</pre></div>';
+  h+='<div class="card"><h2>🔌 לנתק את הפורץ — חשבון אחד</h2><p>קודם כל מנתקים רק אותו: כל החיבורים שלו נחתכים מיד, גם מה שכבר פתוח אצלו, והחשבון נחסם לכניסה. האתר ממשיך לעבוד לכל השאר.</p>'+
+    '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><input id="ldKickEm" dir="ltr" placeholder="email@example.com" aria-label="מייל של החשבון" style="max-width:240px">'+durSel+'<button class="btn" id="ldKick" style="background:#c0392b;border-color:#c0392b;color:#fff">🔌 לנתק ולחסום</button></div>'+
+    (logins.length?'<p style="margin:12px 0 2px"><b>כניסות של הצוות ב-48 השעות האחרונות:</b></p><div class="tw"><table><thead><tr><th>מתי</th><th>מי</th><th>מאיפה</th><th></th></tr></thead><tbody>'+
+      logins.map(e=>'<tr><td style="white-space:nowrap">'+when(e.created_at)+'</td><td dir="ltr">'+esc(e.email)+'</td><td><bdi dir="ltr">'+esc(e.ip||'')+'</bdi><br><small class="muted" dir="ltr">'+esc(String(e.ua||'').slice(0,70))+'</small></td><td><button class="btn sec" data-ldk="'+esc(e.user_id)+'" data-lde="'+esc(e.email)+'">🔌 לנתק</button></td></tr>').join('')+'</tbody></table></div>':'')+
+    (kicked.length?'<p style="margin:12px 0 2px"><b>חסומים עכשיו:</b></p><div class="tw"><table><thead><tr><th>מתי</th><th>סיבה</th><th>עד</th><th></th></tr></thead><tbody>'+
+      kicked.map(k=>'<tr><td style="white-space:nowrap">'+when(k.at)+(k.auto?' <span class="ldpill wait">אוטומטי</span>':'')+'</td><td>'+esc(k.reason||'')+'</td><td>'+(k.until?when(k.until):'עד שחרור')+'</td><td><button class="btn sec" data-ldu="'+esc(k.user_id)+'">✅ זה בסדר — לשחרר</button></td></tr>').join('')+'</tbody></table></div>':'')+
+    '<p class="muted" style="font-size:13px">אם אחרי הניתוק התקיפה ממשיכה (עוד חשבון, שינוי הרשאות, שינוי בשרת או בקבצים) — האתר כולו נסגר אוטומטית. את חשבון הבעלים לא מנתקים כאן: לזה הכפתור של מצב שיפוצים.</p></div>';
   /* --- כפתורים --- */
   if(!owner)h+='<div class="card"><p>🔒 רק הבעלים (עם אימות דו-שלבי) יכול לסגור ולפתוח את האתר.</p></div>';
   else if(!closed){
@@ -65,6 +91,8 @@ window.boView('lockdown',async function(){const m=$s('#boMain');if(!m)return;cle
   /* --- הגדרות --- */
   if(owner)h+='<div class="card"><h2>⚙️ סגירה אוטומטית</h2>'+
     '<label class="ldsw"><input type="checkbox" id="ldAutoT"'+(L.auto_tamper!==false?' checked':'')+'><span><b>כשקבצים בשרת משתנים בלי לעבור דרך GitHub</b> — סימן ברור לפריצה. מומלץ להשאיר דלוק.</span></label>'+
+    '<label class="ldsw"><input type="checkbox" id="ldAutoK"'+(L.auto_kick_staff!==false?' checked':'')+'><span><b>איש צוות או מנהל שנכנס ממכשיר חדש — לנתק אותו מיד ולהקפיא את החשבון עד שתאשר</b>. אם זה באמת הוא, לוחצים כאן "זה בסדר — לשחרר".</span></label>'+
+    '<label class="ldsw"><input type="checkbox" id="ldAutoE"'+(L.auto_escalate!==false?' checked':'')+'><span><b>אם אחרי ניתוק מגיעה עוד תקיפה תוך שעה — לסגור את כל האתר</b>.</span></label>'+
     '<label class="ldsw"><input type="checkbox" id="ldAutoD"'+(L.auto_new_device?' checked':'')+'><span><b>כשמנהל נכנס ממכשיר חדש</b> — זהירות: גם כשאתה עצמך מחליף טלפון, האתר ייסגר (ואז נכנסים שוב ופותחים). כבוי כברירת מחדל — ההתראה לטלפון נשלחת בכל מקרה.</span></label>'+
     '<p class="muted" style="font-size:13px">בכל מקרה מקבלים התראה מיידית על: קבצים שהשתנו, שינוי בהרשאות צוות או "בעלים", שינוי במפתחות הכניסה לשרת / משתמשים / משימות מתוזמנות, כניסה של מנהל ממכשיר חדש, והרבה ניסיונות סיסמה שנכשלו.</p></div>';
   /* --- התקנה בשרת וקישור מעקף --- */
@@ -90,8 +118,15 @@ window.boView('lockdown',async function(){const m=$s('#boMain');if(!m)return;cle
   const fo=$s('#ldForce');if(fo)fo.onclick=async()=>{
     if(!(await uiConfirm('לפתוח את האתר בלי לבדוק את הקבצים בשרת? אם הייתה פריצה ונשאר קוד זדוני — המשתמשים יקבלו אותו.')))return;
     const {error}=await sb.rpc('site_lock_open',{p_force:true});if(error){flash('⚠️ '+error.message);return;}flash('✅ האתר נפתח');again();};
-  const sv=()=>sb.rpc('site_lock_settings',{p_auto_tamper:$s('#ldAutoT').checked,p_auto_new_device:$s('#ldAutoD').checked}).then(({error})=>flash(error?'⚠️ '+error.message:'💾 נשמר'));
-  if($s('#ldAutoT')){$s('#ldAutoT').onchange=sv;$s('#ldAutoD').onchange=sv;}
+  const sv=()=>sb.rpc('site_lock_settings',{p_auto_tamper:$s('#ldAutoT').checked,p_auto_new_device:$s('#ldAutoD').checked,p_auto_kick_staff:$s('#ldAutoK').checked,p_auto_escalate:$s('#ldAutoE').checked}).then(({error})=>flash(error?'⚠️ '+error.message:'💾 נשמר'));
+  if($s('#ldAutoT'))['#ldAutoT','#ldAutoD','#ldAutoK','#ldAutoE'].forEach(x=>$s(x).onchange=sv);
+  const KERR={no_user:'לא נמצא חשבון כזה',not_self:'אי אפשר לנתק את עצמך',owner_use_lockdown:'את חשבון הבעלים לא מנתקים כאן — במקרה כזה סוגרים את האתר (מצב שיפוצים)'};
+  const kick=async(uid,em)=>{const d=$s('#ldDur').value;if(!(await uiConfirm('לנתק עכשיו את '+(em||'החשבון')+'? כל החיבורים שלו ייחתכו מיד'+(d==='0'?'.':' והוא לא יוכל להיכנס.'))))return;
+    const {data,error}=await sb.rpc('security_kick',{p_user:uid||null,p_email:uid?null:em,p_hours:d===''?null:+d,p_reason:'נותק ידנית מהבק אופיס'});
+    if(error){const k=Object.keys(KERR).find(x=>error.message.includes(x));flash('⚠️ '+(k?KERR[k]:error.message));return;}flash('🔌 נותק · '+(data|0)+' חיבורים נחתכו');again();};
+  $s('#ldKick').onclick=()=>{const em=($s('#ldKickEm').value||'').trim();if(!/^\S+@\S+$/.test(em)){flash('⚠️ צריך מייל');return;}kick(null,em);};
+  m.querySelectorAll('[data-ldk]').forEach(b=>b.onclick=()=>kick(b.dataset.ldk,b.dataset.lde));
+  m.querySelectorAll('[data-ldu]').forEach(b=>b.onclick=async()=>{const {error}=await sb.rpc('security_unkick',{p_user:b.dataset.ldu});if(error){flash('⚠️ '+error.message);return;}flash('✅ שוחרר — יכול להיכנס שוב');again();});
   /* מחכים לתוצאת הבדיקה בשרת */
   if(closed&&L.open_req){let n=0;poll=setInterval(async()=>{if(!document.getElementById('ldMain')||++n>40){clearInterval(poll);return;}
     const {data}=await sb.from('site_lock').select('locked,open_req').eq('id',1).maybeSingle();if(data&&!data.open_req){clearInterval(poll);flash(data.locked?'⛔ נמצאו שינויים — האתר נשאר סגור':'✅ הכל תקין — האתר נפתח');again();}},5000);}
