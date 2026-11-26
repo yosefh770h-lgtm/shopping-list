@@ -5207,18 +5207,6 @@ begin
 end $$;
 revoke all on function public.visit_src_signup(text) from public, anon;
 grant execute on function public.visit_src_signup(text) to authenticated;
-create or replace function public.admin_visit_sources(p_days int default 30) returns jsonb
-language sql stable security definer set search_path = public as $$
-  select case when not public.is_admin() then null else coalesce((
-    select jsonb_agg(jsonb_build_object('src', x.src, 'visits', x.visits, 'signups', x.signups) order by x.visits desc, x.signups desc)
-    from (
-      select coalesce(v.src, g.src) src, coalesce(v.visits, 0) visits, coalesce(g.signups, 0) signups
-      from (select src, sum(n)::int visits from public.visit_sources where day > current_date - greatest(1, least(coalesce(p_days, 30), 365)) group by src) v
-      full join (select src, count(*)::int signups from public.visit_signups where at > now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365))) group by src) g on g.src = v.src
-    ) x), '[]'::jsonb) end;
-$$;
-revoke all on function public.admin_visit_sources(int) from public, anon;
-grant execute on function public.admin_visit_sources(int) to authenticated;
 
 -- 📤 קישורי שיתוף אישיים ("שתפו אותי" בראש המסך): כל שיתוף מקבל קישור משלו (?s=), ונשמר מי שיתף ואיפה —
 -- וואטסאפ (קבוצה / סטטוס / אדם אחד), מייל, SMS, העתקה... בבק אופיס רואים כמה נכנסו דרך כל קישור, ומי נרשם או התחבר דרכו.
@@ -5569,16 +5557,6 @@ end $$;
 revoke all on function public.staff_visits(timestamptz, int) from public, anon;
 grant execute on function public.staff_visits(timestamptz, int) to authenticated;
 -- הסיכומים הקיימים פתוחים גם לצוות שיש לו הרשאת "מי נכנס" (מיילים — רק עם הרשאה)
-create or replace function public.admin_visit_sources(p_days int default 30) returns jsonb
-language sql stable security definer set search_path = public as $$
-  select case when not (public.is_staff() and public.staff_can('visitors')) then null else coalesce((
-    select jsonb_agg(jsonb_build_object('src', x.src, 'visits', x.visits, 'signups', x.signups) order by x.visits desc, x.signups desc)
-    from (
-      select coalesce(v.src, g.src) src, coalesce(v.visits, 0) visits, coalesce(g.signups, 0) signups
-      from (select src, sum(n)::int visits from public.visit_sources where day > current_date - greatest(1, least(coalesce(p_days, 30), 365)) group by src) v
-      full join (select src, count(*)::int signups from public.visit_signups where at > now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365))) group by src) g on g.src = v.src
-    ) x), '[]'::jsonb) end;
-$$;
 create or replace function public.admin_guest_stats() returns jsonb
 language sql stable security definer set search_path = public, auth as $$
   select case when not (public.is_staff() and public.staff_can('visitors')) then null else jsonb_build_object(
@@ -5692,14 +5670,53 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.admin_user_sources() from public, anon;
 grant execute on function public.admin_user_sources() to authenticated;
--- לכל מקור: מבקרים חדשים, נרשמו, וכמה מהנרשמים עדיין פעילים שבוע אחרי ההרשמה
+-- 🔁 מי חוזר אחרי שבוע — גם אורחים שלא נרשמו, בלי עוגיות ובלי לעקוב אחרי אף אחד:
+-- המכשיר זוכר אצלו (בדפדפן) רק את המקור ואת יום הביקור הראשון. כשהוא חוזר שבוע עד 60 יום אחר כך, הוא מוסיף 1 למונה של אותו מקור ואותו יום — פעם אחת בלבד.
+-- בשרת נשמרים רק יום + מקור + מספר. בלי מזהה מכשיר, שם, מייל או IP, ואי אפשר לדעת מי חזר.
+create table if not exists public.visit_returns (
+  day date not null,
+  src text not null,
+  n int not null default 0,
+  primary key (day, src)
+);
+alter table public.visit_returns enable row level security;
+revoke all on public.visit_returns from anon, authenticated;
+-- מאיזה יום מודדים (מכשירים שהגיעו לפני כן לא יודעים את יום הביקור הראשון, ולכן לא נספרים)
+create table if not exists public.visit_returns_start (id int primary key default 1 check (id = 1), day date not null default current_date);
+alter table public.visit_returns_start enable row level security;
+revoke all on public.visit_returns_start from anon, authenticated;
+insert into public.visit_returns_start(id) values (1) on conflict do nothing;
+create or replace function public.visit_src_return(p_src text, p_day date) returns boolean
+language plpgsql volatile security definer set search_path = public as $$
+declare s text := public.visit_src_clean(p_src); base int;
+begin
+  if s is null or p_day is null or p_day > current_date - 7 or p_day < current_date - 60
+     or p_day < (select day from public.visit_returns_start where id = 1) then return false; end if;
+  -- רק מקור + יום שבאמת נספרו בביקור ראשון, ולעולם לא יותר חוזרים ממבקרים חדשים
+  select n into base from public.visit_sources where day = p_day and src = s;
+  if coalesce(base, 0) = 0 then return false; end if;
+  insert into public.visit_returns(day, src, n) values (p_day, s, 1)
+  on conflict (day, src) do update set n = public.visit_returns.n + 1 where public.visit_returns.n < base;
+  return true;
+end $$;
+revoke all on function public.visit_src_return(text, date) from public;
+grant execute on function public.visit_src_return(text, date) to anon, authenticated;
+-- לכל מקור: מבקרים חדשים, נרשמו, כמה מהנרשמים עדיין פעילים שבוע אחרי ההרשמה,
+-- וכמה מכל המבקרים החדשים (גם בלי הרשמה) חזרו שבוע או יותר אחרי הביקור הראשון (ret_base = מי שעבר עליו כבר שבוע)
 create or replace function public.admin_visit_sources(p_days int default 30) returns jsonb
 language sql stable security definer set search_path = public as $$
+  with d as (select greatest(1, least(coalesce(p_days, 30), 365)) n, (select day from public.visit_returns_start where id = 1) st)
   select case when not (public.is_staff() and public.staff_can('visitors')) then null else coalesce((
-    select jsonb_agg(jsonb_build_object('src', x.src, 'visits', x.visits, 'signups', x.signups, 'week_old', x.week_old, 'active7', x.active7) order by x.visits desc, x.signups desc)
+    select jsonb_agg(jsonb_build_object('src', x.src, 'visits', x.visits, 'signups', x.signups, 'week_old', x.week_old, 'active7', x.active7,
+                                        'ret_base', x.ret_base, 'returned', x.returned) order by x.visits desc, x.signups desc)
     from (
-      select coalesce(v.src, g.src) src, coalesce(v.visits, 0) visits, coalesce(g.signups, 0) signups, coalesce(g.week_old, 0) week_old, coalesce(g.active7, 0) active7
-      from (select src, sum(n)::int visits from public.visit_sources where day > current_date - greatest(1, least(coalesce(p_days, 30), 365)) group by src) v
+      select coalesce(v.src, g.src) src, coalesce(v.visits, 0) visits, coalesce(g.signups, 0) signups, coalesce(g.week_old, 0) week_old, coalesce(g.active7, 0) active7,
+             coalesce(v.ret_base, 0) ret_base, coalesce(v.returned, 0) returned
+      from (select vs.src, sum(vs.n)::int visits,
+                   coalesce(sum(vs.n) filter (where vs.day <= current_date - 7 and vs.day >= d.st), 0)::int ret_base,
+                   coalesce(sum(r.n) filter (where vs.day <= current_date - 7 and vs.day >= d.st), 0)::int returned
+              from public.visit_sources vs cross join d left join public.visit_returns r on r.day = vs.day and r.src = vs.src
+             where vs.day > current_date - d.n group by vs.src) v
       full join (
         select s.src, count(*)::int signups,
                count(*) filter (where s.at < now() - interval '7 days')::int week_old,
@@ -5707,14 +5724,33 @@ language sql stable security definer set search_path = public as $$
                  coalesce(p.last_seen, s.at) > s.at + interval '7 days'
                  or exists (select 1 from public.visit_log l where l.user_id = s.user_id and l.at > s.at + interval '7 days')))::int active7
         from public.visit_signups s left join public.profiles p on p.id = s.user_id
-        where s.at > now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365)))
+        where s.at > now() - make_interval(days => (select n from d))
         group by s.src) g on g.src = v.src
     ) x), '[]'::jsonb) end;
 $$;
+revoke all on function public.admin_visit_sources(int) from public, anon;
+grant execute on function public.admin_visit_sources(int) to authenticated;
+-- לפי שבוע (ראשון עד שבת) של הביקור הראשון: כמה מבקרים חדשים, וכמה מהם חזרו שבוע או יותר אחר כך. 12 השבועות האחרונים.
+-- נספרים רק ימים שכבר עבר עליהם שבוע, כדי שהאחוז לא ייראה נמוך סתם
+create or replace function public.admin_visit_return_weeks() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when not (public.is_staff() and public.staff_can('visitors')) then null else coalesce((
+    select jsonb_agg(jsonb_build_object('week', w.wk, 'visits', w.visits, 'returned', w.returned, 'partial', w.wk + 6 > current_date - 7) order by w.wk desc)
+    from (
+      select c.wk, sum(c.n)::int visits, coalesce(sum(c.r), 0)::int returned
+        from (select vs.day - extract(dow from vs.day)::int wk, vs.n, r.n r
+                from public.visit_sources vs left join public.visit_returns r on r.day = vs.day and r.src = vs.src
+               where vs.day <= current_date - 7 and vs.day > current_date - 7 - 84
+                 and vs.day >= (select day from public.visit_returns_start where id = 1)) c
+       group by c.wk
+    ) w), '[]'::jsonb) end;
+$$;
+revoke all on function public.admin_visit_return_weeks() from public, anon;
+grant execute on function public.admin_visit_return_weeks() to authenticated;
 -- דוח שבועי (יום ראשון בבוקר) לכל איש צוות שמקבל התראות על כניסות: כמה נכנסו, כמה נרשמו, ומאיזה מקור
 create or replace function public.staff_weekly_report() returns int
 language plpgsql security definer set search_path = public, auth as $$
-declare vis int; reg int; logged int; top text; topn int; body text; a uuid; n int := 0;
+declare vis int; reg int; logged int; top text; topn int; rb int; rn int; body text; a uuid; n int := 0;
 begin
   select coalesce(sum(v.n), 0)::int into vis from public.visit_sources v where v.day > current_date - 7;
   select count(*)::int into reg from public.visit_signups where at > now() - interval '7 days';
@@ -5723,8 +5759,13 @@ begin
   if top is null then
     select src, sum(v.n)::int into top, topn from public.visit_sources v where v.day > current_date - 7 group by src order by sum(v.n) desc limit 1;
   end if;
+  -- מבקרים חדשים מלפני 8 עד 14 יום: כמה מהם חזרו שבוע אחר כך
+  select coalesce(sum(v.n), 0)::int, coalesce(sum(r.n), 0)::int into rb, rn
+    from public.visit_sources v left join public.visit_returns r on r.day = v.day and r.src = v.src
+   where v.day between current_date - 14 and current_date - 8 and v.day >= (select day from public.visit_returns_start where id = 1);
   body := vis || ' מבקרים חדשים · ' || reg || ' נרשמו · ' || logged || ' משתמשים נכנסו'
-          || case when top is not null then '. המקור המוביל: ' || top || ' (' || topn || ')' else '' end;
+          || case when top is not null then '. המקור המוביל: ' || top || ' (' || topn || ')' else '' end
+          || case when rb > 0 then '. מהחדשים של שבוע שעבר ' || round(100.0 * rn / rb)::int || '% חזרו' else '' end;
   for a in select id from auth.users where public.staff_can_user(id, 'visitors') and public.staff_can_user(id, 'notify') loop
     perform public.push_enqueue(a, 'visits', '📊 הסיכום השבועי של האתר', body, '/#admin-guests', 'weekly');
     n := n + 1;
