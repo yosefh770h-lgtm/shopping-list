@@ -3,6 +3,8 @@
      {items:[[שם, ברקוד], ...], mode:'fixed'|'daily', count:12}
    fixed — אותם מוצרים כל יום (כל הרשימה).
    daily — כל יום מבחר אחר של count מוצרים מתוך הרשימה. הבחירה לפי התאריך בישראל, אז כל מי שנכנס באותו יום רואה אותו סל.
+   auto  — האתר בוחר לבד (auto()): count מוצרים שהכי מחפשים השבוע ב"איפה הכי זול". (הסל לחג — holidayBasket() — הוא כפתור נפרד בדף.)
+           כשאין מספיק חיפושים — הרשימה (כמו fixed).
    כשאין הגדרה — סל ברירת המחדל: 12 מוצרים שכ-72% מהסניפים מוכרים את כולם (נבדק מול השרת, נובמבר 2026).
    מוסיפים לסל (בבק אופיס ובדף) רק מוצר שנמכר בהרבה סניפים — אחרת ברוב החנויות יש מוצר אחר במקומו ואי אפשר להשוות.
    שם המוצר כולל את שם החברה ("חלב תנובה 3%"), כי אנשים רוצים לדעת איזה מוצר בדיוק. */
@@ -44,5 +46,36 @@ const fmt=n=>Number(n||0).toLocaleString('he-IL');
 /* מה כותבים ליד מוצר בתוצאות החיפוש */
 const badge=p=>ok(p)?'✅ אותו מוצר בדיוק ב-'+fmt(p.stores)+' סניפים'+(p.chains?' ('+p.chains+' רשתות)':'')
   :'⚠️ רק ב-'+fmt(p.stores)+' סניפים — בשאר החנויות יש מוצר אחר, אז אי אפשר להשוות';
-window.SalPick={DEFAULT,MIN,MAX,MIN_STORES,clean,pick,today,brand,label,ok,badge};
+/* 🕎 הסל לחג — שבועיים לפני חג ובחג עצמו יש בדף עוד כפתור, חוץ מהסל הרגיל (לפי לוח השנה העברי של האתר, js/089-hcal.js).
+   רק מוצרים שנמכרים ב-MIN_STORES סניפים לפחות; נרות חנוכה, למשל, נמכרים רק ב-326, אז הם לא בסל */
+const HOLI=[['חנוכה','🕎',['שמן קנולה','שמן חמניות','סוכר לבן','קמח','שמרים','ממרח שוקולד','שוקולד חלב','קקאו','אבקת סוכר'],'סופגניות ונרות'],
+  ['פורים','🎭',['יין אדום מתוק','מיץ ענבים','במבה','ביסלי','שוקולד חלב','ופלים','ממרח שוקולד']],
+  ['פסח','🍷',['מצות','יין אדום מתוק','מיץ ענבים','שמן קנולה','סוכר לבן','קפה','ביצים']],
+  ['שבועות','🧀',['שמנת מתוקה','גבינה צהובה','גבינה לבנה','קוטג','חמאה','סוכר לבן','שמנת חמוצה']],
+  ['ראש השנה','🍯',['דבש','יין אדום מתוק','מיץ ענבים','שמן קנולה','סוכר לבן','קמח']],
+  ['סוכות','🌿',['יין אדום מתוק','מיץ ענבים','חומוס','טחינה','שמן קנולה','קפה']],
+  ['ט"ו בשבט','🌳',['תמרים','צימוקים','שקדים','אגוזים','משמשים']]];
+function holiday(date){try{const H=window.Hcal;if(!H)return null;const rd=H.rdOf(date||new Date());
+  for(let i=0;i<14;i++)for(const e of H.events(rd+i,true)||[]){const h=HOLI.find(([k])=>String(e.base||'').includes(k));if(h)return {name:h[0],icon:h[1],terms:h[2],miss:h[3]||''};}
+  return null;}catch(e){return null;}}
+/* הסל לחג: עד 5 מוצרים לחג, רק כאלה שנמכרים ב-HOLI_STORES סניפים לפחות (בסל קטן כל מוצר שחסר בחנות מוציא אותה מההשוואה —
+   נבדק מול השרת: עם קמח, שמרים וקקאו רק כחמישית מהחנויות מוכרות את כולם). כשיש בסל הרגיל (base) מוצר מאותו סוג — לוקחים אותו,
+   כי הוא כבר נבדק. only = רק המוצרים לחג, items = לחג ולבית (משלימים מהסל הרגיל עד 8 מוצרים) — המשתמש בוחר בדף */
+const HOLI_STORES=1300;
+async function holidayBasket({search,base,date}){const h=holiday(date);if(!h)return null;base=base||[];
+  const got=(await auto({terms:h.terms,search,count:MAX,min:HOLI_STORES})).slice(0,5);
+  const only=got.map(g=>base.find(b=>kindOf(b[0])===kindOf(g[0]))||g),items=only.slice();
+  for(const b of base){if(items.length>=8)break;if(!items.some(o=>o[1]===b[1]||kindOf(o[0])===kindOf(b[0])))items.push(b);}
+  return got.length&&items.length>=MIN?{name:h.name,icon:h.icon,miss:h.miss,only,items}:null;}
+/* 🤖 האתר בוחר: terms = מילות החיפוש הכי נפוצות השבוע (sal_top_searches), search(q) = חיפוש מוצרים בשרת המחירים.
+   לכל מילה — המוצר שנמכר בהכי הרבה סניפים (רק מעל MIN_STORES, ורק אם המילה כתובה בשם שלו: "סוכר" לא יביא סוכריות מנטה), ולא שני מוצרים מאותו סוג (לפי המילה הראשונה בשם: לא שני "חלב") */
+const kindOf=n=>String(n||'').replace(/["'׳״]/g,'').trim().split(/\s+/)[0];
+async function auto({terms,search,count,min}){const floor=min||MIN_STORES;const n=Math.max(MIN,Math.min(MAX,parseInt(count,10)||12));
+  const qs=[...new Set((terms||[]).map(q=>String(q||'').trim()).filter(q=>q.length>1))].slice(0,n*2+6);
+  const res=await Promise.all(qs.map(q=>Promise.resolve().then(()=>search(q)).catch(()=>[])));
+  const out=[],kinds=new Set();
+  for(let i=0;i<qs.length&&out.length<n;i++){const w=kindOf(qs[i]),best=(res[i]||[]).filter(p=>(p.stores||0)>=floor&&String(p.name||'').replace(/["'׳״]/g,'').includes(w)).sort((a,b)=>b.stores-a.stores)[0];if(!best)continue;
+    const k=kindOf(best.name);if(kinds.has(k)||out.some(o=>o[1]===best.code))continue;kinds.add(k);out.push([label(best),best.code]);}
+  return out;}
+window.SalPick={DEFAULT,MIN,MAX,MIN_STORES,clean,pick,today,brand,label,ok,badge,auto,holiday,holidayBasket};
 })();

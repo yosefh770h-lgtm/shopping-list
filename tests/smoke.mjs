@@ -2868,6 +2868,17 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   const pk = await page.evaluate((pool) => { const c = { items: pool, mode: 'daily', count: 4 }, d = new Date('2026-11-26T10:00:00Z'), a = SalPick.pick(c, d), b = SalPick.pick(c, d);
     return { n: a.length, same: JSON.stringify(a) === JSON.stringify(b), fixed: SalPick.pick({ items: pool }).length, def: SalPick.pick({ items: [['x', '1']] }).length }; }, pool);
   assert(pk.n === 4 && pk.same && pk.fixed === 6 && pk.def === 12, 'בחירת המוצרים: ' + JSON.stringify(pk));
+  // 🤖 האתר בוחר: לכל מילת חיפוש המוצר שבהכי הרבה סניפים, בלי שני מאותו סוג, בלי מוצר שנמכר במעט סניפים; ולפני חנוכה — סל לחג (שמן מהסל הרגיל, כי יש בו כבר שמן, ומשלימים מהסל הרגיל)
+  const au = await page.evaluate(async () => { const P = { 'חלב': [{ code: '1', name: 'חלב תנובה 3%', manufacturer: 'תנובה', stores: 1500 }, { code: '2', name: 'חלב טרה 3%', manufacturer: 'טרה', stores: 1700 }],
+      'חלב 1%': [{ code: '3', name: 'חלב יטבתה 1%', manufacturer: 'יטבתה', stores: 1600 }], 'במבה': [{ code: '4', name: 'במבה 80 גרם', manufacturer: 'אסם', stores: 1800 }],
+      'רוטב': [{ code: '5', name: 'רוטב מיוחד', stores: 300 }], 'שמן קנולה': [{ code: '6', name: 'שמן קנולה 1 ליטר', manufacturer: 'שמן', stores: 1400 }] };
+    const search = (q) => Promise.resolve(P[q] || []);
+    const a = await SalPick.auto({ terms: ['חלב', 'חלב 1%', 'במבה', 'רוטב'], search, count: 12, date: new Date('2026-11-20T10:00:00Z') });
+    const base = [['חלב תנובה 1 ליטר', '10'], ['שמן זית 750', '11'], ['במבה 80', '12']];
+    const h = await SalPick.holidayBasket({ search, base, date: new Date('2026-12-04T10:00:00Z') });
+    const none = await SalPick.holidayBasket({ search, base, date: new Date('2026-12-20T10:00:00Z') });
+    return { a: a.map((i) => i[1]).join(','), h: h && h.name + ':' + h.items.map((i) => i[1]).join(',') + '/' + h.only.map((i) => i[1]).join(','), none }; });
+  assert(au.a === '2,4' && au.h === 'חנוכה:11,10,12/11' && au.none === null, 'האתר בוחר / הסל לחג: ' + JSON.stringify(au));
   await page.evaluate((pool) => { window.__up = []; sb = __stub({ 'site_config:one': { value: { items: pool, mode: 'daily', count: 4 } }, 'rpc:admin_sal_stats': { people: 3, users: 1, guests: 2, custom: 1, actions: { view: { n: 5, people: 3 }, share: { n: 2, people: 1 } }, days: [], cities: [{ city: 'בני ברק', n: 5, out: 2 }],
       sharers: [{ name: 'דוד', guest: false, n: 2, last: '2026-11-26T12:00:00Z' }], recent: [{ at: '2026-11-26T12:00:00Z', name: 'דוד', guest: false, staff: false, action: 'share', city: 'בני ברק', custom: false, n: 12 }] } }); const f = sb.from; sb.from = (n) => { const q = f(n); return new Proxy(q, { get(t, p) { if (p === 'upsert') return (v) => { window.__up.push(v); return q; }; return t[p]; } }); };
     authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('sal'); }, pool);
@@ -2881,6 +2892,7 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   const res = await page.$eval('#salRes', (e) => ({ t: e.textContent, off: e.querySelector('[data-addp="7290000000035"]').disabled }));
   assert(res.off && res.t.includes('בשאר החנויות יש מוצר אחר') && res.t.includes('טחינה 500 גרם · צבר') && res.t.includes('רוטב מיוחד · יטבתה'), 'תוצאות החיפוש: ' + JSON.stringify(res));
   await page.click('[data-addp="7290000000011"]');
+  await page.click('input[name="salMd"][value="auto"]'); await page.waitForFunction(() => /עוד אין מספיק חיפושים/.test((document.querySelector('#salAuto') || {}).textContent || ''));
   await page.click('[data-rm="0"]'); await page.click('input[name="salMd"][value="fixed"]'); await page.click('#salSave'); await page.waitForTimeout(200);
   const up = await page.evaluate(() => window.__up[0]);
   assert(up && up.key === 'sal' && up.value.mode === 'fixed' && up.value.items.length === 6 && up.value.items.some((i) => i[1] === '7290000000011') && !up.value.items.some((i) => i[0] === 'א') && up.value.items.some((i) => i[0] === 'טחינה 500 גרם · צבר'), 'שמירה: ' + JSON.stringify(up));

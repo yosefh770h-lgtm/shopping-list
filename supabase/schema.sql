@@ -7682,6 +7682,19 @@ end $$;
 revoke all on function public.admin_sal_stats(int, boolean) from public, anon;
 grant execute on function public.admin_sal_stats(int, boolean) to authenticated;
 
+-- 🤖 הסל הזול — "האתר בוחר": מה שהכי מחפשים ב"איפה הכי זול" בשבוע האחרון (רק סיכום: מילת החיפוש וכמה אנשים).
+--    מילה נכנסת רק אם לפחות 2 אנשים שונים חיפשו אותה (לא חושפים חיפוש של אדם אחד), בלי הצוות, בלי מספרים ארוכים.
+create or replace function public.sal_top_searches() returns table(q text, people bigint)
+language sql stable security definer set search_path = public as $$
+  select it, count(distinct coalesce(user_id::text, guest::text)) p
+  from public.price_searches, unnest(items) it
+  where at > now() - interval '7 days' and not staff and char_length(it) between 2 and 30 and it !~ '[0-9]{5,}'
+  group by it having count(distinct coalesce(user_id::text, guest::text)) >= 2
+  order by 2 desc, count(*) desc, it limit 30;
+$$;
+revoke all on function public.sal_top_searches() from public;
+grant execute on function public.sal_top_searches() to anon, authenticated;
+
 -- 📱/🌐 מי משתמש מהאתר ומי מהאפליקציה לאנדרואיד (בבק אופיס ← 👥 משתמשים).
 --    האפליקציה מוסיפה "YamShoppingApp/" לזיהוי הדפדפן שלה. מעכשיו touch_presence (כל דקה כשהאתר פתוח) שומר
 --    מתי המשתמש נראה לאחרונה באתר ומתי באפליקציה; לפני כן — לפי ההרשמה והכניסות שביומן האבטחה (auth_events).

@@ -24,9 +24,11 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0d1118;--card:#161a22;--text:#e6e6da;--muted:#a3abb8;--accent:#9db8e0;--line:#2a303b;--gold:#e0b65a;--ok:#7fc58b}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Rubik,Heebo,Arial,sans-serif;line-height:1.6}
-header{background:var(--hdr);color:#fff;padding:10px 16px}
+header{background:var(--hdr);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 header a{color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
 header img{border-radius:50%}
+header a.back{font-size:15px;font-weight:700;padding:8px 14px;border:1.5px solid rgba(255,255,255,.7);border-radius:999px;white-space:nowrap}
+@media (max-width:420px){header a{font-size:15px}header img{width:28px;height:28px}header a.back{padding:6px 10px;font-size:14px}}
 main{max-width:760px;margin:18px 16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 18px}
 @media (min-width:800px){main{margin-inline:auto}}
 h1{font-size:26px;line-height:1.25;margin:0 0 6px;color:var(--accent)}
@@ -60,6 +62,8 @@ footer{text-align:center;padding:4px 16px 32px}
 [hidden]{display:none!important}
 .src{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
 .src button{flex:1 1 160px;justify-content:center;background:transparent;color:var(--accent);border:1.5px solid var(--line)}
+.src button[hidden],.src[hidden]{display:none}
+.src.mix{margin-top:0}.src.mix button{flex:1 1 120px;padding:8px 10px;font-size:15px}.src.mix p{flex:1 1 100%;margin:2px 0 0;font-size:14px}
 .src button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--card)}
 .look{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
 .look h2{margin:0 0 6px;font-size:16px}
@@ -104,7 +108,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </style>
 </head>
 <body>
-<header><a href="/"><img src="/logo.png" alt="" width="36" height="36">ים שופינג · רשימת קניות</a></header>
+<header><a href="/"><img src="/logo.png" alt="" width="36" height="36">ים שופינג · רשימת קניות</a><a href="/" id="back" class="back">→ חזרה לאפליקציה</a></header>
 <main>
 <h1 id="h1">הסל הזול השבוע בעיר שלכם</h1>
 <p class="lead" id="lead">סל קבוע של 12 מוצרים מוכרים, אותו מוצר בדיוק בכל חנות. מתעדכן לבד כל שבוע לפי המחירים של הרשתות.</p>
@@ -117,7 +121,13 @@ footer{text-align:center;padding:4px 16px 32px}
 <div id="st" role="status" aria-live="polite"></div>
 <div class="src" role="group" aria-label="איזה מוצרים להשוות">
   <button type="button" id="srcSite" aria-pressed="true">🧺 הסל של האתר</button>
+  <button type="button" id="srcHoli" aria-pressed="false" hidden>🕎 הסל לחג</button>
   <button type="button" id="srcMine" aria-pressed="false">✏️ אני בוחר את המוצרים</button>
+</div>
+<div class="src mix" id="hMix" role="group" aria-label="מה בסל לחג" hidden>
+  <button type="button" id="hmOnly" aria-pressed="false">רק מוצרים לחג</button>
+  <button type="button" id="hmBoth" aria-pressed="true">לחג ולבית</button>
+  <p class="muted" id="hmMiss"></p>
 </div>
 <section id="ed" class="ed" hidden aria-label="שינוי המוצרים בסל">
   <h2>✏️ המוצרים בסל שלי</h2>
@@ -159,7 +169,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </main>
 <footer class="muted"><a href="/terms.html">תנאי שימוש</a> · <a href="/privacy.html">פרטיות</a></footer>
 <script src="/js/089-hcal.js?v=e2ea143fdb"></script>
-<script src="/js/sal-pick.js?v=c42b82e360"></script>
-<script src="/js/pages/sal.js?v=03a1281497"></script>
+<script src="/js/sal-pick.js?v=e20e352d8f"></script>
+<script src="/js/pages/sal.js?v=2841f4f988"></script>
 </body>
 </html>
