@@ -2775,3 +2775,14 @@ details.ways66 .btn,details.ways66 .apkdl53{display:block;width:100%;margin-top:
 :is(#bo,body) .igw96{flex:none;display:inline-flex}:is(#bo,body) .igw96:empty{display:none}
 :is(#bo,body) .ig96{height:36px;width:auto;max-width:170px;padding:0 10px;border-radius:10px;border:1px solid var(--c-line);background:var(--c-soft);color:var(--c-text);font:inherit;font-size:13px;cursor:pointer}
 :is(#bo,body) .ig96n{margin:0;padding:4px 16px 8px;font-size:12px;color:var(--c-muted);text-align:center}
+
+/* 📣 הסל הזול בעיר — כרטיס בראש "מחירים" ו"חנויות" (js/034.js salCard26) */
+/* הסלקטור החזק (ID) גובר על עיצוב הכפתורים הכללי של הלשוניות ושל מצב כהה */
+:is(#panePrices,#paneStores) button.sal26{display:flex;align-items:center;gap:10px;width:100%;margin:0 0 10px;padding:10px 12px;border:0;border-radius:14px;cursor:pointer;text-align:start;font:inherit;min-height:56px;
+  background:#1e3a5f!important;background:linear-gradient(135deg,#1e3a5f,#2b5283)!important;color:#fff!important;box-shadow:0 2px 8px rgba(30,58,95,.25)}
+.sal26:focus-visible{outline:3px solid #ffd166;outline-offset:2px}
+.sal26i{font-size:26px;flex:none}
+.sal26t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
+.sal26t b{color:#ffd166;font-size:16px}
+.sal26t small{color:#dbe5f3;font-size:13px}
+.sal26a{font-size:22px;flex:none;opacity:.8}

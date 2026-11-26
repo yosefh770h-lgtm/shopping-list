@@ -88,6 +88,21 @@ function openWeekly26(){if(needLogin26())return;const items=weeklyItems26();
   if(items.length<2){flash(T('🙂 עוד אין מספיק קניות קבועות — אחרי כמה קניות (או "🔁 פריטים קבועים") הסל השבועי יתמלא לבד','Not enough regular items yet'));return;}
   openBasket(items.map(i=>({n:i.n,q:i.q,done:false})),T('הסל השבועי שלי','My weekly basket'));weeklyCheck26(true);}
 
+/* ---------- 📣 הסל הזול בעיר (sal-zol-hashavua.html): תזכורת פעם בשבוע, ביום חמישי, עם קישור לתמונה לשיתוף ---------- */
+const openSal26=()=>{location.href='/sal-zol-hashavua.html?city='+encodeURIComponent(userCity());};
+function salWeekly26(){const d=new Date();if(d.getDay()!==4&&d.getDay()!==5)return; /* חמישי ושישי — לפני שבת */
+  const c=userCity();notify('sal-'+weekKey26(d),'deal','📣 '+T('הסל הזול השבוע ב'+c,'Cheapest basket this week in '+c),
+    T('תמונה מוכנה לשיתוף בקבוצה ובסטטוס, לפי המחירים של היום','A ready image to share, with today\'s prices'),'sal');}
+/* "sal" בהתראה (גם מהטלפון: ?tab=sal) פותח את הדף ולא לשונית */
+const _salSetTab=setTab;setTab=function(t){if(t!=='sal')return _salSetTab.apply(this,arguments);openSal26();};
+try{if(new URLSearchParams(location.search).get('tab')==='sal')setTimeout(openSal26,300);}catch(e){}
+/* כרטיס בולט בראש "מחירים" ו"חנויות" — שכולם יראו שיש את זה */
+function salCard26(pane){if(!pane||pane.querySelector('[data-sal26]'))return;
+  pane.insertAdjacentHTML('afterbegin','<button type="button" class="sal26" data-sal26="1"><span class="sal26i" aria-hidden="true">📣</span><span class="sal26t"><b>'+esc(T('הסל הזול השבוע ב'+userCity(),'Cheapest basket this week in '+userCity()))+'</b><small>'+T('באיזו חנות הכי זול · תמונה לשיתוף · דף להדפסה','Which store is cheapest · image to share · page to print')+'</small></span><span class="sal26a" aria-hidden="true">‹</span></button>');}
+{const _salRP=renderPrices;renderPrices=function(){const r=_salRP.apply(this,arguments);try{salCard26($26('#panePrices'));}catch(e){}return r;};
+ const _salRS=renderStores;renderStores=function(){const r=_salRS.apply(this,arguments);try{salCard26($26('#paneStores'));}catch(e){}return r;};}
+document.addEventListener('click',e=>{if(e.target.closest('[data-sal26]'))openSal26();});
+
 /* ---------- 3. 🔔 התראת מחיר על מוצר ---------- */
 state.priceAlerts=Array.isArray(state.priceAlerts)?state.priceAlerts:[];
 function alertAdd26(n,max){if(!Array.isArray(state.priceAlerts))state.priceAlerts=[];n=String(n||'').trim().slice(0,60);max=Number(String(max).replace(',','.'));if(!n||!(max>0)){flash(T('⚠️ חסר מוצר או מחיר','Missing product or price'));return false;}
@@ -318,7 +333,8 @@ renderMe=function(){const r=_v26RenderMe.apply(this,arguments);try{if(meTab==='i
 /* ---------- תפריט ⚙️ ---------- */
 add26('miSave26','💰','כמה חסכתי','My savings','miFinish',openSavings26);
 add26('miWeek26','🛒','הסל השבועי — איפה הכי זול השבוע','Weekly basket','miSave26',openWeekly26);
-add26('miAlert26','🔔','התראות מחיר על מוצרים','Price alerts','miWeek26',()=>openAlerts26());
+add26('miSal26','📣','הסל הזול בעיר — תמונה לשיתוף ולהדפסה','Cheapest basket in your city','miWeek26',()=>openSal26());
+add26('miAlert26','🔔','התראות מחיר על מוצרים','Price alerts','miSal26',()=>openAlerts26());
 add26('miShop26','🛍️','מצב קנייה בחנות','Shopping mode','miAlert26',()=>{setTab('list');openShop26();});
 add26('miCalc26','🧮','כמה לקנות לשבת / לאירוע','How much to buy','miReady',()=>openCalc26());
 add26('miTop26','🏆','המדווחים של החודש','Top reporters','miReviews',openTop26);
@@ -327,6 +343,7 @@ add26('miInv26','💌','הזמנת חברים','Invite friends','miTop26',openIn
 /* ---------- יאמי ---------- */
 yamiStep(async raw=>{const t=String(raw||'').trim();let m;
   if(/^(כמה חסכתי|כמה חסכנו|החיסכון שלי)\??$/.test(t)){botSay('💰 '+T('פתחתי את "כמה חסכתי"','Opened "My savings"'));openSavings26();return true;}
+  if(/^(הסל הזול|הסל הזול בעיר|איפה הסל הזול|הסל הזול השבוע)\??$/.test(t)){botSay('📣 '+T('פותחת את הסל הזול השבוע ב'+userCity(),'Opening the cheapest basket in '+userCity()));setTimeout(openSal26,600);return true;}
   if(/^(מצב קנייה|אני בסופר|אני בחנות)$/.test(t)){botSay('🛍️ '+T('בהצלחה בקנייה!','Happy shopping!'));setTab('list');openShop26();return true;}
   if(/^(הסל השבועי|הסל השבועי שלי|איפה הכי זול השבוע)\??$/.test(t)){botSay('🛒 '+T('בודקת איפה הסל הקבוע שלך הכי זול השבוע...','Checking your weekly basket...'));openWeekly26();return true;}
   if(/^(המדווחים של החודש|טבלת המדווחים)$/.test(t)){openTop26();botSay('🏆');return true;}
@@ -339,6 +356,7 @@ yamiStep(async raw=>{const t=String(raw||'').trim();let m;
   return false;});
 
 /* בדיקות רקע — פעם בכמה שעות כשהאתר פתוח */
-setInterval(()=>{if(!document.hidden&&authUser){weeklyCheck26();alertsCheck26();}},3*3600000);
+setInterval(()=>{if(!document.hidden){salWeekly26();if(authUser){weeklyCheck26();alertsCheck26();}}},3*3600000);
+setTimeout(salWeekly26,4000);
 if(authUser)setTimeout(()=>{weeklyCheck26();alertsCheck26();savMonthly26();refClaim26();},3000);
 guestBar26();
