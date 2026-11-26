@@ -7615,6 +7615,73 @@ end $$;
 revoke all on function public.admin_price_search_stats(int, boolean) from public, anon;
 grant execute on function public.admin_price_search_stats(int, boolean) to authenticated;
 
+-- 📣 הסל הזול בעיר (sal-zol-hashavua.html): מי השתמש, מי הוריד תמונה, מי שיתף ומי הדפיס — לבק אופיס ← 📣 הסל הזול.
+--    כמו בחיפושי המחירים: משתמש רשום לפי החשבון, אורח רק לפי המזהה האקראי של המכשיר (בלי שם, מייל או IP). נשמר שנה.
+--    לאן שיתפו (וואטסאפ/ג'ימייל/...) הדפדפן לא מגלה לאתר — רואים רק "שיתוף", "וואטסאפ" (כשנפתח דרך הקישור שלנו), הורדה או הדפסה,
+--    ו"הגיעו מתמונה ששותפה" (מי שנכנס מה-QR או מהקישור שבתמונה).
+create table if not exists public.sal_events (
+  id bigserial primary key,
+  at timestamptz not null default now(),
+  user_id uuid references auth.users(id) on delete set null,
+  guest uuid,
+  staff boolean not null default false,
+  action text not null check (action in ('view','share','wa','app','post','status','print','arrive')),
+  city text not null default '' check (char_length(city) <= 40),
+  custom boolean not null default false,
+  n int not null default 0 check (n between 0 and 60)
+);
+create index if not exists sal_events_at on public.sal_events (at desc);
+alter table public.sal_events enable row level security;
+revoke all on public.sal_events from anon, authenticated;
+create or replace function public.sal_log(p_guest uuid, p_action text, p_city text, p_custom boolean, p_n int) returns void
+language plpgsql volatile security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if p_action not in ('view','share','wa','app','post','status','print','arrive') then return; end if;
+  if me is null and p_guest is null then return; end if;
+  -- הגבלה: עד 300 בשעה לאדם, ועד 10000 בשעה מאורחים בסך הכל
+  if (select count(*) from public.sal_events where at > now() - interval '1 hour'
+        and (case when me is not null then user_id = me else user_id is null and guest = p_guest end)) >= 300 then return; end if;
+  if me is null and (select count(*) from public.sal_events where user_id is null and at > now() - interval '1 hour') >= 10000 then return; end if;
+  insert into public.sal_events(user_id, guest, staff, action, city, custom, n)
+  values (me, case when me is null then p_guest end, me is not null and public.is_staff(), p_action,
+          left(regexp_replace(coalesce(p_city, ''), '[[:cntrl:]<>]', '', 'g'), 40), coalesce(p_custom, false), greatest(0, least(coalesce(p_n, 0), 60)));
+  if random() < 0.01 then delete from public.sal_events where at < now() - interval '365 days'; end if;
+end $$;
+revoke all on function public.sal_log(uuid, text, text, boolean, int) from public;
+grant execute on function public.sal_log(uuid, text, text, boolean, int) to anon, authenticated;
+-- הסיכום לבק אופיס (מנהלים בלבד): כמה פעמים כל פעולה ובכמה אנשים, לפי יום, לפי עיר, מי משתף הכי הרבה, והפעולות האחרונות
+create or replace function public.admin_sal_stats(p_days int default 30, p_staff boolean default false) returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+declare s timestamptz := now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365)));
+begin
+  if not public.is_admin() then return null; end if;
+  return (with q as (select * from public.sal_events where at > s and (coalesce(p_staff, false) or not staff))
+  select jsonb_build_object(
+    'actions', coalesce((select jsonb_object_agg(action, jsonb_build_object('n', n, 'people', p)) from (
+        select action, count(*) n, count(distinct coalesce(user_id, guest)) p from q group by action) x), '{}'::jsonb),
+    'people', (select count(distinct coalesce(user_id, guest)) from q),
+    'users', (select count(distinct user_id) from q),
+    'guests', (select count(distinct guest) from q where user_id is null),
+    'custom', (select count(*) from q where action = 'view' and custom),
+    'days', coalesce((select jsonb_agg(jsonb_build_object('day', d, 'view', v, 'out', o, 'arrive', a) order by d) from (
+        select (at at time zone 'Asia/Jerusalem')::date d, count(*) filter (where action = 'view') v,
+               count(*) filter (where action in ('share','wa','app','post','status','print')) o, count(*) filter (where action = 'arrive') a
+        from q group by 1) x), '[]'::jsonb),
+    'cities', coalesce((select jsonb_agg(jsonb_build_object('city', city, 'n', n, 'out', o) order by n desc) from (
+        select city, count(*) n, count(*) filter (where action in ('share','wa','app','post','status','print')) o
+        from q where city <> '' group by city order by n desc limit 15) x), '[]'::jsonb),
+    'sharers', coalesce((select jsonb_agg(jsonb_build_object('name', coalesce(p.name, ''), 'guest', x.user_id is null, 'n', x.n, 'last', x.last) order by x.n desc) from (
+        select user_id, guest, count(*) n, max(at) last from q where action in ('share','wa','app','post','status','print')
+        group by user_id, guest order by count(*) desc limit 20) x left join public.profiles p on p.id = x.user_id), '[]'::jsonb),
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('at', r.at, 'name', coalesce(p.name, ''), 'guest', r.user_id is null, 'staff', r.staff,
+          'action', r.action, 'city', r.city, 'custom', r.custom, 'n', r.n) order by r.at desc)
+        from (select * from q order by at desc limit 80) r left join public.profiles p on p.id = r.user_id), '[]'::jsonb)
+  ) from (select 1) one);
+end $$;
+revoke all on function public.admin_sal_stats(int, boolean) from public, anon;
+grant execute on function public.admin_sal_stats(int, boolean) to authenticated;
+
 -- 📱/🌐 מי משתמש מהאתר ומי מהאפליקציה לאנדרואיד (בבק אופיס ← 👥 משתמשים).
 --    האפליקציה מוסיפה "YamShoppingApp/" לזיהוי הדפדפן שלה. מעכשיו touch_presence (כל דקה כשהאתר פתוח) שומר
 --    מתי המשתמש נראה לאחרונה באתר ומתי באפליקציה; לפני כן — לפי ההרשמה והכניסות שביומן האבטחה (auth_events).

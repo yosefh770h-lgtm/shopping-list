@@ -34,6 +34,15 @@ const proReady=(async()=>{const s=session();if(!s)return;
   const m=(s.user&&s.user.user_metadata)||{};if(!ls.get(WHO)&&(m.name||m.full_name))$('#who').value=String(m.name||m.full_name).slice(0,30);
   try{const r=await fetch(SB_URL+'/rest/v1/rpc/pro_status',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:'{}'});
     const d=r.ok?await r.json():null;pro=!!(d&&d.pro);}catch(e){}})();
+/* 📊 מי השתמש — לבק אופיס ← 📣 הסל הזול (sal_log). אורח: רק המזהה האקראי של המכשיר, אותו מזהה כמו באתר (yam_guest_id).
+   לאן שיתפו (וואטסאפ/ג'ימייל) הדפדפן לא מגלה — נשמר רק סוג הפעולה */
+function guestId(){let id=ls.get('yam_guest_id');if(!/^[0-9a-f-]{36}$/.test(id)){id=crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16));ls.set('yam_guest_id',id);}return id;}
+const logged={};
+function log(action){try{const s=session(),k=action+'|'+(cur?cur.city:'');if(logged[k]&&Date.now()-logged[k]<60000)return;logged[k]=Date.now();
+  fetch(SB_URL+'/rest/v1/rpc/sal_log',{method:'POST',keepalive:true,headers:{apikey:SB_KEY,Authorization:'Bearer '+(s?s.access_token:SB_KEY),'Content-Type':'application/json'},
+    body:JSON.stringify({p_guest:s?null:guestId(),p_action:action,p_city:cur?cur.city:'',p_custom:custom,p_n:BASKET.length})}).catch(()=>{});}catch(e){}}
+/* נכנסו מתמונה או QR ששותפו (בקישור שבתמונה יש r=1) — נספר פעם אחת */
+let arrived=new URLSearchParams(location.search).get('r')==='1';
 const colorId=()=>{const c=ls.get(COL);return pro&&COLORS.some(k=>k[0]===c)?c:'sea';};
 const hex=()=>COLORS.find(k=>k[0]===colorId())[2];
 const shade=(h,k)=>'#'+[1,3,5].map(i=>Math.round(parseInt(h.substr(i,2),16)*k).toString(16).padStart(2,'0')).join('');
@@ -83,7 +92,7 @@ const sub=()=>N()+(custom?' מוצרים שבחרתי':' מוצרים מוכרי
 /* ---------- 🛒 החישוב ---------- */
 async function run(city){
   city=String(city||'').trim().slice(0,40);if(!city){$('#st').textContent='כותבים שם של עיר';return;}
-  store.set(city);const u=new URL(location.href);u.searchParams.set('city',city);history.replaceState(null,'',u.pathname+u.search);
+  store.set(city);const u=new URL(location.href);u.searchParams.set('city',city);u.searchParams.delete('r');history.replaceState(null,'',u.pathname+u.search);
   $('#st').textContent='⏳ בודקים את המחירים ב'+city+'...';$('#out').hidden=true;$('#go').disabled=true;
   try{await basketReady;
     /* בעיר גדולה יש יותר מ-60 סניפים (ירושלים ~150), וההשוואה בשרת מוגבלת ל-60 — אז קודם כל הסניפים בעיר, ואז השוואה בחלקים */
@@ -99,8 +108,8 @@ async function run(city){
     if(full[0])BASKET=BASKET.map(b=>{if(b[0]!==b[1])return b;const l=(full[0].lines||[]).find(l=>l.code===b[1].replace(/^0+/,''));return l&&l.name?[l.name,b[1]]:b;});
     if(top.length<2){$('#st').innerHTML='😕 לא מצאנו ב'+esc(city)+' לפחות שתי רשתות שיש בהן את כל '+N()+' המוצרים של הסל.'+(custom?' אפשר להוריד מהסל מוצר שלא נמכר בכל מקום (✏️ אני בוחר את המוצרים).':' אפשר לנסות עיר קרובה גדולה יותר.');return;}
     const hh=await h,updated=hh&&hh.updated?new Date(hh.updated*1000):new Date();
-    cur={at:new Date(),city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+(custom?'&p='+BASKET.map(b=>b[1]).join(','):'')};
-    show();$('#st').textContent='';
+    cur={at:new Date(),city,top,gap:full[full.length-1].total-full[0].total,branches:full.length,week:weekLabel(),updated,url:SITE+'?city='+encodeURIComponent(city)+'&r=1'+(custom?'&p='+BASKET.map(b=>b[1]).join(','):'')};
+    show();$('#st').textContent='';log('view');if(arrived){arrived=false;log('arrive');}
   }catch(e){console.warn('sal',e);$('#st').textContent='⚠️ שרת המחירים לא ענה כרגע. נסו שוב בעוד כמה דקות.';}
   finally{$('#go').disabled=false;}}
 
@@ -110,7 +119,7 @@ function show(){const c=cur,MED=['🥇','🥈','🥉','4','5'];
   $('#res').innerHTML=c.top.map((s,i)=>'<li'+(i?'':' class="first"')+'><span class="n" aria-hidden="true">'+MED[i]+'</span><div class="w"><div class="c">'+esc(s.chain_name)+'</div><div class="a">'+esc([s.name,s.address].filter(Boolean).join(' · '))+'</div></div><span class="t">'+money(s.total)+'</span></li>').join('');
   const g=$('#gap');g.hidden=!(c.gap>=1);g.textContent='באותו סל בדיוק — פער של עד '+money(c.gap)+' בין החנויות ב'+c.city+' ('+c.branches+' סניפים נבדקו)';
   $('#items').innerHTML=BASKET.map(b=>'<li>'+esc(b[0])+'</li>').join('');
-  $('#credit').textContent=creditText();$('#when').textContent=whenStr(c.at);$('#note').textContent=noteText();$('#plink').textContent=decodeURIComponent(c.url.replace('https://','')).replace(/&p=.*/,'');
+  $('#credit').textContent=creditText();$('#when').textContent=whenStr(c.at);$('#note').textContent=noteText();$('#plink').textContent=decodeURIComponent(c.url.replace('https://','')).replace(/&(r|p)=.*/,'');
   $('#out').hidden=false;
   loadQr().then(m=>{$('#pqr').innerHTML=m?qrSvg(m):'';}).catch(()=>{});
   preview();}
@@ -193,15 +202,15 @@ function wrap(x,t,r,y0,max,lh){wrapLines(x,t,max).forEach((l,i)=>x.fillText(l,r,
 const fileName=(tag)=>'sal-zol-'+cur.city.replace(/[^֐-׿a-zA-Z0-9]+/g,'-')+'-'+tag+'.png';
 const shareText=()=>'🛒 '+title()+' ב'+cur.city+': '+cur.top[0].chain_name+' — '+money(cur.top[0].total)+' ל-'+sub()+'.\nלהשוואה המלאה: '+cur.url;
 const blobOf=cv=>new Promise(ok=>cv.toBlob(ok,'image/png'));
-async function download(W,H,tag){const b=await blobOf(await draw(W,H));if(!b)return;const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fileName(tag);
+async function download(W,H,tag,quiet){if(!quiet)log(tag);const b=await blobOf(await draw(W,H));if(!b)return;const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fileName(tag);
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
   $('#st').textContent='✅ התמונה נשמרה בהורדות — אפשר לצרף אותה בוואטסאפ.';}
 async function share(){const b=await blobOf(await draw(1080,1350));const f=b&&new File([b],fileName('post'),{type:'image/png'});
-  try{if(f&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],text:shareText()});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{if(f&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],text:shareText()});log('share');return;}}catch(e){if(e&&e.name==='AbortError')return;}
   /* באפליקציה (WebView) ובמחשב אין שיתוף תמונה — שומרים את התמונה ושולחים את הטקסט עם הקישור */
-  await download(1080,1350,'post');
-  if(window.YamApp&&typeof window.YamApp.shareText==='function'){try{window.YamApp.shareText(shareText());}catch(e){}}
-  else window.open('https://wa.me/?text='+encodeURIComponent(shareText()),'_blank','noopener');}
+  await download(1080,1350,'post',true);
+  if(window.YamApp&&typeof window.YamApp.shareText==='function'){log('app');try{window.YamApp.shareText(shareText());}catch(e){}}
+  else{log('wa');window.open('https://wa.me/?text='+encodeURIComponent(shareText()),'_blank','noopener');}}
 
 /* ---------- ✏️ שינוי המוצרים (נשמר אצל המשתמש בלבד) ---------- */
 let draft=[];
@@ -230,7 +239,7 @@ $('#dlPost').onclick=()=>{if(cur)download(1080,1350,'post');};
 $('#dlStatus').onclick=()=>{if(cur)download(1080,1920,'status');};
 $('#print').onclick=()=>window.print();
 /* בהדפסה — גם רשימת המוצרים שבסל (גם כשמדפיסים מתפריט הדפדפן) */
-addEventListener('beforeprint',()=>{$('#det').open=true;});
+addEventListener('beforeprint',()=>{$('#det').open=true;if(cur)log('print');});
 const first=new URLSearchParams(location.search).get('city')||store.get();
 if(first){$('#city').value=first;run(first);}
 window.__sal={draw,get basket(){return BASKET;},get cur(){return cur;},get pro(){return pro;},proReady,creditText}; /* לבדיקות (tests/smoke.mjs) */

@@ -1455,6 +1455,7 @@ body.dark [style*="color:var(--hdr2)"]{color:#5ec4b6!important}
 
 .shp44{margin:4px 0 0;padding-inline-start:18px;max-height:220px;overflow:auto}.shp44 li{margin:2px 0}
 .shq44{margin:2px 4px 6px;font-size:13px;font-weight:600}
+.shin44.need44{border:2px solid #d97706}
 .shin44{display:block;width:100%;box-sizing:border-box;margin-top:6px;font-size:14px;padding:7px 10px;border-radius:10px;border:1px solid var(--chipbr);background:var(--bg);color:var(--text);font-family:inherit}
 
 /* ---- style ---- */

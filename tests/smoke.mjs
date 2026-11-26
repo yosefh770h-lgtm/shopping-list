@@ -764,6 +764,13 @@ await test('📢 פרסום עדכון: הודעה קצרה / מה חדש מהב
   // קישור אחר בכל שיתוף, והעתקה שואלת איפה מדביקים
   await page.click('#btnShareSite'); await page.waitForTimeout(300); await page.click('#shpop18 [data-net="copy"]');
   assert(await page.evaluate(() => !!document.querySelector('#shpop18 [data-place="other"]')), 'העתקה לא שואלת איפה');
+  // ✏️ "אחר": לא משתפים עד שכותבים לאן; ובכל דרך שיתוף (גם Gmail) שואלים לאן
+  await page.click('#btnShareSite'); await page.waitForTimeout(300); await page.click('#shpop18 [data-net="gm"]');
+  const ot = await page.evaluate(() => { window.__rpc = []; let opened = 0; const op = window.open; window.open = () => { opened++; return {}; };
+    document.querySelector('#shpop18 [data-place="other"]').click(); const blocked = { opened, rpc: window.__rpc.length, need: document.querySelector('#shPlace44').classList.contains('need44') };
+    document.querySelector('#shPlace44').value = 'פורום הורים'; document.querySelector('#shpop18 [data-place="other"]').click(); window.open = op;
+    return { blocked, opened, rpc: (window.__rpc.find((x) => x[0] === 'share_link_create') || [])[1] }; });
+  assert(ot.blocked.opened === 0 && ot.blocked.rpc === 0 && ot.blocked.need && ot.opened === 1 && ot.rpc && ot.rpc.p_channel === 'gm' && ot.rpc.p_place === 'other: פורום הורים', '"אחר" בשיתוף: ' + JSON.stringify(ot));
   await page.evaluate(() => { if (typeof closeShare18 === 'function') closeShare18(); });
   // בבק אופיס: מי שיתף, איפה, כמה נכנסו ומי הצטרף
   await page.evaluate(() => { sb = __stub({ 'rpc:admin_share_links': [{ token: 'abcdefghij', at: new Date().toISOString(), channel: 'wa', place: 'status', sharer: 'u1', name: 'משה', email: 'm@x.com', visits: 7, joins: [{ name: 'דוד', email: 'd@x.com', new: true, at: new Date().toISOString() }] },
@@ -2845,7 +2852,7 @@ await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מק
   await ctx.close();
 });
 
-await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), הסל של האתר או שלי, שם ויום ההשוואה בתמונה, וצבע לפרו', async () => {
+await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), הסל של האתר או שלי, שם ויום ההשוואה בתמונה, צבע לפרו, ומי השתמש ושיתף', async () => {
   const prods = [{ code: '7290000000011', name: 'טחינה 500 גרם', manufacturer: 'צבר', stores: 1200, chains: 22 }, { code: '7290000000028', name: 'במבה 80 גרם', manufacturer: 'אסם השקעות בע"מ', stores: 1800, chains: 26 }, { code: '7290000000035', name: 'רוטב מיוחד', manufacturer: 'מחלבת יטבתה', stores: 300, chains: 6 }];
   const api = (r) => { const u = new URL(r.request().url()); const j = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     if (u.pathname.endsWith('/products')) return j(prods);
@@ -2861,11 +2868,14 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   const pk = await page.evaluate((pool) => { const c = { items: pool, mode: 'daily', count: 4 }, d = new Date('2026-11-26T10:00:00Z'), a = SalPick.pick(c, d), b = SalPick.pick(c, d);
     return { n: a.length, same: JSON.stringify(a) === JSON.stringify(b), fixed: SalPick.pick({ items: pool }).length, def: SalPick.pick({ items: [['x', '1']] }).length }; }, pool);
   assert(pk.n === 4 && pk.same && pk.fixed === 6 && pk.def === 12, 'בחירת המוצרים: ' + JSON.stringify(pk));
-  await page.evaluate((pool) => { window.__up = []; sb = __stub({ 'site_config:one': { value: { items: pool, mode: 'daily', count: 4 } } }); const f = sb.from; sb.from = (n) => { const q = f(n); return new Proxy(q, { get(t, p) { if (p === 'upsert') return (v) => { window.__up.push(v); return q; }; return t[p]; } }); };
+  await page.evaluate((pool) => { window.__up = []; sb = __stub({ 'site_config:one': { value: { items: pool, mode: 'daily', count: 4 } }, 'rpc:admin_sal_stats': { people: 3, users: 1, guests: 2, custom: 1, actions: { view: { n: 5, people: 3 }, share: { n: 2, people: 1 } }, days: [], cities: [{ city: 'בני ברק', n: 5, out: 2 }],
+      sharers: [{ name: 'דוד', guest: false, n: 2, last: '2026-11-26T12:00:00Z' }], recent: [{ at: '2026-11-26T12:00:00Z', name: 'דוד', guest: false, staff: false, action: 'share', city: 'בני ברק', custom: false, n: 12 }] } }); const f = sb.from; sb.from = (n) => { const q = f(n); return new Proxy(q, { get(t, p) { if (p === 'upsert') return (v) => { window.__up.push(v); return q; }; return t[p]; } }); };
     authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('sal'); }, pool);
   await page.waitForTimeout(500);
   let bo = await page.$eval('#boMain', (e) => e.textContent);
   assert(bo.includes('כל יום מבחר אחר') && bo.includes('הרשימה (6)') && /היום .* בסל 4 מוצרים/.test(bo), 'בק אופיס: ' + bo.slice(0, 300));
+  // 📊 מי השתמש, מי שיתף
+  assert(bo.includes('3 אנשים השתמשו') && bo.includes('📤 שיתפו') && bo.includes('דוד — 2 פעמים') && bo.includes('בני ברק 5 (📤 2)'), 'מי השתמש: ' + bo.slice(bo.indexOf('📊'), bo.indexOf('📊') + 400));
   await page.fill('#salQ', 'טחינה'); await page.waitForSelector('[data-addp]');
   // 🏷️ שם החברה בשם המוצר, ומוצר שנמכר במעט סניפים — אי אפשר להוסיף, וכתוב שבשאר החנויות יש מוצר אחר
   const res = await page.$eval('#salRes', (e) => ({ t: e.textContent, off: e.querySelector('[data-addp="7290000000035"]').disabled }));
@@ -2913,18 +2923,22 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   await ctx2.close();
   // 3) ⭐ משתמש פרו (נבדק בשרת — pro_status): בוחר צבע, והדף והתמונה כותבים "משתמש פרו"
   const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL' });
-  const rpc = [];
-  await ctx4.route(/supabase\.co/, (r) => { const u = r.request().url(); if (u.includes('/rpc/pro_status')) { rpc.push(r.request().headers().authorization); return r.fulfill({ contentType: 'application/json', body: '{"pro":true}' }); } return r.fulfill({ contentType: 'application/json', body: '[]' }); });
+  const rpc = [], logs = [];
+  await ctx4.route(/supabase\.co/, (r) => { const u = r.request().url(); if (u.includes('/rpc/sal_log')) { logs.push(JSON.parse(r.request().postData() || '{}')); return r.fulfill({ status: 204, body: '' }); } if (u.includes('/rpc/pro_status')) { rpc.push(r.request().headers().authorization); return r.fulfill({ contentType: 'application/json', body: '{"pro":true}' }); } return r.fulfill({ contentType: 'application/json', body: '[]' }); });
   await ctx4.route(/\/api\/prices\//, api);
   const p4 = await ctx4.newPage(); const err4 = []; p4.on('pageerror', (e) => err4.push(e.message));
   await p4.addInitScript(() => { if (!sessionStorage.getItem('x')) { sessionStorage.setItem('x', '1'); localStorage.clear(); localStorage.setItem('sb-ygyfodxfbebnkwdcbjrp-auth-token', JSON.stringify({ access_token: 'tok', expires_at: Math.floor(Date.now() / 1000) + 3600, user: { id: 'u1', user_metadata: { name: 'יוסי' } } })); } });
-  await p4.goto(BASE.replace('index.html', 'sal-zol-hashavua.html') + '?city=' + encodeURIComponent('בני ברק'));
+  await p4.goto(BASE.replace('index.html', 'sal-zol-hashavua.html') + '?city=' + encodeURIComponent('בני ברק') + '&r=1');
   await p4.waitForSelector('#res li'); await p4.waitForFunction(() => document.querySelector('#credit').textContent.includes('פרו'));
   await p4.click('[data-col="mint"]');
   const pr = await p4.evaluate(() => ({ t: document.querySelector('#credit').textContent, col: localStorage.getItem('yam_sal_color'), hdr: document.documentElement.style.getPropertyValue('--hdr'), hint: document.querySelector('#proHint').hidden, who: document.querySelector('#who').value }));
   assert(rpc[0] === 'Bearer tok' && pr.t === 'נוצר ע״י ים שופינג · ההשוואה של יוסי · ⭐ משתמש פרו' && pr.col === 'mint' && pr.hdr === '#1b7d65' && pr.hint && pr.who === 'יוסי', 'פרו: ' + JSON.stringify(pr));
   const px4 = await p4.evaluate(async () => { const cv = await __sal.draw(1080, 1350); const d = cv.getContext('2d').getImageData(5, 5, 1, 1).data; return [d[0], d[1], d[2]]; });
   assert(Math.abs(px4[0] - 0x1b) < 6 && Math.abs(px4[1] - 0x7d) < 6, 'צבע התמונה של פרו: ' + px4);
+  // 📊 נשמר מה עשו: השוואה, הגיעו מתמונה ששותפה (פעם אחת), והורדת תמונה — בלי מזהה אורח כשמחוברים
+  await p4.click('#dlPost'); await p4.waitForTimeout(400);
+  const acts = logs.map((l) => l.p_action);
+  assert(acts.filter((a) => a === 'view').length === 1 && acts.filter((a) => a === 'arrive').length === 1 && acts.includes('post') && logs.every((l) => l.p_city === 'בני ברק' && l.p_guest === null && l.p_n === 12) && !(await p4.evaluate(() => location.search.includes('r=1'))), 'יומן הסל: ' + JSON.stringify(logs));
   assert(!err4.length, err4.join(' | '));
   await ctx4.close();
 });

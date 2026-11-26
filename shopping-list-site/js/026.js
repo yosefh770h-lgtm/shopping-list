@@ -384,7 +384,9 @@ function openShare18(o){
   const first=pop.querySelector('[data-net]');if(first)first.focus({preventScroll:true});
   pop.onclick=async e=>{if(e.target.closest('.shx18')){closeShare18();return;}const t=e.target.closest('[data-net]');if(!t)return;const k=t.dataset.net;
     /* קישור אישי: בוואטסאפ ובהעתקה שואלים קודם לאן (קבוצה / סטטוס...), ואז נוצר קישור שנספר בבק אופיס */
-    if(o.track&&typeof shareWhere44==='function'&&(k==='wa'||k==='copy')&&!t.dataset.place){shareWhere44(pop,k);return;}
+    if(o.track&&typeof shareWhere44==='function'&&!t.dataset.place){shareWhere44(pop,k);return;}
+    /* "✏️ אחר" — לא משתפים עד שכותבים לאן */
+    if(t.dataset.place==='other'){const inp=pop.querySelector('#shPlace44');if(inp&&inp.value.trim().length<2){inp.classList.add('need44');inp.placeholder=T('כתבו לאן משתפים — ואז לוחצים שוב על "אחר"','Type where — then tap Other again');inp.focus();return;}}
     if(o.track&&typeof shareTrack44==='function'){const nm=((pop.querySelector('#shPlace44')||{}).value||'').trim().slice(0,60);url=shareTrack44(k,t.dataset.place?t.dataset.place+(nm?': '+nm:''):'')||url;}
     logAct('share',k+' · '+(o.what||'')+' · '+String(o.text||'').split('\n')[0].slice(0,80));
     if(k==='copy'){try{await navigator.clipboard.writeText(text+'\n'+url);flash('🔗 '+T('הועתק — אפשר להדביק בכל מקום','Copied'));}catch(err){(await uiPrompt(T('העתיקו מכאן:','Copy:'),text+'\n'+url));}closeShare18();return;}

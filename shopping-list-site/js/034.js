@@ -309,6 +309,24 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
   window.boView&&window.boView('sal',async function(){const m=document.querySelector('#boMain'),SP=window.SalPick;
     const {data}=await sb.from('site_config').select('value').eq('key','sal').maybeSingle();const v=(data&&data.value)||{};
     let items=SP.clean(v.items);if(items.length<SP.MIN)items=SP.DEFAULT.slice();let md=v.mode==='daily'?'daily':'fixed',cnt=Math.max(SP.MIN,parseInt(v.count,10)||12);const counts={};
+    /* 📊 מי השתמש בדף, מי הוריד, שיתף והדפיס (admin_sal_stats) */
+    let stH='<p class="muted">⏳ טוען...</p>',stDays=30,stStaff=false;
+    const ACT={view:'👀 עשו השוואה',share:'📤 שיתפו (תפריט השיתוף של הטלפון)',wa:'💬 שלחו בוואטסאפ (דרך הקישור)',app:'📱 שיתפו מהאפליקציה',post:'⬇️ הורידו תמונה לקבוצה',status:'⬇️ הורידו תמונה לסטטוס',print:'🖨️ הדפיסו',arrive:'🔗 נכנסו מתמונה או QR ששותפו'};
+    const who=r=>r.guest?'👤 אורח':esc(r.name||'משתמש')+(r.staff?' <small class="muted">(צוות)</small>':'');
+    const when=t=>new Date(t).toLocaleString('he-IL',{timeZone:'Asia/Jerusalem',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+    async function loadStats(){const {data:d,error}=await sb.rpc('admin_sal_stats',{p_days:stDays,p_staff:stStaff});
+      if(error||!d){stH='<p class="muted">⚠️ '+esc((error&&error.message)||'אין נתונים')+(error&&/admin_sal_stats/.test(error.message)?' — צריך להריץ שוב את supabase/schema.sql':'')+'</p>';}
+      else{const a=d.actions||{};
+        stH='<p>'+d.people+' אנשים השתמשו ('+d.users+' רשומים, '+d.guests+' אורחים)'+(d.custom?' · '+d.custom+' השוואות עם סל שבחרו לעצמם':'')+'</p>'+
+          '<div class="tw" tabindex="0" role="region" aria-label="פעולות"><table><thead><tr><th>מה עשו</th><th>פעמים</th><th>אנשים</th></tr></thead><tbody>'+
+          Object.keys(ACT).map(k=>'<tr><td>'+ACT[k]+'</td><td>'+((a[k]&&a[k].n)||0)+'</td><td>'+((a[k]&&a[k].people)||0)+'</td></tr>').join('')+'</tbody></table></div>'+
+          '<p class="muted">לאן בדיוק שיתפו (וואטסאפ, ג׳ימייל וכו׳) הטלפון לא מגלה לאתר — רואים "שיתפו", ו"וואטסאפ" רק כשנפתח דרך הקישור שלנו.</p>'+
+          (d.sharers.length?'<h3>מי שיתף, הוריד או הדפיס הכי הרבה</h3><ul>'+d.sharers.map(r=>'<li>'+who(r)+' — '+r.n+' פעמים <small class="muted">(אחרון: '+when(r.last)+')</small></li>').join('')+'</ul>':'')+
+          (d.cities.length?'<h3>ערים</h3><p>'+d.cities.map(c=>esc(c.city)+' '+c.n+(c.out?' (📤 '+c.out+')':'')).join(' · ')+'</p>':'')+
+          '<h3>אחרונים</h3><div class="tw" tabindex="0" role="region" aria-label="פעולות אחרונות"><table><thead><tr><th>מתי</th><th>מי</th><th>מה</th><th>עיר</th></tr></thead><tbody>'+
+          (d.recent.map(r=>'<tr><td>'+when(r.at)+'</td><td>'+who(r)+'</td><td>'+(ACT[r.action]||esc(r.action))+(r.custom?' <small class="muted">(סל שלו)</small>':'')+'</td><td>'+esc(r.city)+'</td></tr>').join('')||'<tr><td colspan="4" class="muted">עוד אין</td></tr>')+'</tbody></table></div>';}
+      const el=$26('#salStats');if(el)el.innerHTML=statsCard();}
+    const statsCard=()=>'<h2>📊 מי השתמש</h2><div class="row"><label>תקופה: <select id="salDays" style="width:auto">'+[7,30,90,365].map(n=>'<option value="'+n+'"'+(n===stDays?' selected':'')+'>'+n+' ימים</option>').join('')+'</select></label> <label><input type="checkbox" id="salStf" style="width:auto"'+(stStaff?' checked':'')+'> כולל הצוות</label></div>'+stH;
     const today=()=>{const t=SP.pick({items,mode:md,count:cnt});return '<p class="muted">'+(md==='daily'?'היום ('+esc(SP.today())+') בסל '+t.length+' מוצרים: ':'בסל '+t.length+' מוצרים: ')+esc(t.map(i=>i[0]).join(' · '))+'</p>';};
     const draw=()=>{m.innerHTML='<div class="card"><h2>📣 הסל הזול בעיר</h2><p class="muted">המוצרים שבודקים בדף "הסל הזול" (<a href="/sal-zol-hashavua.html" target="_blank" rel="noopener">לדף</a>). משווים רק חנויות שיש בהן את <b>כל</b> המוצרים, אז אפשר להוסיף רק מוצר שנמכר ב-1,000 סניפים לפחות (אותו מוצר בדיוק, לפי ברקוד). מוצר שנמכר בפחות — ברוב החנויות יש מוצר אחר במקומו, והחיפוש כותב את זה. שם החברה נכנס לשם המוצר, ואפשר לתקן את השם בטבלה. משתמשים יכולים לשנות לעצמם את הסל — זה לא משנה את ההגדרה כאן.</p>'+
       '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="fixed"'+(md==='fixed'?' checked':'')+'> אותם מוצרים כל יום (כל הרשימה)</label></div>'+
@@ -317,15 +335,17 @@ try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data
       '<div class="card"><h2>🧺 הרשימה ('+items.length+')</h2><div class="tw" tabindex="0" role="region" aria-label="המוצרים בסל"><table><thead><tr><th>מוצר</th><th>ברקוד</th><th></th></tr></thead><tbody>'+
       items.map((i,n)=>'<tr><td><input data-nm="'+n+'" value="'+esc(i[0])+'" maxlength="60" aria-label="שם המוצר"></td><td dir="ltr">'+esc(i[1])+(counts[i[1]]?' <small class="muted">('+counts[i[1]]+' סניפים)</small>':'')+'</td><td><button class="btn sec" data-rm="'+n+'">🗑️</button></td></tr>').join('')+'</tbody></table></div>'+
       '<div class="row"><input id="salQ" type="search" placeholder="להוסיף מוצר: שם או ברקוד" maxlength="60" autocomplete="off"></div><div id="salRes"></div>'+
-      '<div class="row"><button class="btn" id="salSave">💾 שמירה</button> <button class="btn sec" id="salDef">↩️ חזרה ל-12 המוצרים המקוריים</button></div></div>';};
-    draw();
+      '<div class="row"><button class="btn" id="salSave">💾 שמירה</button> <button class="btn sec" id="salDef">↩️ חזרה ל-12 המוצרים המקוריים</button></div></div>'+
+      '<div class="card" id="salStats">'+statsCard()+'</div>';};
+    draw();loadStats();
     m.oninput=e=>{const t=e.target;if(t.dataset.nm!=null){items[+t.dataset.nm][0]=t.value.slice(0,60);return;}
       if(t.id==='salCnt'){cnt=Math.max(SP.MIN,Math.min(SP.MAX,parseInt(t.value,10)||12));return;}
       if(t.id==='salQ'){clearTimeout(m._t);const q=t.value.trim();if(q.length<2){$26('#salRes').innerHTML='';return;}
         m._t=setTimeout(async()=>{try{const r=await fetch(PRICE_API+'/products?'+new URLSearchParams({q,limit:'8'}));const d=r.ok?await r.json():[];
           d.forEach(p=>counts[p.code]=p.stores);
           $26('#salRes').innerHTML=d.length?d.map(p=>'<div class="row"><button class="chip" data-addp="'+esc(p.code)+'" data-n="'+esc(SP.label(p))+'"'+(items.some(i=>i[1]===p.code)||!SP.ok(p)?' disabled':'')+'>➕ '+esc(SP.label(p))+'</button> <small class="muted">'+esc(SP.badge(p))+'</small></div>').join(''):'<p class="muted">לא נמצא</p>';}catch(err){$26('#salRes').innerHTML='<p class="muted">שרת המחירים לא ענה</p>';}},300);}};
-    m.onchange=e=>{if(e.target.name==='salMd'){md=e.target.value;draw();}};
+    m.onchange=e=>{if(e.target.name==='salMd'){md=e.target.value;draw();}
+      if(e.target.id==='salDays'||e.target.id==='salStf'){stDays=+$26('#salDays').value||30;stStaff=$26('#salStf').checked;stH='<p class="muted">⏳ טוען...</p>';$26('#salStats').innerHTML=statsCard();loadStats();}};
     m.onclick=async e=>{const t=e.target;
       if(t.closest('[data-rm]')){items.splice(+t.closest('[data-rm]').dataset.rm,1);draw();return;}
       if(t.closest('[data-addp]')){const b=t.closest('[data-addp]');if(items.length>=200)return;items.push([b.dataset.n.slice(0,60),b.dataset.addp]);draw();$26('#salQ').focus();return;}
