@@ -2845,6 +2845,57 @@ await test('🔁 חוזרים אחרי שבוע: המכשיר שולח רק מק
   await ctx.close();
 });
 
+await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (קבוע / מבחר יומי), עריכה של המשתמש, ורשימת המוצרים בתמונה', async () => {
+  const prods = [{ code: '7290000000011', name: 'טחינה 500 גרם', manufacturer: 'צבר', stores: 1200 }, { code: '7290000000028', name: 'במבה 80 גרם', manufacturer: 'אסם', stores: 1800 }];
+  const api = (r) => { const u = new URL(r.request().url()); const j = (b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
+    if (u.pathname.endsWith('/products')) return j(prods);
+    if (u.pathname.endsWith('/health')) return j({ ok: true, updated: 1795678052 });
+    if (u.pathname.endsWith('/stores')) return j([{ store: 'a:1', name: 'סניף א' }, { store: 'b:1', name: 'סניף ב' }, { store: 'c:1', name: 'און ליין' }]);
+    if (u.pathname.endsWith('/compare')) { const it = u.searchParams.get('items').split('|'); const st = u.searchParams.get('stores').split(',');
+      return j({ stores: st.map((k, n) => ({ store: k, chain: 'C' + n, chain_name: 'רשת ' + (n + 1), name: 'סניף ' + (n + 1), address: '', city: 'בני ברק', found: it.length, total: 50 + n * 7, regular: 50 + n * 7,
+        lines: it.map((x) => ({ q: x.split('#')[0], found: true, code: x.split('#')[1], name: 'שם בקובץ ' + x.split('#')[1].slice(-2) })) })) }); }
+    return r.abort(); };
+  // 1) בק אופיס
+  const { ctx, page, errors } = await newPage({ priceApi: api });
+  const pool = [['א', '7290000000101'], ['ב', '7290000000102'], ['ג', '7290000000103'], ['ד', '7290000000104'], ['ה', '7290000000105'], ['ו', '7290000000106']];
+  const pk = await page.evaluate((pool) => { const c = { items: pool, mode: 'daily', count: 4 }, d = new Date('2026-11-26T10:00:00Z'), a = SalPick.pick(c, d), b = SalPick.pick(c, d);
+    return { n: a.length, same: JSON.stringify(a) === JSON.stringify(b), fixed: SalPick.pick({ items: pool }).length, def: SalPick.pick({ items: [['x', '1']] }).length }; }, pool);
+  assert(pk.n === 4 && pk.same && pk.fixed === 6 && pk.def === 12, 'בחירת המוצרים: ' + JSON.stringify(pk));
+  await page.evaluate((pool) => { window.__up = []; sb = __stub({ 'site_config:one': { value: { items: pool, mode: 'daily', count: 4 } } }); const f = sb.from; sb.from = (n) => { const q = f(n); return new Proxy(q, { get(t, p) { if (p === 'upsert') return (v) => { window.__up.push(v); return q; }; return t[p]; } }); };
+    authUser = { id: 'me', email: 'owner@x.com', email_confirmed_at: 'x', app_metadata: { yam_owner: true } }; openBO('sal'); }, pool);
+  await page.waitForTimeout(500);
+  let bo = await page.$eval('#boMain', (e) => e.textContent);
+  assert(bo.includes('כל יום מבחר אחר') && bo.includes('הרשימה (6)') && /היום .* בסל 4 מוצרים/.test(bo), 'בק אופיס: ' + bo.slice(0, 300));
+  await page.fill('#salQ', 'טחינה'); await page.waitForSelector('[data-addp]'); await page.click('[data-addp="7290000000011"]');
+  await page.click('[data-rm="0"]'); await page.click('input[name="salMd"][value="fixed"]'); await page.click('#salSave'); await page.waitForTimeout(200);
+  const up = await page.evaluate(() => window.__up[0]);
+  assert(up && up.key === 'sal' && up.value.mode === 'fixed' && up.value.items.length === 6 && up.value.items.some((i) => i[1] === '7290000000011') && !up.value.items.some((i) => i[0] === 'א'), 'שמירה: ' + JSON.stringify(up));
+  assert(!errors.length, errors.join(' | '));
+  await ctx.close();
+  // 2) הדף: המשתמש משנה את המוצרים, והסל עובר בקישור
+  const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'he-IL' });
+  await ctx2.route(/supabase\.co/, (r) => r.abort()); await ctx2.route(/\/api\/prices\//, api);
+  const p2 = await ctx2.newPage(); const err2 = []; p2.on('pageerror', (e) => err2.push(e.message));
+  await p2.goto(BASE.replace('index.html', 'sal-zol-hashavua.html') + '?city=' + encodeURIComponent('בני ברק'));
+  await p2.waitForSelector('#res li'); assert((await p2.textContent('#lead')).includes('12 מוצרים מוכרים'), 'ברירת המחדל: 12 מוצרים');
+  assert((await p2.$$eval('#res li', (l) => l.length)) === 2, 'סניף "און ליין" לא אמור להיכנס');
+  await p2.click('#edit'); await p2.click('[data-del="0"]'); await p2.fill('#edQ', 'במבה'); await p2.waitForSelector('[data-add]'); await p2.click('[data-add="7290000000028"]');
+  await p2.click('#edSave'); await p2.waitForFunction(() => document.querySelector('#h1').textContent.startsWith('הסל שלי'));
+  const c = await p2.evaluate(() => ({ url: __sal.cur.url, n: __sal.basket.length, mine: JSON.parse(localStorage.getItem('yam_sal_mine') || '[]').length }));
+  assert(c.n === 12 && c.mine === 12 && /&p=[\d,]+7290000000028/.test(c.url), 'עריכה: ' + JSON.stringify(c));
+  // רשימת המוצרים בתמונה — רק כשמסמנים
+  const h = await p2.evaluate(async () => { const px = async () => { const cv = await __sal.draw(1080, 1350); return cv.toDataURL().length; }; const a = await px(); document.querySelector('#showItems').click(); const b = await px(); return { a, b, saved: localStorage.getItem('yam_sal_showitems') }; });
+  assert(h.b !== h.a && h.saved === '1', 'רשימת המוצרים בתמונה: ' + JSON.stringify(h));
+  // מי שמקבל קישור עם ?p= רואה את אותו סל (בלי לשמור אצלו)
+  const p3 = await ctx2.newPage(); await p3.addInitScript(() => localStorage.clear());
+  await p3.goto(c.url.replace('https://www.yamshopping.com/', BASE.replace('index.html', '')).replace(/city=[^&]*/, 'city=' + encodeURIComponent('בני ברק')));
+  await p3.waitForSelector('#res li');
+  const r3 = await p3.evaluate(() => ({ h1: document.querySelector('#h1').textContent, n: __sal.basket.length, named: __sal.basket.every((b) => b[0] !== b[1]), mine: localStorage.getItem('yam_sal_mine') }));
+  assert(r3.h1.startsWith('הסל שלי') && r3.n === 12 && r3.named && !r3.mine, 'קישור עם סל: ' + JSON.stringify(r3));
+  assert(!err2.length, err2.join(' | '));
+  await ctx2.close();
+});
+
 await test('🛡️ אף בדיקה לא נתקלה בקוד שנחסם (CSP)', async () => { assert(!cspHits.size, [...cspHits].join(' | ')); });
 
 await browser.close(); server.close();

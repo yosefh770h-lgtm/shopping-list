@@ -303,6 +303,40 @@ function scanOk20(code,name){const w=document.querySelector('#scanOverlay .scanw
   '.scanwrap .scanok20.on{opacity:1;transform:translate(-50%,0)}'+
   '.scanwrap.ok20 .scanframe{border-color:#3ddc97}';document.head.appendChild(st);})();
 
+/* בבק אופיס: 📣 הסל הזול — איזה מוצרים בסל (site_config "sal", החישוב ב-js/sal-pick.js) */
+window.boReady(()=>{
+try{const nav=document.querySelector('#boNav');if(nav&&!nav.querySelector('[data-s="sal"]')){const after=nav.querySelector('[data-s="prices"]');const b=document.createElement('button');b.dataset.s='sal';b.textContent='📣 הסל הזול';if(after)after.after(b);else nav.appendChild(b);}
+  window.boView&&window.boView('sal',async function(){const m=document.querySelector('#boMain'),SP=window.SalPick;
+    const {data}=await sb.from('site_config').select('value').eq('key','sal').maybeSingle();const v=(data&&data.value)||{};
+    let items=SP.clean(v.items);if(items.length<SP.MIN)items=SP.DEFAULT.slice();let md=v.mode==='daily'?'daily':'fixed',cnt=Math.max(SP.MIN,parseInt(v.count,10)||12);const counts={};
+    const today=()=>{const t=SP.pick({items,mode:md,count:cnt});return '<p class="muted">'+(md==='daily'?'היום ('+esc(SP.today())+') בסל '+t.length+' מוצרים: ':'בסל '+t.length+' מוצרים: ')+esc(t.map(i=>i[0]).join(' · '))+'</p>';};
+    const draw=()=>{m.innerHTML='<div class="card"><h2>📣 הסל הזול בעיר</h2><p class="muted">המוצרים שבודקים בדף "הסל הזול" (<a href="/sal-zol-hashavua.html" target="_blank" rel="noopener">לדף</a>). משווים רק חנויות שיש בהן את <b>כל</b> המוצרים, אז כדאי לבחור מוצרים שנמכרים בהרבה סניפים (המספר בסוגריים). משתמשים יכולים לשנות לעצמם את הסל — זה לא משנה את ההגדרה כאן.</p>'+
+      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="fixed"'+(md==='fixed'?' checked':'')+'> אותם מוצרים כל יום (כל הרשימה)</label></div>'+
+      '<div class="row"><label><input type="radio" style="width:auto;margin-inline-end:6px" name="salMd" value="daily"'+(md==='daily'?' checked':'')+'> כל יום מבחר אחר מתוך הרשימה</label> <label'+(md==='daily'?'':' hidden')+'>— כמה מוצרים בכל יום: <input id="salCnt" type="number" min="'+SP.MIN+'" max="'+SP.MAX+'" value="'+cnt+'" style="width:80px"></label></div>'+
+      today()+'</div>'+
+      '<div class="card"><h2>🧺 הרשימה ('+items.length+')</h2><div class="tw" tabindex="0" role="region" aria-label="המוצרים בסל"><table><thead><tr><th>מוצר</th><th>ברקוד</th><th></th></tr></thead><tbody>'+
+      items.map((i,n)=>'<tr><td><input data-nm="'+n+'" value="'+esc(i[0])+'" maxlength="60" aria-label="שם המוצר"></td><td dir="ltr">'+esc(i[1])+(counts[i[1]]?' <small class="muted">('+counts[i[1]]+' סניפים)</small>':'')+'</td><td><button class="btn sec" data-rm="'+n+'">🗑️</button></td></tr>').join('')+'</tbody></table></div>'+
+      '<div class="row"><input id="salQ" type="search" placeholder="להוסיף מוצר: שם או ברקוד" maxlength="60" autocomplete="off"></div><div id="salRes"></div>'+
+      '<div class="row"><button class="btn" id="salSave">💾 שמירה</button> <button class="btn sec" id="salDef">↩️ חזרה ל-12 המוצרים המקוריים</button></div></div>';};
+    draw();
+    m.oninput=e=>{const t=e.target;if(t.dataset.nm!=null){items[+t.dataset.nm][0]=t.value.slice(0,60);return;}
+      if(t.id==='salCnt'){cnt=Math.max(SP.MIN,Math.min(SP.MAX,parseInt(t.value,10)||12));return;}
+      if(t.id==='salQ'){clearTimeout(m._t);const q=t.value.trim();if(q.length<2){$26('#salRes').innerHTML='';return;}
+        m._t=setTimeout(async()=>{try{const r=await fetch(PRICE_API+'/products?'+new URLSearchParams({q,limit:'8'}));const d=r.ok?await r.json():[];
+          d.forEach(p=>counts[p.code]=p.stores);
+          $26('#salRes').innerHTML=d.length?d.map(p=>'<button class="chip" data-addp="'+esc(p.code)+'" data-n="'+esc(p.name)+'"'+(items.some(i=>i[1]===p.code)?' disabled':'')+'>➕ '+esc(p.name)+' · '+esc(p.manufacturer||'')+' ('+(p.stores||0)+' סניפים)</button>').join(' '):'<p class="muted">לא נמצא</p>';}catch(err){$26('#salRes').innerHTML='<p class="muted">שרת המחירים לא ענה</p>';}},300);}};
+    m.onchange=e=>{if(e.target.name==='salMd'){md=e.target.value;draw();}};
+    m.onclick=async e=>{const t=e.target;
+      if(t.closest('[data-rm]')){items.splice(+t.closest('[data-rm]').dataset.rm,1);draw();return;}
+      if(t.closest('[data-addp]')){const b=t.closest('[data-addp]');if(items.length>=200)return;items.push([b.dataset.n.slice(0,60),b.dataset.addp]);draw();$26('#salQ').focus();return;}
+      if(t.id==='salDef'){items=SP.DEFAULT.slice();md='fixed';draw();flash('לוחצים "שמירה" כדי שזה ייכנס לתוקף');return;}
+      if(t.id==='salSave'){if(items.length<SP.MIN){flash('⚠️ צריך לפחות '+SP.MIN+' מוצרים');return;}
+        const {error}=await sb.from('site_config').upsert({key:'sal',value:{items,mode:md,count:cnt},updated_at:new Date().toISOString()});
+        flash(error?'⚠️ '+error.message:'✔️ נשמר — הדף "הסל הזול" מתעדכן אצל כולם');}};
+  });
+}catch(e){console.warn('bo sal',e);}
+});
+
 /* בבק אופיס (מנהלים): 💌 מי נרשם דרך מי */
 /* מוסיף לבק אופיס — רץ כשהבק אופיס נטען (js/lazy.js) */
 window.boReady(()=>{

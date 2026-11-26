@@ -57,11 +57,23 @@ a{color:var(--accent)}
 details summary{cursor:pointer;color:var(--accent);font-weight:700}
 .pqr{display:none}
 footer{text-align:center;padding:4px 16px 32px}
+[hidden]{display:none!important}
+#edit{margin:0 0 8px}
+.ed{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0 14px}
+.ed h2{margin-top:0}
+.edl,.edr{list-style:none;padding:0;margin:6px 0}
+.edl li{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:4px 0}
+.edl .x{background:transparent;color:var(--muted);border:1px solid var(--line);padding:2px 10px;font-size:15px}
+.edr button{width:100%;justify-content:flex-start;background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500;margin:3px 0;text-align:start}
+.edr small{color:var(--muted)}
+#edQ{width:100%;font:inherit;font-size:16px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.chk{display:flex;gap:8px;align-items:center;font-size:15px;margin:4px 0;cursor:pointer}
+.chk input{width:20px;height:20px}
 /* 🖨️ דף להדפסה: ללוח המודעות בבית הכנסת או לעלון שבת — שחור לבן, גדול וברור, עם QR */
 @media print{
   @page{size:A4;margin:14mm}
   body{background:#fff;color:#000;font-size:15pt}
-  header,.pick,.acts,.prev,#st,footer,.noprint,details summary{display:none!important}
+  header,.pick,.acts,.prev,#st,footer,.noprint,details summary,#edit,.ed{display:none!important}
   details{display:block}details>*{display:block}
   main{border:3px solid #000;border-radius:0;margin:0;max-width:none;padding:10mm;background:#fff}
   h1{color:#000;font-size:30pt;text-align:center}
@@ -90,6 +102,16 @@ footer{text-align:center;padding:4px 16px 32px}
   <button type="submit" id="go">הצגה</button>
 </form>
 <div id="st" role="status" aria-live="polite"></div>
+<button type="button" class="sec" id="edit" hidden>✏️ שינוי המוצרים בסל</button>
+<section id="ed" class="ed" hidden aria-label="שינוי המוצרים בסל">
+  <h2>✏️ המוצרים בסל שלי</h2>
+  <p class="muted">משווים רק חנויות שיש בהן את כל המוצרים, אז כדאי לבחור מוצרים שנמכרים בהרבה סניפים. השינוי נשמר רק אצלכם, ומי שמקבל מכם את התמונה רואה את אותו סל.</p>
+  <ul class="edl" id="edList"></ul>
+  <p class="muted" id="edN"></p>
+  <input id="edQ" type="search" placeholder="להוסיף מוצר: למשל טחינה, במבה, ביצים" autocomplete="off" maxlength="60" aria-label="חיפוש מוצר להוספה">
+  <ul class="edr" id="edRes"></ul>
+  <div class="acts"><button type="button" id="edSave">💾 שמירה והשוואה</button><button type="button" class="sec" id="edCancel">ביטול</button><button type="button" class="sec" id="edReset" hidden>↩️ חזרה לסל של האתר</button></div>
+</section>
 <div id="out" hidden>
   <ol class="res" id="res"></ol>
   <p class="gap" id="gap" hidden></p>
@@ -99,6 +121,7 @@ footer{text-align:center;padding:4px 16px 32px}
     <button type="button" class="sec" id="dlStatus">⬇️ תמונה לסטטוס</button>
     <button type="button" class="sec" id="print">🖨️ הדפסה ללוח המודעות</button>
   </div>
+  <label class="chk noprint"><input type="checkbox" id="showItems"> להראות בתמונה גם את רשימת המוצרים (בקטן)</label>
   <img class="prev" id="prev" alt="התמונה לשיתוף">
   <details id="det"><summary>מה יש בסל</summary>
     <ul class="items" id="items"></ul>
@@ -110,6 +133,7 @@ footer{text-align:center;padding:4px 16px 32px}
 </main>
 <footer class="muted"><a href="/terms.html">תנאי שימוש</a> · <a href="/privacy.html">פרטיות</a></footer>
 <script src="/js/089-hcal.js?v=e2ea143fdb"></script>
-<script src="/js/pages/sal.js?v=ec2f71bd1a"></script>
+<script src="/js/sal-pick.js?v=12d340e54f"></script>
+<script src="/js/pages/sal.js?v=a5c5ea1be7"></script>
 </body>
 </html>
