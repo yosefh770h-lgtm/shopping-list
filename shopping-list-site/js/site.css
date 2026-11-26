@@ -234,6 +234,8 @@ header{position:relative}
 /* ---- prices v6 ---- */
 .form label.il{display:block;font-size:13px;color:var(--muted);margin:6px 0 4px}
 .verified{background:#1d9bf0;color:#fff;border-radius:8px;padding:1px 7px;font-size:11px;font-weight:700;flex-shrink:0}
+.verified.bystore{background:#0f7a55}
+.bjchk{align-items:flex-start;margin-top:8px;line-height:1.45}.bjchk input{margin-top:3px;flex-shrink:0}.bjchk span{flex:1;min-width:0}
 .pr-times{font-size:11px;color:var(--muted);margin-top:2px}
 .pill-p{font-size:11px;background:#fff1c9;color:#6b5000;border-radius:8px;padding:1px 6px}
 body.dark .pill-p{background:#4a3f1f;color:#f3e3b0}
