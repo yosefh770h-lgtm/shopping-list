@@ -4416,6 +4416,8 @@ begin
   if auth.uid() is null and (select count(*) from public.client_errors where user_id is null and created_at > now() - interval '1 minute') >= 60 then return; end if;
   if (select count(*) from public.client_errors where created_at > now() - interval '1 minute') >= 120 then return; end if;
   if random() < 0.01 then delete from public.client_errors where created_at < now() - interval '30 days'; end if;
+  -- נטפרי מזריק סקריפט (netfree.link) וה-CSP חוסם אותו כמו שצריך — זו לא תקלה באתר (גם מדפדפנים עם גרסה ישנה של האתר)
+  if coalesce(p_msg, '') ~* 'CSP[^:]*: script-src.*netfree\.[a-z]+' then return; end if;
   insert into public.client_errors(user_id, msg, src, ua, ver, app_ver, device, dev)
   values (auth.uid(), left(coalesce(p_msg, ''), 500), left(coalesce(p_src, ''), 300), left(coalesce(p_ua, ''), 200), left(coalesce(p_ver, ''), 12),
           left(regexp_replace(coalesce(p_app, ''), '[^0-9.]', '', 'g'), 12),
@@ -9458,3 +9460,7 @@ alter table public.feedback_replies enable row level security;
 drop policy if exists "feedback replies admin read" on public.feedback_replies;
 create policy "feedback replies admin read" on public.feedback_replies for select using (public.is_admin());
 revoke insert, update, delete on public.feedback_replies from anon, authenticated;
+
+-- ================= 🛡️ יומן התקלות בלי חסימות של נטפרי (נובמבר 2026) =================
+-- מוחק דיווחי CSP ישנים על הסקריפט שנטפרי מזריק (netfree.link). מעכשיו הם לא נרשמים בכלל (באתר וב-log_client_error)
+delete from public.client_errors where msg ~* 'CSP[^:]*: script-src.*netfree\.[a-z]+';

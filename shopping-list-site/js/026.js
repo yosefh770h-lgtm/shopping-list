@@ -69,7 +69,9 @@ window.errCtx=errCtx;
   window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const fn=r&&r.stack?fnOf(r.stack):'';send((r&&(r.message||r))||'promise',r&&r.stack?(fn?fn+' · ':'')+(String(r.stack).split('\n')[1]||'').trim():'');});
   window.logClientError=send;
   /* 🛡️ CSP: קוד שנחסם (או שהיה נחסם, במדיניות "לדיווח בלבד" — Report-Only) נרשם ביומן התקלות. ככה יודעים בבטחה מתי אפשר לאכוף. תוספים בדפדפן מסוננים (IGN) */
-  document.addEventListener('securitypolicyviolation',e=>{const d=e.effectiveDirective||e.violatedDirective||'';if(!/^script-src/.test(d))return;
+  /* נובמבר 2026: נטפרי מזריק לדף סקריפט משלו (netfree.link). ה-CSP חוסם אותו כמו שצריך, וזו לא תקלה באתר — לא נרשם ביומן */
+  const FILTER_INJ=/(^|[\/.])netfree\.[a-z]+(\/|$)/i;
+  document.addEventListener('securitypolicyviolation',e=>{const d=e.effectiveDirective||e.violatedDirective||'';if(!/^script-src/.test(d)||FILTER_INJ.test(e.blockedURI||'')||FILTER_INJ.test(e.sourceFile||''))return;
     post('🛡️ CSP'+(e.disposition==='report'?' (דיווח בלבד)':'')+': '+d+' '+(e.blockedURI||''),(e.sourceFile||'').replace(location.origin,'')+':'+(e.lineNumber||0)+' '+String(e.sample||'').slice(0,80));});
   /* 💥 אפליקציה מגרסה 2.2: אם האפליקציה עצמה קרסה (או שחלון האתר קרס) — בפתיחה הבאה זה נשלח ליומן התקלות, פעם אחת */
   setTimeout(()=>{try{const y=window.YamApp,c=y&&typeof y.lastCrash==='function'?y.lastCrash():'';if(!c)return;const o=JSON.parse(c);
