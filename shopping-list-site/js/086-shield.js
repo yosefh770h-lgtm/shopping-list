@@ -11,7 +11,7 @@ const ago=d=>{const m=Math.floor((Date.now()-new Date(d).getTime())/60000);retur
 const KIND={flood:['🛡️','הצפה נחסמה','יותר מדי חיבורים בבת אחת מכתובת אחת'],ddos:['🚨','התקפת עומס (DDoS)','קפיצה חדה בחיבורים מהרבה כתובות — ההגנה הוחמרה ל-15 דקות'],
   probe:['🚨','ניסיון פריצה','חיפש קבצים רגישים או כלי ניהול שאין אצלנו (למשל ‎/.env, wp-login)'],direct:['⚡','פנייה ישירה לשרת','פנה ל-server.yamshopping.com ולא דרך האתר — נחסם'],
   ssh:['🔑','ניחוש סיסמה לשרת','ניסיונות כניסה כושלים ל-SSH'],db_rate:['🗄️','הצפת בקשות למסד','יותר מדי בקשות כתיבה בדקה ל-Supabase'],
-  load:['🔥','עומס גבוה על השרת',''],down:['🔴','האתר לא ענה',''],up:['🟢','האתר חזר',''],unblock:['✅','שוחרר ע״י מנהל','']};
+  load:['🔥','עומס גבוה על השרת',''],down:['🔴','האתר לא ענה',''],up:['🟢','האתר חזר',''],unblock:['✅','שוחרר ע״י מנהל',''],reblock:['🔒','נחסם שוב ע״י מנהל','']};
 const ALERTS=[['flood','הצפה שנחסמה'],['ddos','התקפת עומס'],['probe','ניסיון פריצה'],['down','האתר לא עונה / חזר'],['load','עומס גבוה'],['db_rate','חסימה במסד'],['direct','פנייה ישירה לשרת'],['ssh','ניחוש סיסמה ל-SSH']];
 const ALERT_DEF={flood:1,ddos:1,probe:1,down:1,up:1,load:1,db_rate:1};
 const DEF={rate:40,burst:200,conns:300,block_min:10,shared_mult:10,probe_hours:24,direct_min:60,ssh_max:10,db_user_per_min:600,db_ip_per_min:600,db_block_min:10};
@@ -21,6 +21,12 @@ const geoTxt=g=>{g=g||{};const p=[g.city,g.country].filter(Boolean).join(', ');r
 async function getCfg(key){const {data}=await sb.from('site_config').select('value').eq('key',key).maybeSingle();return (data&&data.value)||{};}
 async function saveCfg(key,patch,msg){const cur=await getCfg(key);const v=Object.assign({},cur,patch);
   const {error}=await sb.from('site_config').upsert({key,value:v,updated_at:new Date().toISOString()});if(error){flash('⚠️ '+error.message);return null;}if(msg)flash(msg);return v;}
+
+/* פס "ביטול" למטה אחרי שחרור / התרה — 30 שניות לחזור אחורה אם לחצו בטעות */
+function undoBar(msg,undo){let u=document.getElementById('shUndo');if(u){clearTimeout(u._t);u.remove();}
+  u=document.createElement('div');u.id='shUndo';u.setAttribute('role','status');u.innerHTML='<span></span><button type="button">↩️ ביטול</button><button type="button" class="x" aria-label="סגירה">✕</button>';
+  u.firstChild.textContent=msg;const close=()=>{clearTimeout(u._t);u.remove();};
+  u.children[1].onclick=async()=>{close();await undo();};u.children[2].onclick=close;u._t=setTimeout(close,30e3);document.body.appendChild(u);}
 
 if(!document.getElementById('shCss')){const st=document.createElement('style');st.id='shCss';st.textContent=
   '#shMain .pstiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:6px 0}'+
@@ -38,6 +44,9 @@ if(!document.getElementById('shCss')){const st=document.createElement('style');s
   '#shMain .shgrid input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}#shMain .shgrid label span{flex:1}#shMain .shgrid input[type=number]{max-width:90px}#shMain td .btn{padding:4px 8px;font-size:12px;margin:1px}'+
   '@media (max-width:640px){#shMain .tw{overflow:visible}#shMain table,#shMain tbody,#shMain tr,#shMain td{display:block;width:auto}#shMain thead{display:none}'+
   '#shMain tr{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:8px 0}#shMain td{border:0;padding:2px 0;text-align:right!important}#shMain td[data-l]:not([data-l=""])::before{content:attr(data-l) ": ";color:var(--muted);font-size:12px}}'+
+  '#shUndo{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;width:max-content;gap:10px;align-items:center;max-width:calc(100vw - 32px);'+
+  'background:#1f2a37;color:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:15px}'+
+  '#shUndo span{flex:1;min-width:0}#shUndo button{white-space:nowrap;flex:0 0 auto;border:0;border-radius:8px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer;background:#fff;color:#1f2a37}#shUndo button.x{background:transparent;color:#fff;padding:6px}'+
   '#shMain pre{direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;background:var(--bg2,rgba(0,0,0,.05));padding:8px;border-radius:8px;font-size:12px;user-select:all}';
   document.head.appendChild(st);}
 
@@ -91,6 +100,7 @@ window.boView('shield',async function(){const m=$s('#boMain');if(!m)return;
   const actions=e=>{if(!e.ip)return '';let b='';const live=['flood','probe','direct','ssh'].includes(e.kind)&&Date.now()-new Date(e.at).getTime()<((e.detail&&e.detail.min)||10)*60e3;
     if(live)b+='<button class="btn sec" data-shun="'+esc(e.ip)+'">✅ שחרור</button>';
     if(e.kind==='db_rate')b+='<button class="btn sec" data-shdb="'+esc(e.ip)+'">✅ שחרור במסד</button>';
+    if(e.kind==='unblock'&&Date.now()-new Date(e.at).getTime()<864e5)b+='<button class="btn" data-shre="'+esc(e.ip)+'" title="ביטול השחרור: חסימה לשעה, גם לאתר וגם ל-SSH">🔒 לחסום שוב</button>';
     if(!allowed.has(e.ip))b+='<button class="btn sec" data-shallow="'+esc(e.ip)+'" title="למשל שרת הסינון של נטפרי">🤝 תמיד מותר</button>';
     if(!blockedNow.has(e.ip))b+='<button class="btn" data-shblock="'+esc(e.ip)+'">🚫 חסימה קבועה</button>';return b;};
   const desc=e=>{const d=e.detail||{};const k=KIND[e.kind]||['🛡️',e.kind,''];let t=k[2];
@@ -101,7 +111,7 @@ window.boView('shield',async function(){const m=$s('#boMain');if(!m)return;
     else if(e.kind==='ssh')t=num(e.n)+' כישלונות · חסום ל-SSH '+(d.min||60)+' דק׳';
     else if(e.kind==='load'||e.kind==='down')t=esc(d.why||'');
     if(d.ua)t+='<br><small class="muted" dir="ltr">'+esc(String(d.ua).slice(0,90))+'</small>';return t;};
-  const KF=[['','הכל'],['flood','🛡️ הצפות'],['ddos','🚨 DDoS'],['probe','🚨 פריצה'],['direct','⚡ ישירות'],['ssh','🔑 SSH'],['db_rate','🗄️ מסד'],['load','🔥 עומס / נפילה']];
+  const KF=[['','הכל'],['flood','🛡️ הצפות'],['ddos','🚨 DDoS'],['probe','🚨 פריצה'],['direct','⚡ ישירות'],['ssh','🔑 SSH'],['db_rate','🗄️ מסד'],['load','🔥 עומס / נפילה'],['unblock','✅ שחרורים']];
   h+='<div class="card"><h2>📜 מה קרה (7 ימים)</h2><div class="row" style="gap:8px;flex-wrap:wrap"><input id="shQ" placeholder="סינון לפי כתובת" dir="ltr" style="max-width:200px"><select id="shK">'+KF.map(([k,l])=>'<option value="'+k+'">'+l+'</option>').join('')+'</select></div>'+
     '<div class="tw" tabindex="0" role="region" aria-label="יומן אבטחה"><table><thead><tr><th>מתי</th><th>מה</th><th>כתובת</th><th>פרטים</th><th></th></tr></thead><tbody id="shTb"></tbody></table></div></div>';
   /* --- חסימות במסד --- */
@@ -132,26 +142,39 @@ window.boView('shield',async function(){const m=$s('#boMain');if(!m)return;
     '<li>💡 <b>אם תהיה התקפה גדולה:</b> אפשר להדליק את הענן הכתום של Cloudflare (Proxied) על yamshopping.com ו-www — זה חינם, והדומיין כבר מנוהל שם. לפני כן כדאי לבדוק שנטפרי עדיין פותחים את האתר דרך Cloudflare, ולהגדיר בשרת את הכתובת האמיתית של המשתמשים. לא מומלץ להדליק סתם, רק כשצריך.</li></ul></div>';
   h+='</div>';m.innerHTML=h;
   /* --- יומן: ציור וסינון --- */
-  const draw=()=>{const q=($s('#shQ').value||'').trim(),k=$s('#shK').value;const rows=events.filter(e=>(!k||e.kind===k||(k==='load'&&['down','up'].includes(e.kind)))&&(!q||(e.ip||'').includes(q)));
+  const draw=()=>{const q=($s('#shQ').value||'').trim(),k=$s('#shK').value;const rows=events.filter(e=>(!k||e.kind===k||(k==='load'&&['down','up'].includes(e.kind))||(k==='unblock'&&e.kind==='reblock'))&&(!q||(e.ip||'').includes(q)));
     $s('#shTb').innerHTML=rows.slice(0,300).map(e=>{const kk=KIND[e.kind]||['🛡️',e.kind];const g=geoTxt((e.detail||{}).geo);
       return '<tr><td style="white-space:nowrap" data-l="">'+when(e.at)+' <small class="muted">('+ago(e.at)+')</small></td><td data-l="">'+kk[0]+' <b>'+esc(kk[1])+'</b>'+(e.src==='db'?' <span class="shchip">מסד</span>':e.src==='api'?' <span class="shchip">API</span>':'')+'</td>'+
         '<td data-l="כתובת"><bdi dir="ltr"><b>'+esc(e.ip||'—')+'</b></bdi>'+(g?'<br><small class="muted">'+esc(g)+'</small>':'')+'</td><td data-l="">'+desc(e)+'</td><td data-l="">'+actions(e)+'</td></tr>';}).join('')||'<tr><td colspan="5" class="muted">'+(events.length?'אין התאמות':'✅ שקט. לא נחסם כלום ב-7 הימים האחרונים.')+'</td></tr>';};
   draw();$s('#shQ').oninput=draw;$s('#shK').onchange=draw;
   m.querySelectorAll('[data-shh]').forEach(b=>b.onclick=()=>{hours=+b.dataset.shh;try{sessionStorage.setItem('shHours',hours);}catch(e){}m.querySelectorAll('[data-shh]').forEach(x=>x.className='btn'+(+x.dataset.shh===hours?'':' sec'));$s('#shChart').innerHTML=chart(load,hours);});
   const again=()=>VIEWS_shield();
+  /* כמה דקות נשארו לחסימה הזמנית האחרונה של הכתובת (0 = אין חסימה פעילה) */
+  const liveMin=ip=>events.reduce((m,e)=>{if(e.ip!==ip||!['flood','probe','direct','ssh'].includes(e.kind))return m;
+    const left=Math.ceil((new Date(e.at).getTime()+((e.detail&&e.detail.min)||10)*60e3-Date.now())/60e3);return Math.max(m,left);},0);
+  /* "חסום שוב" — השרת קורא את זה תוך חצי דקה וחוסם לאתר ול-SSH (רשומות מעל רבע שעה נמחקות, כמו בשחרור) */
+  const reblocks=(cur,ip,min)=>(Array.isArray(cur.reblock)?cur.reblock:[]).filter(x=>Date.now()-new Date(x.at).getTime()<15*60e3).concat([{ip,min:Math.max(1,Math.min(1440,min|0)),at:new Date().toISOString()}]);
   const addTo=async(key,ip,note)=>{ip=String(ip||'').trim();if(!validIp(ip)){flash('⚠️ כתובת לא תקינה');return;}const cur=await getCfg('shield');const arr=Array.isArray(cur[key])?cur[key]:[];
     if(arr.some(x=>x.ip===ip)){flash('כבר ברשימה');return;}
     if(key==='blocked'&&!(await uiConfirm('לחסום את '+ip+' מכל האתר?')))return;
+    if(key==='allow'&&!(await uiConfirm('להתיר תמיד את '+ip+'? היא תשוחרר מכל חסימה ולא תיחסם יותר. (אפשר לבטל מיד אחרי)')))return;
     const other=key==='blocked'?'allow':'blocked';const patch={[key]:arr.concat([{ip,note:String(note||'').slice(0,80),at:new Date().toISOString()}]).slice(-500)};
     if(Array.isArray(cur[other]))patch[other]=cur[other].filter(x=>x.ip!==ip);
     if(key==='allow')patch.unblock=(Array.isArray(cur.unblock)?cur.unblock:[]).filter(u=>Date.now()-new Date(u.at).getTime()<15*60e3).concat([{ip,at:new Date().toISOString()}]);
-    if(await saveCfg('shield',patch,key==='blocked'?'🚫 נחסם — בשרת תוך חצי דקה':'🤝 נוסף למותרים — משתחרר תוך חצי דקה'))again();};
+    if(!(await saveCfg('shield',patch,key==='blocked'?'🚫 נחסם — בשרת תוך חצי דקה':'🤝 נוסף למותרים — משתחרר תוך חצי דקה')))return;
+    again();if(key!=='allow')return;
+    const was=(Array.isArray(cur.blocked)?cur.blocked:[]).find(x=>x.ip===ip),min=liveMin(ip);
+    undoBar('🤝 '+ip+' נוסף למותרים',async()=>{const now=await getCfg('shield');const p={allow:(now.allow||[]).filter(x=>x.ip!==ip)};
+      if(was&&!(now.blocked||[]).some(x=>x.ip===ip))p.blocked=(now.blocked||[]).concat([was]);if(min)p.reblock=reblocks(now,ip,min);
+      if(await saveCfg('shield',p,'↩️ בוטל — '+ip+(was||min?' חסומה שוב':' לא ברשימת המותרים')))again();});};
   const delFrom=async(key,ip)=>{const cur=await getCfg('shield');if(await saveCfg('shield',{[key]:(cur[key]||[]).filter(x=>x.ip!==ip)},'✔️ הוסר'))again();};
   m.querySelector('#shMain').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
-    if(d.shun){const cur=await getCfg('shield');const u=(Array.isArray(cur.unblock)?cur.unblock:[]).filter(x=>Date.now()-new Date(x.at).getTime()<15*60e3).concat([{ip:d.shun,at:new Date().toISOString()}]);
-      if(await saveCfg('shield',{unblock:u},'✅ ישוחרר בשרת תוך חצי דקה'))b.disabled=true;}
-    else if(d.shdb){const {error}=await sb.from('rate_blocks').delete().eq('ip',d.shdb);if(error)flash('⚠️ '+error.message);else{flash('✅ שוחרר');again();}}
-    else if(d.shrb){const {error}=await sb.from('rate_blocks').delete().eq('k',d.shrb);if(error)flash('⚠️ '+error.message);else{flash('✅ שוחרר');again();}}
+    if(d.shun){if(!(await uiConfirm('לשחרר את '+d.shun+' מהחסימה בשרת? (אפשר לבטל מיד אחרי)')))return;const min=liveMin(d.shun),ip=d.shun;const cur=await getCfg('shield');const u=(Array.isArray(cur.unblock)?cur.unblock:[]).filter(x=>Date.now()-new Date(x.at).getTime()<15*60e3).concat([{ip:d.shun,at:new Date().toISOString()}]);
+      if(await saveCfg('shield',{unblock:u},'✅ ישוחרר בשרת תוך חצי דקה')){b.disabled=true;
+        undoBar('✅ '+ip+' שוחרר',async()=>{if(await saveCfg('shield',{reblock:reblocks(await getCfg('shield'),ip,min||60)},'↩️ בוטל — '+ip+' חסומה שוב'))again();});}}
+    else if(d.shre){if(!(await uiConfirm('לחסום שוב את '+d.shre+' לשעה (אתר ו-SSH)?')))return;if(await saveCfg('shield',{reblock:reblocks(await getCfg('shield'),d.shre,60)},'🔒 ייחסם שוב בשרת תוך חצי דקה'))again();}
+    else if(d.shdb){if(!(await uiConfirm('לשחרר את '+d.shdb+' מהחסימה במסד?')))return;const {error}=await sb.from('rate_blocks').delete().eq('ip',d.shdb);if(error)flash('⚠️ '+error.message);else{flash('✅ שוחרר');again();}}
+    else if(d.shrb){if(!(await uiConfirm('לשחרר מהחסימה במסד?')))return;const {error}=await sb.from('rate_blocks').delete().eq('k',d.shrb);if(error)flash('⚠️ '+error.message);else{flash('✅ שוחרר');again();}}
     else if(d.shallow)addTo('allow',d.shallow,'');
     else if(d.shblock)addTo('blocked',d.shblock,'');
     else if(d.shbx)delFrom('blocked',d.shbx);

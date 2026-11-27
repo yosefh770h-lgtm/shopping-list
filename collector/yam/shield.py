@@ -95,6 +95,8 @@ def settings(raw):
     c["allow"] = [str(x.get("ip", "")) for x in raw.get("allow", []) if isinstance(x, dict)] if isinstance(raw.get("allow"), list) else []
     c["blocked"] = [str(x.get("ip", "")) for x in raw.get("blocked", []) if isinstance(x, dict)] if isinstance(raw.get("blocked"), list) else []
     c["unblock"] = [x for x in raw.get("unblock", []) if isinstance(x, dict)] if isinstance(raw.get("unblock"), list) else []
+    # "חסום שוב" מהבק אופיס (ביטול של שחרור בטעות): חסימה זמנית גם לאתר וגם ל-SSH
+    c["reblock"] = [x for x in raw.get("reblock", []) if isinstance(x, dict)] if isinstance(raw.get("reblock"), list) else []
     return c
 
 
@@ -503,18 +505,32 @@ class Shield:
             log("✓ כללים:", "מצב התקפה" if attack else "רגיל", key[:5])
 
     def do_unblocks(self):
+        """שחרורים וחסימות-שוב מהבק אופיס, לפי סדר הזמן — כך שאם שחררו ואז ביטלו, הכתובת נשארת חסומה."""
         now = time.time()
-        for u in self.cfg["unblock"]:
+        todo = [("u", x) for x in self.cfg["unblock"]] + [("r", x) for x in self.cfg["reblock"]]
+        todo.sort(key=lambda t: str(t[1].get("at", "")))
+        allow = None
+        for what, u in todo:
             ip, at = str(u.get("ip", "")), str(u.get("at", ""))
-            if not net(ip) or (ip, at) in self.done_unblock:
+            if not net(ip) or (what, ip, at) in self.done_unblock:
                 continue
-            self.done_unblock.add((ip, at))
-            remove(ip)
-            self.flood_seen.pop(ip, None)
-            self.event("unblock", ip, 0, {"by": "admin"}, now)
-            log("✓ שוחרר:", ip)
+            self.done_unblock.add((what, ip, at))
+            if what == "u":
+                remove(ip)
+                self.flood_seen.pop(ip, None)
+                self.event("unblock", ip, 0, {"by": "admin"}, now)
+                log("✓ שוחרר:", ip)
+                continue
+            allow = allow if allow is not None else self.allow_nets()
+            if not blockable(ip, allow):
+                log("⚠️ לא נחסם שוב (כתובת מותרת או פנימית):", ip)
+                continue
+            mins = num(u.get("min"), 60, 1, 1440)
+            add_timed("flood", ip, mins)
+            add_timed("ssh", ip, mins)
+            self.event("reblock", ip, 0, {"by": "admin", "min": mins}, now)
+            log("✓ נחסם שוב:", ip, mins, "דק׳")
 
-    # --- אירועים ---
     def event(self, kind, ip="", n=0, detail=None, t=None):
         d = dict(detail or {})
         if ip and self.geo is not None:
