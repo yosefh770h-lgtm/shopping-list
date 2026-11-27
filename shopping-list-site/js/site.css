@@ -611,10 +611,12 @@ body.dark .pr-act.vote.no.on{background:#4a1f1f;color:#f3c0c0}
 .price-row.doubt .pr-amt{text-decoration:line-through wavy rgba(178,59,59,.6)}
 .doubtnote{font-size:12px;color:#b23b3b;margin-top:2px}
 body.dark .doubtnote{color:#f09a9a}
-.pr-prod{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* basis 7em: שם המוצר שומר לעצמו מקום, והתגיות/המחיר יורדים שורה במקום למעוך אותו לאות אחת בשורה */
+.pr-prod{flex:1 1 7em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pr-prod{cursor:pointer}
 .price-row-main .dealbadge{flex-shrink:1;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .price-row.full .pr-prod,.price-row.full .price-row-main .dealbadge{white-space:normal;overflow:visible;overflow-wrap:anywhere}
+.price-row.full .pr-prod{flex-basis:calc(100% - 2.5em)}
 .latest .price-row-sub{flex-wrap:wrap}
 .dealchk{display:flex;align-items:center;gap:6px;font-size:13px;flex-basis:100%;cursor:pointer}
 .dealchk input{width:auto}
@@ -1746,7 +1748,7 @@ html.inapp.dev66-tab:not(.sz66-s):not(.sz66-xs):not(.a11y-l):not(.a11y-xl){--z66
 :root:not(.a11y-l):not(.a11y-xl) .app,:root:not(.a11y-l):not(.a11y-xl) .siderail,:root:not(.a11y-l):not(.a11y-xl) #botFab,:root:not(.a11y-l):not(.a11y-xl) .overlay>*{zoom:var(--z66,1)}
 /* בהקטנה גם הגובה קטֵן — מגדילים אותו בחזרה כדי שהמסך יתמלא עד למטה */
 :root:not(.a11y-l):not(.a11y-xl) .app{height:calc(100vh / var(--z66,1));height:calc(100dvh / var(--z66,1))}
-@media (min-width:900px){:root:not(.a11y-l):not(.a11y-xl) .app{height:calc((100dvh - 32px) / var(--z66,1))}}
+@media (min-width:900px){:root:not(.a11y-l):not(.a11y-xl) .app{height:calc((100vh - 32px) / var(--z66,1));height:calc((100dvh - 32px) / var(--z66,1))}}
 html.norail66 .siderail{display:none!important}
 /* 🍲 הסתרת המתכונים (⚙️ ← גודל תצוגה ומה להציג) */
 html.nosugg66 #paneList .emptybtns{display:none}
@@ -1829,7 +1831,7 @@ body.sel88 #paneList .row.s88anc .bub,body.sel88 #paneList .it.s88anc{outline-st
 .h71out{display:flex;flex-direction:column;gap:6px}
 .h71row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .h71row .em{font-size:24px;width:30px;text-align:center}
-.h71row .nm{flex:1;font-weight:600;font-size:15px;min-width:0;overflow-wrap:break-word;word-break:normal;hyphens:none}
+.h71row .nm{flex:1 1 8em;font-weight:600;font-size:15px;min-width:0;overflow-wrap:break-word;word-break:normal;hyphens:none}
 .h71row{flex-wrap:wrap}
 @media (max-width:420px){.h71row .nm{flex-basis:calc(100% - 44px)}.h71row .em{order:0}.h71row button.pri,.h71row .inl{margin-inline-start:40px}}
 .h73grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
@@ -1950,7 +1952,7 @@ body.r2 #paneList .r2card>.row+.row{border-top:1px solid var(--line)}
 body.r2 #paneList .r2card .bub{max-width:none!important;width:100%!important;background:none!important;box-shadow:none!important;border:0!important;border-radius:0!important;padding:14px 0!important;display:flex!important;align-items:center;gap:10px;flex-direction:row!important}
 body.r2 #paneList .r2card .bl1{flex:1;display:flex;align-items:center;gap:12px;min-width:0}
 body.r2 #paneList .r2card .bl2{display:flex;align-items:center;gap:6px;margin:0!important;padding:0!important;border:0!important}
-body.r2 #paneList .r2card :is(.em:not(:has(img)),.t,.tick,.hint,.qty>button[data-qm],.qty>button[data-qp],.pk17,.tags15){display:none!important}
+body.r2 #paneList .r2card :is(.em:not(.hasimg),.t,.tick,.hint,.qty>button[data-qm],.qty>button[data-qp],.pk17,.tags15){display:none!important}
 body.r2 #paneList .r2card .em img{width:34px;height:34px;border-radius:8px;object-fit:cover}
 body.r2 #paneList .r2card .ixdrag{opacity:0;width:14px;min-width:14px;margin:0 -6px 0 -2px;padding:0;background:none;border:0;color:var(--muted);cursor:grab;font-size:16px}
 body.r2 #paneList .r2card .ixdrag:focus-visible,body.r2 #paneList .r2card .row:hover .ixdrag{opacity:1}
@@ -2212,7 +2214,7 @@ html.inapp body.r2 #login #btnGoogle{margin-top:10px}
 /* מסך כניסה מסחרי ונקי: בלי משפטים מיותרים — רק לוגו, משפט אחד, שדות, כפתורים, ובתחתית קישורי פרטיות ונגישות (חובה לפי החוק) */
 body.r2 #login .lterms{order:31;font-size:12px;margin-top:8px}
 body.r2 #login :is(#btnLoginReq,.copy){display:none!important}
-body.r2 #login:has(#loginErr:not(:empty)) #btnLoginReq{display:block!important;order:13}
+body.r2 #login.haserr #btnLoginReq{display:block!important;order:13}
 body.r2 #login .guest40{order:30}
 body.r2 #login .lcard input{padding:15px 16px!important;margin-bottom:10px!important;font-size:16px!important}
 /* פינות מעוגלות כמו בהדמיה בכל העיצוב: לשוניות הרשימות, מוצרים מהירים ותגיות — כמו גלולה; כרטיסים 18px; חלונות 22px למעלה */

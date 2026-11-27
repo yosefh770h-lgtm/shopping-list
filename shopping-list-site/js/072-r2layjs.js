@@ -56,6 +56,8 @@
     const sh=l.members&&l.members.length?l.members.length:0;const b=$('#r2lb');b.hidden=!sh;if(sh)b.textContent=tt('משותפת עם '+sh,'Shared with '+sh);}
   function card(){const p=$('#paneList');const rows=[...p.children].filter(x=>x.classList.contains('row'));if(!rows.length)return;
     const c=document.createElement('div');c.className='r2card';rows[0].before(c);rows.forEach(r=>c.appendChild(r));
+    /* בלי :has() — WebView ישן (Chrome 91) לא מכיר אותו: אייקון עם תמונה מסומן במחלקה */
+    c.querySelectorAll('.em').forEach(e=>e.classList.toggle('hasimg',!!e.querySelector('img')));
     /* כמות עם יחידה ("1 ק\"ג") מוצגת כמו בהדמיה, בלי × */
     c.querySelectorAll('.qv,.q').forEach(q=>{const m=q.textContent.match(/^×(\d+(?:\.\d+)?\s*\D.*)$/);if(m){q.textContent=m[1];q.style.direction='rtl';}});}
   const _rl=renderList;renderList=function(){const r=_rl.apply(this,arguments);try{card();head();side();av();}catch(e){console.warn('r2',e);}return r;};
