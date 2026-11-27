@@ -1191,6 +1191,25 @@ def test_shield_reads_api_events_and_blocks(tmp_path, monkeypatch):
     assert not (tmp_path / "shield-api.jsonl").exists()  # נקרא פעם אחת ונמחק
 
 
+def test_shield_undo_release_reblocks_in_order(monkeypatch):
+    """שחרור בטעות ואז "חסום שוב": הכתובת נחסמת שוב לאתר ול-SSH; כתובת מותרת לא נחסמת; כל פעולה רק פעם אחת."""
+    from yam import shield as S
+    ops = []
+    monkeypatch.setattr(S, "remove", lambda ip: ops.append(("remove", ip)))
+    monkeypatch.setattr(S, "add_timed", lambda name, ip, mins: ops.append((name, ip, mins)) or True)
+    sh = S.Shield.__new__(S.Shield)
+    sh.cfg = S.settings({"unblock": [{"ip": "193.47.62.149", "at": "2026-11-27T06:08:54Z"}],
+                         "reblock": [{"ip": "193.47.62.149", "at": "2026-11-27T06:09:30Z", "min": 60},
+                                     {"ip": "9.9.9.9", "at": "2026-11-27T06:09:40Z"}]})
+    sh.own, sh.bots, sh.ip_allow, sh.known = set(), [], ["9.9.9.0/24"], ([], [])
+    sh.events, sh.flood_seen, sh.done_unblock, sh.geo = [], {}, set(), None
+    sh.do_unblocks()
+    assert ops == [("remove", "193.47.62.149"), ("flood", "193.47.62.149", 60), ("ssh", "193.47.62.149", 60)]
+    assert [(e["kind"], e["ip"]) for e in sh.events] == [("unblock", "193.47.62.149"), ("reblock", "193.47.62.149")]
+    sh.do_unblocks()
+    assert len(ops) == 3
+
+
 def test_api_history(built, monkeypatch):
     """גרף מחיר: המחיר של כל יום משוחזר מהיסטוריית השינויים (לפני שבוע 7.1, היום 6.5)."""
     con, api = built
