@@ -2991,6 +2991,17 @@ await test('📣 הסל הזול: בחירת המוצרים בבק אופיס (�
   await ctx4.close();
 });
 
+await test('📏 מחירים: שם מוצר ארוך ליד תגית מבצע לא נמעך לאות אחת בשורה (גם כשפותחים אותו במלואו)', async () => {
+  const { ctx, page } = await newPage({ viewport: { width: 400, height: 800 } });
+  const w = await page.evaluate(() => {
+    const row = (full) => '<div class="price-row deal' + (full ? ' full' : '') + '"><div class="price-row-main"><span>🐟</span><b class="pr-prod">פילה סלמון נורווגי 1.4-1.8 קג בדיצה עם עור</b><span class="pr-chain">נתיב החסד</span><span class="verified">✓ רשמי</span><span class="dealbadge">🔥 מבצע: סלמון- 59.9</span><span class="pr-amt">₪59.90</span></div></div>';
+    const d = document.createElement('div'); d.className = 'card'; d.style.cssText = 'position:fixed;top:0;right:0;width:376px;z-index:99999'; d.innerHTML = '<div class="grp latest">' + row(false) + row(true) + '</div>'; document.body.appendChild(d);
+    const r = [...d.querySelectorAll('.pr-prod')].map((b) => b.getBoundingClientRect().width); d.remove(); return r;
+  });
+  await ctx.close();
+  assert(w[0] >= 80 && w[1] >= 200, 'רוחב שם המוצר: ' + w.map(Math.round).join(' / '));
+});
+
 await test('🛡️ אף בדיקה לא נתקלה בקוד שנחסם (CSP)', async () => { assert(!cspHits.size, [...cspHits].join(' | ')); });
 
 await browser.close(); server.close();

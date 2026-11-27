@@ -603,10 +603,10 @@ function setLoginMode(m){loginMode=m;
   document.querySelector('#ltLogin').classList.toggle('on',m==='login');document.querySelector('#ltSignup').classList.toggle('on',m==='signup');
   document.querySelector('#lfSignup').style.display=m==='signup'?'block':'none';document.querySelector('#lfSignup2').style.display=m==='signup'?'block':'none';
   document.querySelector('#inCode').setAttribute('autocomplete',m==='signup'?'new-password':'current-password');
-  document.querySelector('#btnLogin').textContent=m==='signup'?T('הרשמה','Sign up'):T('כניסה','Sign in');document.querySelector('#loginErr').textContent='';}
+  document.querySelector('#btnLogin').textContent=m==='signup'?T('הרשמה','Sign up'):T('כניסה','Sign in');loginErr('');}
 document.querySelector('#ltLogin').onclick=()=>setLoginMode('login');
 document.querySelector('#ltSignup').onclick=()=>setLoginMode('signup');
-function loginErr(m){document.querySelector('#loginErr').textContent=m||'';}
+function loginErr(m){document.querySelector('#loginErr').textContent=m||'';const l=document.querySelector('#login');if(l)l.classList.toggle('haserr',!!m);}
 function showLogin(){document.querySelector('#login').classList.add('open');document.querySelector('#btnOffline').style.display=sb?'none':'block';
   if(!sb)loginErr('⚠️ אין חיבור לשרת (אולי סינון רשת). אפשר להמשיך בלי חשבון.');}
 function hideLogin(){document.querySelector('#login').classList.remove('open');}

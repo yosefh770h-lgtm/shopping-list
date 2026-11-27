@@ -488,7 +488,7 @@ document.addEventListener('change',e=>{const fi=e.target&&e.target.closest&&e.ta
 
 /* 📴 מסך הפתיחה באפליקציה האופליין: אותו מסך כניסה של האתר (לוגו ועיצוב), אבל רק "מה השם שלך?" ונכנסים.
    אין חשבון ואין סיסמה — השם נשמר רק בטלפון, ומוצג לטלפון השני בסנכרון ("מחובר ל..."). הוא לא נשלח אלינו */
-function offWelcome(){const lc=$o('#login .lcard');if(!lc)return;$o('#login').classList.add('offw');const le=$o('#loginErr');if(le)le.textContent='';
+function offWelcome(){const lc=$o('#login .lcard');if(!lc)return;$o('#login').classList.add('offw');$o('#login').classList.remove('haserr');const le=$o('#loginErr');if(le)le.textContent='';
   if(!$o('#offName')){const h=lc.querySelector('h1'),p=lc.querySelector('p');
     if(h)h.textContent=T('רשימת קניות אופליין','Offline shopping list');
     if(p)p.textContent=T('רשימת קניות לכל הבית — בלי אינטרנט בכלל. מסנכרנים עם המשפחה בבלוטות\', בקוד QR או בקוד שיתוף.','A shopping list with no internet at all. Sync with family by Bluetooth, QR or a share code.');
